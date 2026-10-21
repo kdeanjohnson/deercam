@@ -1,0 +1,14 @@
+# torch / torchvision: install the CUDA build first, e.g.
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+ultralytics>=8.3
+transformers>=4.45
+pillow
+numpy
+requests
+pycognito
+python-dotenv
+pydantic>=2
+openai>=1.92
+anthropic
+fastapi
+uvicorn

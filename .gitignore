@@ -1,0 +1,8 @@
+.env
+data/
+__pycache__/
+*.pyc
+*.db
+*.pt
+.reveal_tokens.json
+site/

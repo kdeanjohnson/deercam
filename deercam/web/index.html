@@ -1,0 +1,1170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DeerCam</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%A6%8C%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg:#fff; --soft:#f2f3f5; --soft2:#e9ebee; --ink:#15171a; --ink2:#6a7079; --line:#e6e8eb;
+    --accent:#1f6feb; --blaze:#e8590c; --good:#2f8a3e; --bad:#c92a2a; --warn:#a86a00;
+    /* light categories: one ordinal blue ramp, lightest = daylight; always shown with a legend or label */
+    --day:#9ec5f4; --shooting:#3987e5; --night:#184f95; --unknown:#c3c7cd;
+    --radius:16px; --nav-h:64px;
+  }
+  * { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; font:15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background:var(--bg); color:var(--ink);
+         padding-bottom:calc(var(--nav-h) + 40px + env(safe-area-inset-bottom)); }
+  button, input, select, textarea { font:inherit; color:inherit; }
+  button { cursor:pointer; }
+  img { display:block; }
+
+  /* ---- chrome */
+  header { position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:8px; padding:10px 16px;
+           padding-top:calc(10px + env(safe-area-inset-top)); background:rgba(255,255,255,.92); backdrop-filter:saturate(1.6) blur(12px);
+           border-bottom:1px solid transparent; }
+  header.scrolled { border-bottom-color:var(--line); }
+  .brand { font-weight:800; letter-spacing:-.01em; font-size:17px; }
+  .hdr-actions { margin-left:auto; display:flex; gap:6px; align-items:center; }
+  .pill-select { appearance:none; background:var(--soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236a7079' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center;
+                 border:0; border-radius:18px; padding:7px 28px 7px 12px; font-size:13px; font-weight:600; max-width:48vw; }
+  .iconbtn { width:36px; height:36px; border-radius:50%; border:0; background:var(--soft); display:inline-flex; align-items:center; justify-content:center; font-size:17px; }
+  .iconbtn:disabled { opacity:.45; }
+  .iconbtn.spin span { display:inline-block; animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  #job { font-size:12px; color:var(--ink2); padding:0 16px; min-height:0; }
+  #job:not(:empty) { padding:2px 16px 6px; }
+  #job.bad { color:var(--bad); cursor:pointer; }
+  body.demo #job { color:var(--accent); }
+  body.demo [data-place], body.demo [data-unplace], body.demo #rematch, body.demo #rv-ideas, body.demo #rv-returning,
+  body.demo #map-search, body.demo #map-go { display:none; }
+  #tabs { position:fixed; z-index:30; left:50%; transform:translateX(-50%); bottom:calc(18px + env(safe-area-inset-bottom));
+          background:rgba(21,23,26,.94); border-radius:32px; display:flex; gap:2px; padding:6px; box-shadow:0 8px 30px rgba(0,0,0,.25); }
+  #tabs button { border:0; background:none; color:#c9ccd1; font-size:14px; font-weight:600; padding:10px 16px; border-radius:26px; white-space:nowrap; }
+  #tabs button.on { background:#fff; color:var(--ink); }
+  #tabs .count { font-size:12px; opacity:.8; margin-left:2px; }
+  main { max-width:1280px; margin:0 auto; }
+  .pad { padding:0 16px; }
+  h1.title { font-size:32px; font-weight:800; letter-spacing:-.02em; margin:6px 16px 10px; }
+  h3 { font-size:17px; margin:24px 0 10px; }
+  .meta { color:var(--ink2); font-size:13px; }
+  .hint { color:var(--ink2); font-size:13px; background:var(--soft); border-radius:12px; padding:10px 12px; margin:10px 0; }
+  .empty { color:var(--ink2); padding:60px 20px; text-align:center; }
+  .ok { color:var(--good); font-size:13px; } .bad { color:var(--bad); font-size:13px; }
+
+  /* ---- controls */
+  .btn { border:0; border-radius:12px; padding:10px 16px; font-weight:600; background:var(--soft); }
+  .btn.primary { background:var(--ink); color:#fff; }
+  .btn.blue { background:var(--accent); color:#fff; }
+  .btn.small { padding:6px 12px; font-size:13px; border-radius:10px; }
+  .btn:disabled { opacity:.5; cursor:default; }
+  .link { border:0; background:none; color:var(--ink2); font-size:14px; padding:8px 4px; }
+  .link:hover { color:var(--ink); }
+  input, select, textarea { background:var(--soft); border:1px solid transparent; border-radius:10px; padding:9px 12px; font-size:15px; min-width:0; }
+  input:focus, select:focus, textarea:focus { outline:none; border-color:var(--accent); background:#fff; }
+  textarea { resize:vertical; width:100%; }
+  input[type=checkbox] { width:18px; height:18px; padding:0; }
+  .chips { display:flex; gap:8px; overflow-x:auto; padding:0 16px 12px; scrollbar-width:none; }
+  .chips::-webkit-scrollbar { display:none; }
+  .chip { flex:none; border:0; background:var(--soft); border-radius:18px; padding:7px 13px; font-size:13px; font-weight:600; white-space:nowrap; }
+  .chip.sel { background:var(--ink); color:#fff; }
+  .chips select.chip { appearance:none; padding-right:13px; }
+  .star { color:var(--blaze); }
+  .light { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; flex:none; }
+  .dot.day { background:var(--day); box-shadow:inset 0 0 0 1px var(--shooting); } .dot.shooting { background:var(--shooting); }
+  .dot.night { background:var(--night); } .dot.unknown { background:var(--unknown); }
+  .badge { display:inline-block; font-size:11px; font-weight:700; border-radius:6px; padding:1px 6px; vertical-align:2px; margin-left:6px; background:var(--soft); color:var(--ink2); }
+  .badge.target { background:var(--blaze); color:#fff; } .badge.watch { background:#fff1db; color:var(--warn); }
+  .badge.harvested { background:#e3f3e5; color:var(--good); } .badge.dead { background:#fbe4e4; color:var(--bad); }
+
+  /* ---- feed */
+  .feed { display:grid; grid-template-columns:1fr; gap:22px; }
+  .post .ph { position:relative; background:#111; }
+  .post .ph img { width:100%; aspect-ratio:4/3; object-fit:cover; cursor:zoom-in; }
+  .who { position:absolute; left:12px; top:12px; border:0; background:rgba(255,255,255,.95); border-radius:20px; padding:3px 12px 3px 3px;
+         display:flex; align-items:center; gap:7px; font-weight:700; font-size:14px; box-shadow:0 1px 4px rgba(0,0,0,.2); }
+  .who img { width:28px; height:28px; border-radius:50%; object-fit:cover; }
+  .who.unk { padding-left:12px; color:var(--accent); }
+  .who.grp { color:var(--ink2); }
+  .count-pill { position:absolute; right:12px; bottom:12px; background:rgba(0,0,0,.6); color:#fff; font-size:12px; border-radius:10px; padding:2px 8px; }
+  .post .info { display:flex; justify-content:space-between; gap:10px; padding:8px 16px 0; font-size:13px; color:var(--ink2); }
+
+  /* ---- bucks grid */
+  .bgrid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; padding:0 16px; }
+  .bcard { border:0; background:none; padding:0; text-align:left; display:flex; flex-direction:column; align-self:start; min-width:0; }
+  .bcard img, .bcard .noimg { width:100%; aspect-ratio:1; object-fit:cover; border-radius:var(--radius); background:var(--soft); }
+  .bcard.absent img { opacity:.55; }
+  .bcard .nm { font-weight:700; font-size:16px; margin-top:7px; }
+  .bcard .meta { font-size:12px; }
+  .bcard.generic .nm { color:var(--ink2); }
+
+  /* ---- buck page */
+  .bp-hero { position:relative; background:#111; }
+  .bp-hero img { width:100%; height:min(46vh, 420px); object-fit:cover; cursor:zoom-in; }
+  .back { position:absolute; top:12px; left:12px; border:0; background:rgba(255,255,255,.94); border-radius:20px; padding:6px 14px; font-weight:600; font-size:14px; }
+  .sheet { position:relative; margin-top:-26px; background:var(--bg); border-radius:24px 24px 0 0; padding:10px 16px 0; }
+  .grab { width:40px; height:5px; background:var(--line); border-radius:3px; margin:0 auto 10px; }
+  .sheet h2 { margin:0; font-size:28px; letter-spacing:-.02em; }
+  .tagrow { display:flex; gap:8px; margin:14px 0; }
+  .tagrow button { flex:1; border:0; border-radius:12px; padding:11px 0; background:var(--soft); font-size:14px; font-weight:600; }
+  .tagrow button.sel { background:var(--blaze); color:#fff; }
+  .tagrow button.sel.watch { background:#fff1db; color:var(--warn); }
+  .tagrow button.sel.pass { background:var(--ink); color:#fff; }
+  .kpis { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
+  .kpi { background:var(--soft); border-radius:14px; padding:10px 12px; min-width:0; }
+  .kpi b { font-size:22px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .kpi span { font-size:12px; color:var(--ink2); }
+  .legend { display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink2); margin:2px 0 6px; }
+  .sw { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
+  svg.hours text { fill:var(--ink2); font-size:10px; }
+  details > summary { cursor:pointer; color:var(--ink2); font-size:13px; padding:6px 0; list-style:none; }
+  details > summary::before { content:'▸ '; } details[open] > summary::before { content:'▾ '; }
+  table.mini { border-collapse:collapse; width:100%; font-size:13px; }
+  table.mini td, table.mini th { padding:6px 4px; text-align:left; border-bottom:1px solid var(--line); }
+  table.mini th { color:var(--ink2); font-weight:500; }
+  table.mini td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .camrows .r { display:grid; grid-template-columns:1fr auto; gap:4px 10px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .bar { grid-column:1 / -1; height:6px; background:var(--soft); border-radius:3px; display:flex; gap:2px; overflow:hidden; }
+  .bar span { display:block; height:100%; }
+  .cond { display:grid; grid-template-columns:96px 1fr 54px; gap:6px 10px; align-items:center; font-size:13px; }
+  .cond .bar { grid-column:auto; height:10px; }
+  .cond .n { color:var(--ink2); text-align:right; font-variant-numeric:tabular-nums; }
+  .vlist .v { display:flex; gap:12px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); font-size:14px; }
+  .vlist img { width:64px; height:48px; border-radius:8px; object-fit:cover; cursor:zoom-in; background:var(--soft); }
+  .pgrid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px; }
+  .ptile { position:relative; }
+  .ptile img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; cursor:zoom-in; background:var(--soft); }
+  .ptile .auto { position:absolute; left:6px; top:6px; background:rgba(255,255,255,.94); border-radius:8px; font-size:11px; font-weight:700; padding:1px 6px; }
+  .ptile .acts { display:flex; gap:4px; margin-top:4px; }
+  .ptile .acts button { flex:1; border:0; border-radius:8px; background:var(--soft); font-size:12px; font-weight:600; padding:5px 0; }
+  .ptile .acts button.yes { background:var(--ink); color:#fff; }
+  .form { display:flex; flex-direction:column; gap:8px; }
+  .form .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .form .row > * { flex:1 1 140px; }
+  .form .row > .btn, .form .row > .meta { flex:0 0 auto; }
+
+  /* ---- review */
+  .review .rv-photo { position:relative; background:#111; }
+  .review .rv-photo img { width:100%; height:auto; max-height:min(52vh, 560px); object-fit:contain; cursor:pointer; margin:0 auto; }
+  .rv-top { position:absolute; top:10px; left:12px; right:12px; display:flex; justify-content:space-between; color:#fff; font-weight:600; font-size:13px;
+            text-shadow:0 1px 3px rgba(0,0,0,.7); pointer-events:none; }
+  .rv-head { margin-top:12px; } .rv-head b { font-size:17px; }
+  .q { font-size:24px; font-weight:800; letter-spacing:-.01em; margin:16px 0 4px; }
+  .cands { display:flex; gap:12px; overflow-x:auto; padding:6px 0 4px; scrollbar-width:none; }
+  .cands::-webkit-scrollbar { display:none; }
+  .cand { flex:0 0 92px; border:0; background:none; padding:0; text-align:center; }
+  .cand img, .cand .plus { width:92px; height:92px; border-radius:50%; object-fit:cover; border:3px solid var(--line); }
+  .cand.sel img, .cand.sel .plus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(31,111,235,.2); }
+  .cand b { display:block; font-size:14px; margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cand small { color:var(--ink2); font-size:12px; }
+  .cand small.sug { color:var(--accent); font-weight:700; }
+  .cand .plus { display:flex; align-items:center; justify-content:center; font-size:32px; color:var(--ink2); border-style:dashed; background:none; }
+  .cand.past img { opacity:.75; }
+  .rv-links { display:flex; flex-wrap:wrap; gap:4px 18px; justify-content:center; margin-top:8px; }
+  .strip { display:flex; gap:6px; overflow-x:auto; padding:4px 0 8px; }
+  .strip img { width:56px; height:56px; border-radius:10px; object-fit:cover; cursor:pointer; flex:none; opacity:.65; border:2px solid transparent; }
+  .strip img.cur { opacity:1; border-color:var(--accent); }
+  .ideas { display:flex; gap:6px; flex-wrap:wrap; }
+  .toast { position:fixed; z-index:40; left:50%; transform:translateX(-50%); bottom:calc(var(--nav-h) + 34px + env(safe-area-inset-bottom));
+           background:var(--ink); color:#fff; border-radius:12px; padding:10px 16px; font-size:14px; box-shadow:0 6px 20px rgba(0,0,0,.25); max-width:90vw; }
+
+  /* ---- map */
+  .mapwrap { display:grid; grid-template-columns:1fr; }
+  #map { height:56vh; background:var(--soft); }
+  #map.placing { cursor:crosshair; }
+  .mapside { padding:0 16px; }
+  .mapside .camrow { display:flex; gap:8px; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line); }
+  .leaflet-tooltip.camlabel { background:rgba(255,255,255,.94); color:var(--ink); border:none; box-shadow:0 1px 4px rgba(0,0,0,.3); font-size:12px; border-radius:8px; }
+  .leaflet-tooltip.camlabel::before { display:none; }
+  .leaflet-container { font:inherit; }
+
+  /* ---- settings */
+  .settings { max-width:720px; margin:0 auto; padding:0 16px; display:flex; flex-direction:column; gap:16px; }
+  .settings section { background:var(--soft); border-radius:var(--radius); padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+  .settings h3 { margin:0; font-size:17px; }
+  .settings .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .settings .row > label:first-child { width:130px; color:var(--ink2); font-size:13px; }
+  .settings .row > input:not([type=checkbox]):not([type=number]), .settings .row > select { flex:1 1 200px; }
+  .settings input, .settings select { background:#fff; }
+  .settings .act { border:0; border-radius:10px; padding:8px 14px; font-weight:600; background:#fff; }
+  .settings .act.primary { background:var(--ink); color:#fff; }
+  .settings .act:disabled { opacity:.5; }
+  .cams label { display:flex; gap:8px; align-items:center; padding:3px 0; }
+
+  #lightbox { position:fixed; inset:0; background:rgba(0,0,0,.94); display:none; align-items:center; justify-content:center; z-index:50; cursor:zoom-out; }
+  #lightbox img { max-width:100vw; max-height:100vh; }
+  #tip { position:fixed; pointer-events:none; background:var(--ink); color:#fff; border-radius:8px; padding:6px 9px; font-size:12px; display:none; z-index:60; max-width:260px; }
+
+  /* ---- wider screens */
+  @media (min-width: 720px) {
+    .feed { grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); padding:0 16px; }
+    .post .ph, .post .ph img { border-radius:var(--radius); }
+    .post .info { padding:8px 2px 0; }
+    .bgrid { grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); }
+    .pgrid { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
+  }
+  @media (min-width: 1000px) {
+    .buckpage { display:grid; grid-template-columns:minmax(0, 5fr) minmax(0, 6fr); gap:28px; padding:8px 16px 0; align-items:start; }
+    .bp-hero { position:sticky; top:72px; border-radius:var(--radius); overflow:hidden; }
+    .bp-hero img { height:auto; max-height:78vh; object-fit:contain; }
+    .sheet { margin-top:0; border-radius:0; padding:0; } .sheet .grab { display:none; }
+    .review { display:grid; grid-template-columns:minmax(0, 7fr) minmax(0, 5fr); gap:28px; padding:8px 16px 0; align-items:start; }
+    .review .rv-photo { position:sticky; top:72px; border-radius:var(--radius); overflow:hidden; }
+    .review .rv-photo img { height:76vh; max-height:none; }
+    .review .rv-head { margin-top:0; }
+    .mapwrap { grid-template-columns:minmax(0, 1fr) 360px; gap:20px; padding:0 16px; }
+    #map { height:calc(100vh - 170px); border-radius:var(--radius); }
+    .mapside { padding:0; max-height:calc(100vh - 170px); overflow:auto; }
+  }
+</style>
+</head>
+<body>
+<header id="top">
+  <div class="brand">DeerCam</div>
+  <div class="hdr-actions">
+    <select id="season" class="pill-select" title="Season (antler year). Past seasons are archived: still browsable, kept out of the way."></select>
+    <button class="iconbtn" id="sync" title="Check for new photos"><span>↻</span></button>
+    <button class="iconbtn" data-go="settings" title="Settings">⚙</button>
+  </div>
+</header>
+<div id="job"></div>
+<main id="main"></main>
+<nav id="tabs">
+  <button data-go="feed">Feed</button>
+  <button data-go="bucks">Bucks</button>
+  <button data-go="review">Review<span class="count" id="rcount"></span></button>
+  <button data-go="map">Map</button>
+</nav>
+<div id="lightbox"><img alt=""></div>
+<div id="tip"></div>
+
+<script>
+const $ = (sel, el = document) => el.querySelector(sel);
+const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
+// Demo mode (a static copy made by `python -m deercam export-demo`): answers come from saved JSON
+// files and nothing can be changed. demoFile() must match demo.file_for().
+const DEMO = window.DEERCAM_DEMO || null;
+const demoFile = path => {
+  const [p, q = ''] = path.split('?');
+  const qs = q.split('&').filter(Boolean).sort().join('&');
+  return 'api/' + (p.replace(/^\/api\//, '') + (qs ? `__${qs}` : '')).replace(/[^A-Za-z0-9_.-]/g, '_') + '.json';
+};
+const api = (path, opts) => {
+  if (DEMO) {
+    if (opts?.method === 'POST') {
+      toast('This is a read-only demo, so changes aren’t saved.');
+      const e = new Error('demo'); e.detail = 'Read-only demo'; return Promise.reject(e);
+    }
+    return fetch(demoFile(path)).then(r => { if (!r.ok) throw new Error(`not in the demo: ${path}`); return r.json(); });
+  }
+  return fetch(path, opts).then(async r => {
+    if (!r.ok) { const e = new Error(r.statusText); try { e.detail = (await r.json()).detail; } catch {} throw e; }
+    return r.json();
+  });
+};
+const post = (path, body) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let bucks = [];
+let seasons = [];
+let view = 'feed', arg = null;
+const season = () => $('#season').value;
+const seasonLabel = s => { const x = seasons.find(y => String(y.season) === String(s)); return x ? x.label : s; };
+
+// ------------------------------------------------------------------ formatting
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// Camera-local times arrive as "Oct 20 2026 05:34 PM"; show "Today 5:34 PM", "Yesterday 6:39 PM", "Oct 18 6:39 PM".
+function when(local) {
+  const m = /^(\w{3}) (\d+) (\d{4}) (\d+):(\d+) (AM|PM)$/.exec(local || '');
+  if (!m) return local || '';
+  const d = new Date(Number(m[3]), MONTHS.indexOf(m[1]), Number(m[2]));
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = Math.round((today - d) / 864e5);
+  const day = days === 0 ? 'Today' : days === 1 ? 'Yesterday' : `${m[1]} ${Number(m[2])}${d.getFullYear() !== today.getFullYear() ? ` ${m[3]}` : ''}`;
+  return `${day} ${Number(m[4])}:${m[5]} ${m[6]}`;
+}
+
+function rackLine(r) {
+  if (!r) return 'Rack not described';
+  const pts = v => v < 0 ? '?' : v;
+  const total = r.points_left >= 0 && r.points_right >= 0 ? `${r.points_left + r.points_right} pt · ` : '';
+  return `${total}${pts(r.points_left)}×${pts(r.points_right)} · ${r.frame.replace('_', '-')} · spread ${r.spread.replace('_', ' ')}`;
+}
+
+function weatherLine(d) {
+  const w = d.weather || {};
+  return [w.temperature != null ? `${w.temperature}°F` : null, w.wind ? `wind ${w.wind}` : null, w.moonPhase].filter(Boolean).join(' · ');
+}
+
+const LIGHT = { day: 'Daylight', shooting: 'Shooting light', night: 'Night', unknown: 'Unknown' };
+const isDay = v => v.light === 'day' || v.light === 'shooting';
+const lightTag = (k, label) => `<span class="light"><i class="dot ${k || 'unknown'}"></i>${esc(label || LIGHT[k || 'unknown'])}</span>`;
+const swatch = k => `<span class="sw" style="background:var(--${k || 'unknown'})"></span>`;
+const TAGS = { target: 'Hit list', watch: 'Watch', pass: 'Let walk' };
+const star = b => b.tag === 'target' ? ' <span class="star" title="Hit list">★</span>' : '';
+function badges(b) {
+  let s = b.generic ? '<span class="badge">auto-group</span>' : '';
+  if (b.tag && b.tag !== 'target') s += `<span class="badge ${b.tag}">${TAGS[b.tag]}</span>`;
+  if (b.status && b.status !== 'alive')
+    s += `<span class="badge ${b.status}" title="${esc(b.status_note)}">${b.status === 'harvested' ? 'Harvested' : 'Dead'} ${esc(b.status_date || '')}</span>`;
+  return s;
+}
+const zoomImg = (src, full, cls = '') => `<img src="${src}" data-full="${full || src}" loading="lazy" alt="" class="${cls}">`;
+
+function toast(html, ms = 4000) {
+  $('.toast')?.remove();
+  const t = document.createElement('div');
+  t.className = 'toast'; t.innerHTML = html;
+  document.body.append(t);
+  setTimeout(() => t.remove(), ms);
+}
+
+// ------------------------------------------------------------------ seasons, counts, header
+
+async function loadSeasons() {
+  const keep = $('#season').value;
+  seasons = await api('/api/seasons');
+  $('#season').innerHTML = seasons.map(s =>
+    `<option value="${s.season}">${s.label}${s.current ? '' : ' (archived)'}</option>`).join('') + '<option value="all">All seasons</option>';
+  $('#season').value = keep || String(seasons.find(s => s.current).season);
+}
+
+async function refreshCounts() {
+  const s = await api(`/api/stats?season=${season()}`);
+  $('#rcount').textContent = s.review ? ` ${s.review}` : '';
+  return s;
+}
+
+addEventListener('scroll', () => $('#top').classList.toggle('scrolled', scrollY > 4), { passive: true });
+
+// ------------------------------------------------------------------ feed
+
+let feedOnly = 'all', feedCam = '';
+async function showFeed() {
+  const [items, map] = await Promise.all([
+    api(`/api/feed?season=${season()}&only=${feedOnly}${feedCam ? `&camera_id=${encodeURIComponent(feedCam)}` : ''}`),
+    api(`/api/map?season=${season()}`)]);
+  const chips = [['all', 'Everything'], ['target', '★ Hit list'], ['daylight', 'Daylight only']].map(([k, l]) =>
+    `<button class="chip ${feedOnly === k ? 'sel' : ''}" data-feed="${k}">${l}</button>`).join('');
+  const cams = `<select class="chip ${feedCam ? 'sel' : ''}" id="feed-cam"><option value="">All cameras</option>${map.cameras.map(c =>
+    `<option value="${esc(c.camera_id)}" ${c.camera_id === feedCam ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>`;
+  $('#main').innerHTML = `<h1 class="title">Sightings</h1><div class="chips">${chips}${cams}</div>
+    ${items.length ? `<div class="feed">${items.map(post_).join('')}</div>`
+      : `<div class="empty">${feedOnly === 'target' ? 'No hit-list bucks seen this season yet. Tag a buck “Hit list” on his page.' : 'No sightings this season yet.'}</div>`}`;
+}
+
+function post_(v) {
+  const who = v.buck_id == null
+    ? `<button class="who unk" data-review="${v.detection_id}">Who is this? ›</button>`
+    : `<button class="who ${v.generic ? 'grp' : ''}" data-buck="${v.buck_id}">${v.thumb ? `<img src="${v.thumb}" alt="">` : ''}${esc(v.buck)}${star(v)}</button>`;
+  const length = v.photos > 1 ? `${v.photos} photos${v.minutes ? ` · ${v.minutes} min` : ''}` : '';
+  return `<article class="post"><div class="ph">${zoomImg(v.crop, v.photo)}${who}${length ? `<span class="count-pill">${length}</span>` : ''}</div>
+    <div class="info"><span>${esc(v.camera)} · ${esc(when(v.local))}</span>${lightTag(v.light, v.light_label)}</div></article>`;
+}
+
+// ------------------------------------------------------------------ bucks
+
+let bucksFilter = 'all';
+async function showBucks() {
+  bucks = await api(`/api/bucks?season=${season()}`);
+  const shown = bucksFilter === 'all' ? bucks : bucks.filter(b => b.tag === bucksFilter);
+  const present = shown.filter(b => !b.absent), absent = shown.filter(b => b.absent);
+  const chips = [['all', 'All'], ['target', '★ Hit list'], ['watch', 'Watch'], ['pass', 'Let walk']].map(([k, l]) =>
+    `<button class="chip ${bucksFilter === k ? 'sel' : ''}" data-filter="${k}">${l}${k === 'all' ? '' : ` ${bucks.filter(b => b.tag === k).length}`}</button>`).join('');
+  $('#main').innerHTML = `<h1 class="title">Bucks</h1><div class="chips">${chips}</div>
+    ${present.length ? `<div class="bgrid">${present.map(buckCard).join('')}</div>`
+      : `<div class="empty">${bucks.length ? 'None here.' : 'No bucks yet. Name some in Review.'}</div>`}
+    ${absent.length ? `<div class="pad"><h3>Not seen yet this season</h3>
+      <div class="meta" style="margin:-4px 0 12px">From earlier seasons. When one shows up again, pick him in Review to tie this season to his history.</div></div>
+      <div class="bgrid">${absent.map(buckCard).join('')}</div>` : ''}`;
+}
+
+function buckCard(b) {
+  const line = b.absent ? `Last seen ${esc(seasonLabel(b.last_season))}`
+    : `${b.daylight} daylight · ${b.visits} visit${b.visits === 1 ? '' : 's'}`;
+  const ld = !b.absent && b.last_daylight;
+  return `<button class="bcard ${b.generic ? 'generic' : ''} ${b.absent ? 'absent' : ''}" data-buck="${b.id}">
+    ${b.thumb ? `<img src="${b.thumb}" alt="" loading="lazy">` : '<div class="noimg"></div>'}
+    <div class="nm">${esc(b.name)}${star(b)}${badges(b)}</div>
+    <div class="meta">${line}</div>
+    ${ld ? `<div class="meta">${lightTag(ld.light, `${when(ld.local)} · ${ld.camera}`)}</div>` : ''}
+    ${b.season_notes ? `<div class="meta">${esc(b.season_notes)}</div>` : ''}
+  </button>`;
+}
+
+async function showBuck(id) {
+  const [{ buck: b, sightings }, list] = await Promise.all([api(`/api/bucks/${id}`), api(`/api/bucks?season=${season()}`)]);
+  bucks = list;
+  const past = bucks.filter(x => x.absent && x.id !== id);
+  const hero = sightings.length ? sightings.slice().sort((x, y) => (y.match_status === 'confirmed') - (x.match_status === 'confirmed') || y.size_pct - x.size_pct)[0] : null;
+  const curNotes = b.seasons.find(s => String(s.season) === season())?.notes || b.seasons[0]?.notes;
+  $('#main').innerHTML = `<div class="buckpage" data-buck="${id}">
+    <div class="bp-hero">${hero ? zoomImg(hero.crop, hero.photo) : '<div style="height:200px"></div>'}<button class="back" data-back>‹ Bucks</button></div>
+    <div class="sheet"><div class="grab"></div>
+      <h2>${esc(b.name)}${star(b)}</h2>
+      <div class="meta">${badges(b)} ${esc(curNotes || (hero ? rackLine(hero.rack) : ''))}</div>
+      ${b.generic ? `<div class="hint">Grouped automatically because these photos came in one burst or matched closely.
+        Remove any that aren't him with “Not him”, then give him a name below to keep him (that confirms the rest),
+        or type an existing buck's name to merge this group into him, including a buck from an earlier season.</div>
+        ${past.length && sightings.length ? `<div class="form"><div class="row"><button class="btn small" data-act="group-returning"
+          data-det="${sightings.slice().sort((x, y) => y.size_pct - x.size_pct)[0].id}">Could he be a buck from an earlier season?</button></div>
+          <div class="meta" id="group-returning-out"></div></div>` : ''}`
+      : `<div class="tagrow">${Object.entries(TAGS).map(([k, l]) =>
+          `<button class="${k} ${b.tag === k ? 'sel' : ''}" data-act="set-tag" data-tag="${k}" title="${{ target: 'A buck you are after', watch: 'Keep an eye on him', pass: 'Too young or not a shooter: let him walk' }[k]}">${k === 'target' ? '★ ' : ''}${l}</button>`).join('')}</div>`}
+      <div id="patterns"><div class="meta">Loading patterns…</div></div>
+      ${b.seasons.length > 1 ? `<h3>Rack by season</h3><div class="pgrid">${b.seasons.slice().reverse().map(s => s.thumb
+        ? `<div class="ptile">${zoomImg(s.thumb)}<div class="meta" style="text-align:center">${esc(s.label)}</div></div>` : '').join('')}</div>` : ''}
+      ${b.seasons.map(s => `
+        <h3>${b.seasons.length > 1 ? `${esc(s.label)} photos` : 'Photos'} <span class="meta">${s.sightings}</span></h3>
+        <div class="form season-notes" data-season="${s.season}" style="margin-bottom:10px"><div class="row">
+          <input value="${esc(s.notes)}" placeholder="Rack features this season, e.g. right brow tine missing"
+                 title="Used when matching this season's photos to him. Racks change every year, so each season has its own.">
+          <button class="btn small" data-act="save-season">Save</button><span class="meta"></span></div></div>
+        <div class="pgrid">${sightings.filter(d => d.season === s.season).map(d => `
+          <div class="ptile" data-id="${d.id}" title="${esc(`${d.camera} · ${when(d.when)}${d.match_reason && d.match_status === 'auto' ? `\n${d.match_reason}` : ''}`)}">
+            ${zoomImg(d.crop, d.photo)}
+            ${d.match_status === 'auto' ? `<span class="auto">Auto${d.match_confidence != null ? ` ${Math.round(d.match_confidence * 100)}%` : ''}</span>` : ''}
+            <div class="acts">${d.match_status === 'auto' ? `<button class="yes" data-act="accept" data-buck="${id}">✓ Him</button>` : ''}
+              <button data-act="unassign">Not him</button></div>
+          </div>`).join('')}</div>`).join('')}
+      <h3>About him</h3>
+      <div class="form" id="buck-edit">
+        <div class="row"><input value="${esc(b.name)}" data-name placeholder="Name" title="Name"></div>
+        <div class="row"><input value="${esc(b.notes)}" data-notes placeholder="Any year: body marks, habits, where he beds"
+               title="Carries over between seasons (rack features go with each season above)"></div>
+        <div class="row"><button class="btn small primary" data-act="save-buck">Save</button><span class="meta" id="buck-saved"></span></div>
+      </div>
+      ${b.generic ? '' : `<h3>Status</h3>
+      <div class="form" id="status-edit"><div class="row">
+        <select data-status>${['alive', 'harvested', 'dead'].map(s => `<option value="${s}" ${b.status === s ? 'selected' : ''}>${{ alive: 'Alive', harvested: 'Harvested', dead: 'Found dead' }[s]}</option>`).join('')}</select>
+        <input type="date" data-date value="${esc(b.status_date || '')}" title="Photos after this date won't be matched to him"></div>
+        <div class="row"><input data-note value="${esc(b.status_note)}" placeholder="Who, where, score, how he was found"></div>
+        <div class="row"><button class="btn small" data-act="save-status">Save</button><span class="meta" id="status-saved"></span></div></div>`}
+    </div></div>`;
+  loadPatterns(id);
+}
+
+function columnPath(x, y, w, h, r) {
+  // A column segment; r > 0 rounds only the top (data end), the baseline stays square.
+  if (h <= 0) return '';
+  r = Math.min(r, w / 2, h);
+  return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+}
+
+function hourChart(hours) {
+  const keys = ['day', 'shooting', 'night', 'unknown'];
+  const W = 480, H = 150, left = 22, bottom = 20, top = 10, band = (W - left) / 24, bw = Math.min(12, band - 4);
+  const max = Math.max(1, ...hours.map(h => keys.reduce((a, k) => a + h[k], 0)));
+  const y = v => (H - bottom - top) * v / max;
+  let cols = '';
+  hours.forEach((h, i) => {
+    const x = left + i * band + (band - bw) / 2;
+    let base = H - bottom;
+    const segs = keys.filter(k => h[k] > 0);
+    segs.forEach((k, j) => {
+      const hh = y(h[k]) - (j < segs.length - 1 ? 2 : 0);  // 2px surface gap between stacked segments
+      cols += `<path d="${columnPath(x, base - hh, bw, hh, j === segs.length - 1 ? 4 : 0)}" fill="var(--${k})"/>`;
+      base -= y(h[k]);
+    });
+    const tip = `${i % 12 || 12}${i < 12 ? ' AM' : ' PM'}: ` + (segs.length ? segs.map(k => `${h[k]} ${LIGHT[k].toLowerCase()}`).join(', ') : 'no visits');
+    cols += `<rect x="${left + i * band}" y="${top}" width="${band}" height="${H - bottom - top}" fill="transparent" data-tip="${esc(tip)}"/>`;
+  });
+  const ticks = [0, 6, 12, 18].map(hr => `<text x="${left + hr * band + band / 2}" y="${H - 5}" text-anchor="middle">${['12a', '6a', '12p', '6p'][hr / 6]}</text>`).join('');
+  const used = keys.filter(k => hours.some(h => h[k]));
+  return `<div class="legend">${used.map(k => `<span>${swatch(k)}${LIGHT[k]}</span>`).join('')}</div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" class="hours" role="img" aria-label="Visits by hour of day">
+      <line x1="${left}" x2="${W}" y1="${H - bottom}" y2="${H - bottom}" stroke="var(--line)"/>
+      <line x1="${left}" x2="${W}" y1="${top}" y2="${top}" stroke="var(--line)" stroke-dasharray="2 3"/>
+      <text x="${left - 4}" y="${top + 4}" text-anchor="end">${max}</text>
+      <text x="${left - 4}" y="${H - bottom + 3}" text-anchor="end">0</text>
+      ${ticks}${cols}
+    </svg>
+    <details><summary>Show as table</summary><table class="mini"><tr><th>Hour</th>${used.map(k => `<th>${LIGHT[k]}</th>`).join('')}</tr>
+      ${hours.filter(h => used.some(k => h[k])).map(h => `<tr><td>${h.hour % 12 || 12}${h.hour < 12 ? ' AM' : ' PM'}</td>${used.map(k => `<td class="n">${h[k]}</td>`).join('')}</tr>`).join('')}</table></details>`;
+}
+
+function condRows(rows) {
+  if (!rows.length) return '<div class="meta" style="grid-column:1/-1">No data</div>';
+  const max = Math.max(...rows.map(r => r.all));
+  return rows.map(r => `<div>${esc(r.key)}</div>
+    <div class="bar" data-tip="${esc(`${r.key}: ${r.daylight} daylight of ${r.all} visits`)}">
+      ${r.daylight ? `<span style="width:${100 * r.daylight / max}%; background:var(--shooting)"></span>` : ''}
+      ${r.all - r.daylight ? `<span style="width:${100 * (r.all - r.daylight) / max}%; background:var(--night)"></span>` : ''}
+    </div><div class="n">${r.daylight} / ${r.all}</div>`).join('');
+}
+
+async function loadPatterns(id) {
+  const p = await api(`/api/bucks/${id}/patterns?season=${season()}`);
+  const box = $('#patterns');
+  if (!box || Number($('.buckpage')?.dataset.buck) !== id) return;
+  if (!p.visits) { box.innerHTML = '<div class="meta" style="margin-top:8px">No visits in this season.</div>'; return; }
+  const ld = p.last_daylight, c = p.conditions;
+  const best = p.cameras.slice().sort((a, b) => b.daylight - a.daylight || b.visits - a.visits)[0];
+  const maxCam = Math.max(...p.cameras.map(k => k.visits));
+  box.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><b>${p.visits}</b><span>visits · ${p.photos} photos</span></div>
+      <div class="kpi"><b>${p.daylight}</b><span>in daylight</span></div>
+      <div class="kpi"><b title="${esc(best.camera)}">${esc(best.camera)}</b><span>${best.daylight ? 'most daylight' : 'most visits'}</span></div>
+    </div>
+    <div class="meta" style="margin-top:10px">${ld ? `Last daylight: ${lightTag(ld.light, `${when(ld.local)} at ${ld.camera} · ${ld.light_label}`)}` : 'No daylight visits yet.'}</div>
+    ${p.approx ? '<div class="hint">Daylight is approximate. Place the cameras on the Map so sunrise and sunset can be worked out for your spot.</div>' : ''}
+    ${p.visits < 10 ? `<div class="hint">Only ${p.visits} visit${p.visits === 1 ? '' : 's'} so far. A visit is one stop at one camera (photos within 30 min). Treat patterns as anecdotes until there are more.</div>` : ''}
+    <h3>When he moves</h3>${hourChart(p.hours)}
+    <h3>Where</h3>
+    <div class="camrows">${p.cameras.map(k => `<div class="r"><span>${esc(k.camera)}</span>
+      <span class="meta">${k.visits} visit${k.visits === 1 ? '' : 's'} · <b style="color:var(--ink)">${k.daylight}</b> daylight</span>
+      <div class="bar" data-tip="${esc(`${k.camera}: ${k.daylight} daylight of ${k.visits} visits`)}">
+        ${k.daylight ? `<span style="width:${100 * k.daylight / maxCam}%; background:var(--shooting)"></span>` : ''}
+        ${k.visits - k.daylight ? `<span style="width:${100 * (k.visits - k.daylight) / maxCam}%; background:var(--night)"></span>` : ''}</div></div>`).join('')}</div>
+    <div class="legend" style="margin-top:6px"><span>${swatch('shooting')}Daylight visits</span><span>${swatch('night')}Other visits</span></div>
+    <details><summary>Wind, temperature, moon and pressure on his visits</summary>
+      ${[['Wind', c.wind], ['Temperature', c.temp], ['Moon', c.moon], ['Pressure', c.pressure]].map(([t, rows]) =>
+        `<div class="meta" style="margin:10px 0 4px">${t}</div><div class="cond">${condRows(rows)}</div>`).join('')}</details>
+    <h3>Recent visits</h3>
+    <div class="vlist">${p.recent.slice(0, 8).map(v => `<div class="v">${zoomImg(v.crop, v.photo)}
+      <div><div>${esc(when(v.local))} · ${esc(v.camera)}</div>
+      <div class="meta">${lightTag(v.light, v.light_label || 'unknown light')} · ${v.photos} photo${v.photos === 1 ? '' : 's'}${v.minutes ? `, ${v.minutes} min` : ''}</div></div></div>`).join('')}</div>`;
+}
+
+// Tooltips for anything with data-tip (chart columns, bars): hover with a mouse, tap on a phone
+function showTip(e) {
+  const t = e.target.closest?.('[data-tip]'), tip = $('#tip');
+  if (!t) { tip.style.display = 'none'; return; }
+  tip.textContent = t.dataset.tip;
+  tip.style.display = 'block';
+  tip.style.left = Math.max(8, Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8)) + 'px';
+  tip.style.top = (e.clientY + 14) + 'px';
+}
+document.addEventListener('mousemove', showTip);
+document.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') showTip(e); });
+
+// ------------------------------------------------------------------ review
+
+// One photo at a time: pick who it is from this season's bucks (most similar first), a buck from an
+// earlier season, or a new name.
+const rv = { items: [], i: 0, pick: null, cands: [], newName: '' };
+
+async function loadReview(focusId) {
+  const sort = localStorage.getItem('reviewSort') || 'similar';
+  const [items, list] = await Promise.all([api(`/api/review?sort=${sort}&season=${season()}`), api(`/api/bucks?season=${season()}`)]);
+  bucks = list;
+  rv.items = items;
+  const at = focusId != null ? items.findIndex(d => d.id === Number(focusId)) : -1;
+  rv.i = at >= 0 ? at : Math.min(rv.i, Math.max(0, items.length - 1));
+}
+
+async function showReview() {
+  await loadReview(arg);
+  arg = null;
+  renderReview();
+}
+
+async function renderReview() {
+  const main = $('#main');
+  if (!rv.items.length) {
+    main.innerHTML = `<h1 class="title">Review</h1><div class="empty">Nothing to review. New buck photos show up here after each check.</div>`;
+    return;
+  }
+  const d = rv.items[rv.i];
+  rv.pick = d.buck_id || null; rv.newName = '';
+  const sort = localStorage.getItem('reviewSort') || 'similar';
+  main.innerHTML = `<div class="review" data-det="${d.id}">
+    <div class="rv-photo"><img id="rv-img" src="${d.crop}" alt="" title="Tap to switch between the close-up and the full photo">
+      <div class="rv-top"><span>${rv.i + 1} of ${rv.items.length}</span><span>${esc(d.camera)}</span></div></div>
+    <div class="pad rv-panel">
+      <div class="rv-head"><b>${esc(rackLine(d.rack))}</b>
+        <div class="meta">${esc(d.camera)} · ${esc(when(d.when))}${d.age_class ? ` · ~${esc(d.age_class)}${/^\d/.test(d.age_class) ? ' yrs' : ''}` : ''}</div></div>
+      ${d.summary ? `<div class="meta" style="margin-top:8px; font-style:italic">“${esc(d.summary)}”</div>` : ''}
+      ${d.antlers === 'unclear' ? '<div class="hint">Antlers were unclear on a second look; this may not be usable.</div>' : ''}
+      <div class="q">Who is this?</div>
+      <div class="cands" id="rv-cands"><div class="meta">Loading…</div></div>
+      <div id="rv-past"></div>
+      <div id="rv-new" style="display:none" class="form">
+        <div class="row"><input id="rv-name" placeholder="New buck's name" autocomplete="off"><button class="btn small" id="rv-ideas" title="Ask the AI for nickname ideas based on this photo">Suggest names</button></div>
+        <div class="ideas" id="rv-ideas-out"></div>
+      </div>
+      <details id="rv-notes-wrap" style="margin-top:6px"><summary>Add rack features (optional)</summary>
+        <textarea id="rv-notes" rows="2" placeholder="e.g. right brow tine missing; kicker off left G2"
+                  title="Saved with the buck for this season and used when matching new photos to him"></textarea>
+        <div class="meta" id="rv-old-notes"></div></details>
+      <div class="form" style="margin-top:12px"><div class="row"><button class="btn blue" id="rv-save" style="flex:1">Save</button></div></div>
+      <div class="rv-links">
+        <button class="link" id="rv-reject" title="Not a buck, or antlers not visible enough to ID">Not a buck / can't tell</button>
+        <button class="link" id="rv-skip">Skip</button>
+        <button class="link" id="rv-full">Full photo</button>
+      </div>
+      ${d.match_reason && d.buck_id ? `<details><summary>Why the AI suggested ${esc(d.buck_name)}</summary><div class="meta">${esc(d.match_reason)}</div></details>` : ''}
+      <details><summary>Details</summary><div class="meta">${[weatherLine(d), `${d.size_pct}% of frame`, d.quality ? `${d.quality} photo` : null,
+        d.rack?.distinctive_features?.length ? `features: ${d.rack.distinctive_features.join('; ')}` : null].filter(Boolean).map(esc).join(' · ')}</div></details>
+      <h3 style="display:flex; align-items:center; gap:10px">Queue
+        <select id="rv-sort" style="margin-left:auto; font-size:13px; padding:6px 10px">
+          ${[['similar', 'Look-alikes together'], ['size', 'Biggest first'], ['newest', 'Newest first']].map(([k, l]) => `<option value="${k}" ${sort === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        <button class="btn small" id="rematch" title="Re-match the queue against your named bucks">Re-run matching</button></h3>
+      <div class="strip">${rv.items.map((x, j) => `<img src="${x.crop}" data-jump="${j}" class="${j === rv.i ? 'cur' : ''}" loading="lazy" alt="">`).join('')}</div>
+    </div></div>`;
+  const strip = $('.strip'), cur = $('.strip img.cur');  // scroll the strip sideways only, never the page
+  if (cur) strip.scrollLeft = cur.offsetLeft - strip.offsetLeft - strip.clientWidth / 2 + cur.clientWidth / 2;
+  const order = await api(`/api/detections/${d.id}/candidates`).catch(() => []);
+  if (rv.items[rv.i]?.id !== d.id || !$('#rv-cands')) return;
+  const present = bucks.filter(b => !b.absent && b.status === 'alive');
+  const rank = Object.fromEntries(order.map((c, j) => [c.id, j]));
+  rv.cands = present.slice().sort((a, b) => (b.id === d.buck_id) - (a.id === d.buck_id) || (rank[a.id] ?? 99) - (rank[b.id] ?? 99));
+  const past = bucks.filter(b => b.absent);
+  $('#rv-cands').innerHTML = rv.cands.map(b => cand(b, d)).join('') +
+    `<button class="cand" data-new><div class="plus">+</div><b>New buck</b><small>&nbsp;</small></button>`;
+  $('#rv-past').innerHTML = past.length ? `<div class="meta" style="margin-top:8px">Not seen yet this season</div>
+    <div class="cands">${past.map(b => cand(b, d, true)).join('')}</div>
+    <button class="btn small" id="rv-returning" title="Ask the AI whether this is one of the bucks from earlier seasons (takes ~20 s)">Is he one of these?</button>
+    <span class="meta" id="rv-returning-out"></span>` : '';
+  if (!rv.cands.length && !past.length) pickNew();
+  refreshPick();
+}
+
+function cand(b, d, isPast = false) {
+  const sub = b.id === d.buck_id && d.match_confidence != null ? `<small class="sug">Suggested ${Math.round(d.match_confidence * 100)}%</small>`
+    : isPast ? `<small>${esc(seasonLabel(b.last_season))}</small>` : `<small>${b.generic ? 'auto-group' : `${b.visits} visit${b.visits === 1 ? '' : 's'}`}</small>`;
+  return `<button class="cand ${isPast ? 'past' : ''}" data-pick="${b.id}" title="${esc(b.season_notes || b.notes || '')}">
+    ${b.thumb ? `<img src="${b.thumb}" alt="">` : '<div class="plus"></div>'}<b>${esc(b.name)}${star(b)}</b>${sub}</button>`;
+}
+
+function pickNew() {
+  rv.pick = 'new';
+  $('#rv-new').style.display = '';
+  refreshPick();
+  $('#rv-name').focus();
+}
+
+function refreshPick() {
+  $$('.cand').forEach(c => c.classList.toggle('sel', rv.pick === 'new' ? c.dataset.new !== undefined : Number(c.dataset.pick) === rv.pick));
+  if (rv.pick !== 'new') $('#rv-new').style.display = 'none';
+  const b = bucks.find(x => x.id === rv.pick);
+  const save = $('#rv-save');
+  save.textContent = rv.pick === 'new' ? `Save new buck${$('#rv-name').value.trim() ? ` “${$('#rv-name').value.trim()}”` : ''}` : b ? `That's ${b.name}` : 'Pick who this is';
+  save.disabled = !rv.pick || (rv.pick === 'new' && !$('#rv-name').value.trim());
+  $('#rv-old-notes').textContent = b?.absent ? 'Picking him ties this season to his history and starts a search for his other photos this season.'
+    : b?.season_notes ? `Already noted for ${b.name} this season: ${b.season_notes}. Anything you add is appended.` : '';
+}
+
+async function reviewClick(e) {
+  const d = rv.items[rv.i];
+  const t = e.target.closest('button, img[data-jump], #rv-img');
+  if (!t || !d) return;
+  if (t.dataset.pick) { rv.pick = Number(t.dataset.pick); return refreshPick(); }
+  if (t.dataset.new !== undefined) return pickNew();
+  if (t.dataset.jump) { rv.i = Number(t.dataset.jump); return renderReview(); }
+  if (t.id === 'rv-img') { t.src = t.src.endsWith(d.crop) ? d.photo : d.crop; return; }
+  if (t.id === 'rv-full') { $('#lightbox img').src = d.photo; $('#lightbox').style.display = 'flex'; return; }
+  if (t.id === 'rv-skip') { rv.i = (rv.i + 1) % rv.items.length; return renderReview(); }
+  if (t.id === 'rematch') { try { await post('/api/identify'); } catch { /* already running */ } return watchJob(); }
+  if (t.id === 'rv-reject') {
+    await post(`/api/detections/${d.id}/reject`);
+    toast('Marked as not usable');
+    return afterReview();
+  }
+  if (t.id === 'rv-returning') {
+    t.disabled = true;
+    const b = await askReturning(d.id, $('#rv-returning-out'));
+    if (rv.items[rv.i]?.id !== d.id) return;
+    t.disabled = false;
+    if (b && rv.pick !== 'new') { rv.pick = b.id; refreshPick(); }
+    return;
+  }
+  if (t.id === 'rv-ideas') {
+    t.disabled = true; t.textContent = 'Thinking…';
+    try {
+      const ideas = await post(`/api/detections/${d.id}/name-ideas`, { notes: $('#rv-notes').value });
+      if (rv.items[rv.i]?.id !== d.id) return;
+      $('#rv-ideas-out').innerHTML = ideas.map(i => `<button class="chip" data-idea="${esc(i.name)}" title="${esc(i.why)}">${esc(i.name)}</button>`).join('');
+      t.textContent = 'More ideas';
+    } catch { t.textContent = 'Try again'; }
+    t.disabled = false;
+    return;
+  }
+  if (t.dataset.idea) {
+    $('#rv-name').value = t.dataset.idea;
+    $$('#rv-ideas-out .chip').forEach(x => x.classList.toggle('sel', x === t));
+    return refreshPick();
+  }
+  if (t.id === 'rv-save') return saveReview();
+}
+
+async function saveReview() {
+  const d = rv.items[rv.i], notes = $('#rv-notes').value, name = $('#rv-name').value.trim();
+  if (!rv.pick || (rv.pick === 'new' && !name)) return;
+  const body = rv.pick === 'new' ? { new_name: name, notes } : { buck_id: rv.pick, notes };
+  $('#rv-save').disabled = true;
+  let res;
+  try { res = await post(`/api/detections/${d.id}/assign`, body); }
+  catch { $('#rv-save').disabled = false; toast('Save failed; try again.'); return; }
+  const who = rv.pick === 'new' ? name : bucks.find(b => b.id === rv.pick)?.name;
+  toast(`Saved as ${esc(who)}${res.searching ? '. Looking for his other photos…' : ''}`);
+  if (res.searching) watchJob();
+  afterReview();
+}
+
+async function afterReview() {
+  // Same-burst photos may have been assigned too, so reload the queue and stay at this position.
+  const at = rv.i;
+  await loadReview();
+  rv.i = Math.min(at, Math.max(0, rv.items.length - 1));
+  renderReview();
+  refreshCounts();
+}
+
+async function askReturning(detId, out) {
+  out.textContent = 'Comparing with earlier seasons…';
+  try {
+    const r = await post(`/api/detections/${detId}/returning`);
+    const b = bucks.find(x => x.id === r.match);
+    out.textContent = b ? `Maybe ${b.name} from ${seasonLabel(r.season)} (${Math.round(r.confidence * 100)}%): ${r.reason}` : `No likely match: ${r.reason}`;
+    return b;
+  } catch (err) { out.textContent = err.detail || 'Check failed; try again.'; }
+}
+
+document.addEventListener('input', e => {
+  if (e.target.id === 'rv-name') { if (e.target.value.trim()) rv.pick = 'new'; refreshPick(); }
+});
+
+// ------------------------------------------------------------------ map
+
+let lmap = null, placing = null, mapBuck = '';
+// The map library loads from the internet only when the Map is opened, so the rest works offline.
+let leaflet = null;
+function loadLeaflet() {
+  if (window.L) return Promise.resolve(true);
+  leaflet ??= new Promise(resolve => {
+    const css = Object.assign(document.createElement('link'), { rel: 'stylesheet', href: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css' });
+    const js = Object.assign(document.createElement('script'), { src: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' });
+    const done = ok => { if (!ok) leaflet = null; resolve(ok); };
+    js.onload = () => done(true); js.onerror = () => done(false);
+    setTimeout(() => done(!!window.L), 15000);
+    document.head.append(css, js);
+  });
+  return leaflet;
+}
+
+async function showMap() {
+  if (lmap) { lmap.remove(); lmap = null; }
+  placing = null;
+  bucks = await api(`/api/bucks?season=${season()}`);
+  const data = await api(`/api/map?season=${season()}${mapBuck ? `&buck_id=${mapBuck}` : ''}`);
+  const cams = data.cameras, placed = cams.filter(c => c.lat != null);
+  $('#main').innerHTML = `<h1 class="title">Map</h1><div class="mapwrap"><div id="map"></div><aside class="mapside">
+    <div class="form" style="margin:12px 0"><div class="row"><select id="map-buck"><option value="">All named bucks</option>${bucks.filter(b => !b.generic).map(b =>
+      `<option value="${b.id}" ${String(b.id) === mapBuck ? 'selected' : ''}>${esc(b.name)}${b.tag === 'target' ? ' ★' : ''}</option>`).join('')}</select></div>
+      <div class="row"><input id="map-search" placeholder="Find a place, or paste lat, lon"><button class="btn small" id="map-go">Go</button></div></div>
+    <div id="map-msg" class="meta" style="color:var(--accent)"></div>
+    <h3>Cameras</h3>
+    ${cams.map(c => `<div class="camrow"><div><b>${esc(c.name)}</b><div class="meta">${c.lat != null
+        ? `${c.visits} visit${c.visits === 1 ? '' : 's'} · ${c.daylight} in daylight${c.location_source === 'gps' ? ' · GPS from camera' : ''}` : 'Not on the map yet'}</div></div>
+      <div style="display:flex; gap:6px"><button class="btn small" data-place="${esc(c.camera_id)}" data-name="${esc(c.name)}">${c.lat != null ? 'Move' : 'Place'}</button>
+        ${c.lat != null ? `<button class="btn small" data-unplace="${esc(c.camera_id)}" title="Take the pin off the map">✕</button>` : ''}</div></div>`).join('')}
+    <h3>Recent daylight sightings</h3>
+    <div class="vlist">${data.daylight.length ? data.daylight.map(v => `<div class="v" data-buck="${v.buck_id}" style="cursor:pointer" title="Open ${esc(v.buck)}">
+        <img src="${v.crop}" alt=""><div><div><b>${esc(v.buck)}</b> · ${esc(v.camera)}</div>
+        <div class="meta">${lightTag(v.light, `${when(v.local)} · ${v.light_label}`)}</div></div></div>`).join('')
+      : '<div class="meta">None this season yet.</div>'}</div>
+  </aside></div>`;
+  $('#map').innerHTML = '<div class="empty">Loading map…</div>';
+  if (!await loadLeaflet() || view !== 'map') {
+    if (view === 'map') $('#map').innerHTML = '<div class="empty">The map needs an internet connection (the map library and satellite imagery load online).</div>';
+    return;
+  }
+  $('#map').innerHTML = '';
+  lmap = L.map('map', { zoomControl: true });
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+              { maxZoom: 19, attribution: 'Imagery © Esri' }).addTo(lmap);
+  const saved = JSON.parse(localStorage.getItem('mapView') || 'null');
+  if (placed.length) lmap.fitBounds(placed.map(c => [c.lat, c.lon]), { padding: [60, 60], maxZoom: 17 });
+  else lmap.setView(saved ? saved.c : [39, -96], saved ? saved.z : 4);
+  lmap.on('moveend', () => localStorage.setItem('mapView', JSON.stringify({ c: lmap.getCenter(), z: lmap.getZoom() })));
+  const maxV = Math.max(1, ...placed.map(c => c.visits));
+  for (const c of placed) {
+    const r = 7 + 13 * Math.sqrt(c.visits / maxV);
+    L.circleMarker([c.lat, c.lon], { radius: r, color: '#fff', weight: 2, fillColor: '#1f6feb', fillOpacity: c.visits ? 0.9 : 0.45 })
+      .addTo(lmap)
+      .bindTooltip(`<b>${esc(c.name)}</b><br>${c.visits} visit${c.visits === 1 ? '' : 's'} · ${c.daylight} daylight`,
+                   { permanent: true, direction: 'right', offset: [r, 0], className: 'camlabel' })
+      .bindPopup(`<b>${esc(c.name)}</b>${c.bucks.length ? `<table class="mini" style="margin-top:6px"><tr><th>Buck</th><th>Visits</th><th>Daylight</th></tr>
+        ${c.bucks.map(b => `<tr><td>${esc(b.name)}${b.tag === 'target' ? ' ★' : ''}</td><td class="n">${b.visits}</td><td class="n">${b.daylight}</td></tr>`).join('')}</table>`
+        : '<div class="meta">No named bucks here yet</div>'}`);
+  }
+  lmap.on('click', async e => {
+    if (!placing) return;
+    await post(`/api/cameras/${encodeURIComponent(placing)}/location`, { lat: e.latlng.lat, lon: e.latlng.lng });
+    showMap();
+  });
+}
+
+async function mapClick(e) {
+  const t = e.target.closest('button');
+  if (!t) return;
+  if (t.dataset.place) {
+    placing = t.dataset.place;
+    $('#map-msg').textContent = `Tap the map where ${t.dataset.name} is.`;
+    $('#map')?.classList.add('placing');
+    $('#map').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  if (t.dataset.unplace) {
+    await post(`/api/cameras/${encodeURIComponent(t.dataset.unplace)}/location`, {});
+    showMap();
+  }
+  if (t.id === 'map-go' && lmap) {
+    const q = $('#map-search').value.trim();
+    const m = q.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+    if (m) return lmap.setView([Number(m[1]), Number(m[2])], 16);
+    if (!q) return;
+    try {
+      const hits = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`).then(r => r.json());
+      if (!hits.length) { $('#map-msg').textContent = 'Place not found.'; return; }
+      lmap.setView([Number(hits[0].lat), Number(hits[0].lon)], 14);
+      $('#map-msg').textContent = '';
+    } catch { $('#map-msg').textContent = 'Search failed (no internet?).'; }
+  }
+}
+
+// ------------------------------------------------------------------ settings / first-run setup
+
+let cfg = null;
+async function showSettings(firstRun = false) {
+  const [c, st] = await Promise.all([api('/api/settings'), api('/api/stats?season=all')]);
+  cfg = c;
+  const p = cfg.providers;
+  const [sm, sd] = cfg.season_start.split('-').map(Number);
+  $('#main').innerHTML = `${firstRun ? `<h1 class="title">Welcome to DeerCam</h1><div class="pad meta" style="margin:-4px 0 16px; max-width:720px">Sign in to Reveal so DeerCam can read
+      the cameras shared with you, pick the AI that looks at the deer, check the season settings, then choose how far back to import.</div>` : '<h1 class="title">Settings</h1>'}
+    <div class="settings">
+    <section id="s-reveal">
+      <h3>1. Tactacam Reveal account</h3>
+      <div class="meta">The account the cameras are shared with. DeerCam only reads photos; it never changes anything on the account.</div>
+      <div class="row"><label>Email</label><input id="rv-email" type="email" value="${esc(cfg.reveal_email)}" autocomplete="username"></div>
+      <div class="row"><label>Password</label><input id="rv-pass" type="password" autocomplete="current-password"
+        placeholder="${cfg.reveal_password ? `Saved (${cfg.reveal_password === 'environment' ? 'from .env' : 'in settings'}); leave blank to use it` : ''}"></div>
+      <div class="row"><label></label><label style="display:flex; gap:8px; align-items:center"><input type="checkbox" id="rv-remember" checked> Remember password, so syncing can sign in again by itself</label></div>
+      <div class="row"><label></label><button class="act primary" id="rv-signin">Sign in</button>
+        <span id="rv-msg" class="${cfg.reveal_signed_in ? 'ok' : 'meta'}">${cfg.reveal_signed_in ? `Signed in as ${esc(cfg.reveal_email)}` : 'Not signed in'}</span></div>
+      <div class="cams" id="rv-cams"></div>
+    </section>
+    <section id="s-ai">
+      <h3>2. AI for analyzing deer</h3>
+      <div class="meta">Looks at each animal crop (buck or doe, rack description) and compares bucks. The detector and similarity search run locally on your GPU; only crops go to the AI.</div>
+      <div class="row"><label>Provider</label><select id="ai-provider">${Object.entries(p).map(([k, v]) =>
+        `<option value="${k}" ${k === cfg.vision_provider ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></div>
+      <div class="row" id="ai-url-row"><label>Server URL</label><input id="ai-url" value="${esc(cfg.custom_base_url)}" placeholder="e.g. http://localhost:11434/v1"></div>
+      <div class="row"><label>API key</label><input id="ai-key" type="password" autocomplete="off"></div>
+      <div class="row"><label>Main model</label><input id="ai-model" list="ai-models"><button class="act" id="ai-list">Load models</button></div>
+      <div class="row"><label>Quick model</label><input id="ai-fast" list="ai-models" title="Used for quick UI calls like name ideas"></div>
+      <datalist id="ai-models"></datalist>
+      <div class="row"><label></label><button class="act" id="ai-test" title="One real request with a photo; costs a cent or two">Test</button>
+        <button class="act primary" id="ai-save">Save</button><span id="ai-msg" class="meta"></span></div>
+    </section>
+    <section id="s-season">
+      <h3>3. Seasons and syncing</h3>
+      <div class="meta">A season is an antler year: bucks drop their racks in late winter and grow new ones, so matching only compares photos within a season.
+        Past seasons are archived: still browsable from the season menu, out of the way otherwise.</div>
+      <div class="row"><label>Season starts</label>
+        <select id="ss-month" style="flex:0 0 auto">${MONTHS.map((m, i) => `<option value="${i + 1}" ${i + 1 === sm ? 'selected' : ''}>${m}</option>`).join('')}</select>
+        <input id="ss-day" type="number" min="1" max="31" value="${sd}" style="flex:0 0 76px">
+        <span class="meta">current: ${esc(seasonLabel(cfg.current_season))}, since ${esc(cfg.current_season_start)}</span></div>
+      <div class="row"><label>Shooting light</label><input id="ss-shoot" type="number" min="0" max="60" value="${cfg.shooting_minutes}" style="flex:0 0 76px">
+        <span class="meta">minutes before sunrise and after sunset; counts as daylight</span></div>
+      <div class="row"><label>Region</label><input id="ss-region" value="${esc(cfg.region || '')}" placeholder="${esc(cfg.region_auto ? 'Automatic: ' + cfg.region_auto : 'Automatic, from where your cameras are on the Map')}" title="Told to the AI as context. Leave blank to use where your cameras are."></div>
+      <div class="row"><label>Check for photos</label><select id="ss-interval" style="flex:0 0 auto">
+        ${[[0, 'Only when I tap ↻'], [1, 'Every hour'], [3, 'Every 3 hours'], [6, 'Every 6 hours'], [12, 'Every 12 hours'], [24, 'Once a day']].map(([v, l]) =>
+          `<option value="${v}" ${Number(cfg.sync_interval_hours) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        <span class="meta">while DeerCam is running</span></div>
+      <div class="row"><label></label><button class="act primary" id="ss-save">Save</button><span id="ss-msg" class="meta"></span></div>
+    </section>
+    <section id="s-import">
+      <h3>${firstRun ? '4. Import photos' : 'Import older photos'}</h3>
+      <div class="meta">Downloads photos back to this date, finds animals, and has the AI look at each deer. A season's worth can take a while and costs a few dollars of AI time.</div>
+      <div class="row"><label>Import since</label><input id="im-since" type="date" value="${esc(cfg.current_season_start)}" style="flex:0 0 170px">
+        <button class="act primary" id="im-go">${firstRun ? 'Finish and import' : 'Import'}</button><span id="im-msg" class="meta"></span></div>
+    </section>
+    ${firstRun ? '' : `<div class="meta" style="text-align:center">${st.photos} photos · ${st.animals} animals · ${st.buck_detections} buck crops · ${st.bucks} named bucks · ${st.groups} auto-groups</div>`}
+  </div>`;
+  fillProvider();
+  if (cfg.reveal_signed_in) loadCameras();
+}
+
+function fillProvider() {
+  const name = $('#ai-provider').value, p = cfg.providers[name], same = name === cfg.vision_provider;
+  $('#ai-url-row').style.display = name === 'custom' ? '' : 'none';
+  $('#ai-key').value = '';
+  $('#ai-key').placeholder = p.key ? `Using the key ${p.key === 'environment' ? 'from the environment' : 'saved in settings'}; paste to replace` : 'Paste API key';
+  $('#ai-model').value = (same && cfg.vision_model) || '';
+  $('#ai-model').placeholder = p.model ? `default: ${p.model}` : 'load models and pick one';
+  $('#ai-fast').value = (same && cfg.vision_fast_model) || '';
+  $('#ai-fast').placeholder = p.fast ? `default: ${p.fast}` : 'optional; defaults to the main model';
+  $('#ai-models').innerHTML = '';
+  $('#ai-msg').textContent = '';
+}
+
+function aiProbe() {
+  return { provider: $('#ai-provider').value, api_key: $('#ai-key').value, base_url: $('#ai-url').value,
+           model: $('#ai-model').value || null };
+}
+
+async function loadCameras(cameras) {
+  const box = $('#rv-cams');
+  try {
+    cameras = cameras || (await api('/api/setup/cameras')).cameras;
+  } catch (e) {
+    box.innerHTML = `<span class="bad">${esc(e.detail || 'Could not list cameras')}</span>`;
+    return;
+  }
+  box.innerHTML = `<div class="meta">Cameras shared with you (uncheck to skip one)</div>` + cameras.map(c =>
+    `<label><input type="checkbox" data-cam="${esc(c.id)}" ${c.included ? 'checked' : ''}> ${esc(c.name)}</label>`).join('');
+}
+
+async function settingsClick(e) {
+  const t = e.target;
+  if (t.id === 'rv-signin') {
+    const email = $('#rv-email').value.trim(), password = $('#rv-pass').value;
+    if (!email || (!password && !cfg.reveal_password)) { $('#rv-msg').className = 'bad'; $('#rv-msg').textContent = 'Enter the email and password.'; return; }
+    t.disabled = true; $('#rv-msg').className = 'meta'; $('#rv-msg').textContent = 'Signing in…';
+    try {
+      const res = await post('/api/setup/reveal', { email, password: password || null, remember: $('#rv-remember').checked });
+      $('#rv-pass').value = '';
+      $('#rv-msg').className = 'ok'; $('#rv-msg').textContent = `Signed in as ${email}; found ${res.cameras.length} cameras`;
+      loadCameras(res.cameras);
+    } catch (err) {
+      $('#rv-msg').className = 'bad'; $('#rv-msg').textContent = err.detail || 'Sign-in failed';
+    }
+    t.disabled = false;
+  }
+  if (t.id === 'ai-list') {
+    t.disabled = true; $('#ai-msg').className = 'meta'; $('#ai-msg').textContent = 'Loading models…';
+    try {
+      const { models } = await post('/api/setup/ai/models', aiProbe());
+      $('#ai-models').innerHTML = models.map(m => `<option value="${esc(m)}">`).join('');
+      $('#ai-msg').textContent = `${models.length} models available; click a model box to pick one`;
+    } catch (err) { $('#ai-msg').className = 'bad'; $('#ai-msg').textContent = err.detail || 'Failed'; }
+    t.disabled = false;
+  }
+  if (t.id === 'ai-test') {
+    t.disabled = true; $('#ai-msg').className = 'meta'; $('#ai-msg').textContent = 'Sending a test photo…';
+    try {
+      const r = await post('/api/setup/ai/test', aiProbe());
+      $('#ai-msg').className = 'ok'; $('#ai-msg').textContent = `Works: ${r.model} answered in ${r.seconds}s ("${r.answer}")`;
+    } catch (err) { $('#ai-msg').className = 'bad'; $('#ai-msg').textContent = err.detail || 'Test failed'; }
+    t.disabled = false;
+  }
+  if (t.id === 'ai-save') {
+    const name = $('#ai-provider').value;
+    try {
+      cfg = await post('/api/settings', { vision_provider: name, api_key: $('#ai-key').value, vision_model: $('#ai-model').value,
+                                          vision_fast_model: $('#ai-fast').value, custom_base_url: $('#ai-url').value });
+      fillProvider();
+      $('#ai-msg').className = 'ok'; $('#ai-msg').textContent = `Saved; using ${cfg.providers[name].label}`;
+    } catch (err) { $('#ai-msg').className = 'bad'; $('#ai-msg').textContent = err.detail || 'Save failed'; }
+  }
+  if (t.id === 'ss-save') {
+    const start = `${String($('#ss-month').value).padStart(2, '0')}-${String($('#ss-day').value).padStart(2, '0')}`;
+    try {
+      cfg = await post('/api/settings', { season_start: start, region: $('#ss-region').value.trim() || null,
+                                          sync_interval_hours: Number($('#ss-interval').value),
+                                          shooting_minutes: Number($('#ss-shoot').value) });
+      $('#ss-msg').className = 'ok'; $('#ss-msg').textContent = 'Saved';
+      $('#season').value = ''; await loadSeasons();
+    } catch (err) { $('#ss-msg').className = 'bad'; $('#ss-msg').textContent = err.detail || 'Save failed'; }
+  }
+  if (t.id === 'im-go') {
+    const since = $('#im-since').value;
+    if (!since) return $('#im-since').focus();
+    await post('/api/settings', { setup_done: true });
+    await post('/api/import', { since });
+    $('#im-msg').className = 'ok'; $('#im-msg').textContent = 'Import started; progress shows at the top. You can start reviewing as crops come in.';
+    watchJob();
+  }
+}
+
+document.addEventListener('change', async e => {
+  if (e.target.id === 'ai-provider') fillProvider();
+  if (e.target.id === 'map-buck') { mapBuck = e.target.value; showMap(); }
+  if (e.target.id === 'feed-cam') { feedCam = e.target.value; showFeed(); }
+  if (e.target.id === 'rv-sort') { localStorage.setItem('reviewSort', e.target.value); rv.i = 0; showReview(); }
+  if (e.target.dataset.cam !== undefined) {
+    const excluded = $$('#rv-cams input[data-cam]').filter(c => !c.checked).map(c => c.dataset.cam);
+    cfg = await post('/api/settings', { excluded_cameras: excluded });
+  }
+});
+
+// ------------------------------------------------------------------ navigation (hash routes: #feed, #bucks, #buck/2, #review/372, #map, #settings)
+
+async function render() {
+  const [v, a] = (location.hash.slice(1) || 'feed').split('/');
+  view = ['feed', 'bucks', 'buck', 'review', 'map', 'settings'].includes(v) ? v : 'feed';
+  arg = a ?? null;
+  const tab = view === 'buck' ? 'bucks' : view;
+  $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.go === tab));
+  $('#season').style.visibility = view === 'settings' ? 'hidden' : '';
+  if (lmap && view !== 'map') { lmap.remove(); lmap = null; }
+  if (view === 'buck') await showBuck(Number(arg));
+  else await ({ feed: showFeed, bucks: showBucks, review: showReview, map: showMap, settings: () => showSettings() }[view])();
+  refreshCounts();
+}
+
+const go = (v, id) => {
+  const h = `#${v}${id != null ? `/${id}` : ''}`;
+  if (location.hash === h) render(); else location.hash = h;
+  scrollTo(0, 0);
+};
+addEventListener('hashchange', () => { render(); scrollTo(0, 0); });
+
+document.addEventListener('click', async e => {
+  if (e.target.closest('#lightbox')) { $('#lightbox').style.display = 'none'; return; }
+  const img = e.target.closest('img[data-full]');
+  if (img) { $('#lightbox img').src = img.dataset.full; $('#lightbox').style.display = 'flex'; return; }
+  const nav = e.target.closest('[data-go]');
+  if (nav) return go(nav.dataset.go);
+  if (e.target.closest('[data-back]')) return history.length > 1 ? history.back() : go('bucks');
+  if (e.target.closest('.settings')) return settingsClick(e);
+  if (e.target.closest('.mapside button')) return mapClick(e);
+  if (e.target.closest('.review')) return reviewClick(e);
+  if (e.target.id === 'job' && e.target.classList.contains('bad')) return go('settings');
+  const feedBtn = e.target.closest('[data-feed]');
+  if (feedBtn) { feedOnly = feedBtn.dataset.feed; return showFeed(); }
+  const filterBtn = e.target.closest('[data-filter]');
+  if (filterBtn) { bucksFilter = filterBtn.dataset.filter; return showBucks(); }
+  const rev = e.target.closest('[data-review]');
+  if (rev) return go('review', rev.dataset.review);
+  const btn = e.target.closest('button[data-act]');
+  const buckEl = !btn && e.target.closest('[data-buck]');
+  if (buckEl && !buckEl.classList.contains('buckpage')) return go('buck', buckEl.dataset.buck);
+  if (!btn) return;
+
+  const act = btn.dataset.act, buckId = Number($('.buckpage')?.dataset.buck);
+  if (act === 'save-buck') {
+    const box = $('#buck-edit');
+    const name = $('input[data-name]', box).value.trim(), notes = $('input[data-notes]', box).value.trim();
+    if (!name) return $('input[data-name]', box).focus();
+    let res;
+    try { res = await post(`/api/bucks/${buckId}`, { name, notes }); }
+    catch (err) { $('#buck-saved').textContent = err.detail || 'Not saved (is that name already taken?)'; return; }
+    if (res.merged_into) { watchJob(); return go('buck', res.merged_into); }
+    if (res.searching) watchJob();
+    await showBuck(buckId);
+    $('#buck-saved').textContent = 'Saved';
+    return;
+  }
+  if (act === 'set-tag') {
+    const tag = btn.classList.contains('sel') ? null : btn.dataset.tag;  // tap again to clear
+    await post(`/api/bucks/${buckId}/tag`, { tag });
+    return showBuck(buckId);
+  }
+  if (act === 'save-status') {
+    const box = $('#status-edit');
+    try {
+      const r = await post(`/api/bucks/${buckId}/status`, { status: $('[data-status]', box).value, date: $('[data-date]', box).value || null,
+                                                            note: $('[data-note]', box).value });
+      await showBuck(buckId);
+      $('#status-saved').textContent = r.unassigned ? `Saved; ${r.unassigned} later auto-matches went back to Review` : 'Saved';
+    } catch (err) { $('#status-saved').textContent = err.detail || 'Not saved'; }
+    return;
+  }
+  if (act === 'save-season') {
+    const box = btn.closest('.season-notes');
+    await post(`/api/bucks/${buckId}`, { name: $('#buck-edit input[data-name]').value.trim() || bucks.find(x => x.id === buckId)?.name,
+                                         notes: $('#buck-edit input[data-notes]').value.trim(),
+                                         season: Number(box.dataset.season), season_notes: $('input', box).value });
+    $('.meta', box).textContent = 'Saved';
+    return;
+  }
+  if (act === 'group-returning') {
+    btn.disabled = true;
+    const b = await askReturning(Number(btn.dataset.det), $('#group-returning-out'));
+    btn.disabled = false;
+    if (b) $('#group-returning-out').textContent += ` To merge, type “${b.name}” as his name below and Save.`;
+    return;
+  }
+  const tile = btn.closest('[data-id]'), id = tile?.dataset.id;
+  if (!id) return;
+  if (act === 'accept') {
+    const r = await post(`/api/detections/${id}/assign`, { buck_id: Number(btn.dataset.buck) });
+    if (r.searching) watchJob();
+    btn.remove(); tile.querySelector('.auto')?.remove();
+  }
+  if (act === 'unassign') { await post(`/api/detections/${id}/unassign`); tile.remove(); toast('Sent back to Review'); }
+  refreshCounts();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') $('#lightbox').style.display = 'none';
+  if (e.key === 'Enter' && e.target.closest('#buck-edit')) $('[data-act="save-buck"]').click();
+  if (e.key === 'Enter' && e.target.id === 'rv-name') saveReview();
+});
+
+$('#season').addEventListener('change', () => render());
+$('#sync').addEventListener('click', async () => {
+  await post('/api/import', {});
+  watchJob();
+});
+
+// Background work (imports, re-matching, the search after naming a buck). When it finishes the view
+// refreshes, except mid-typing, so things don't move under the user.
+let watching = false;
+function agoText(t) {
+  if (!t) return '';
+  const m = Math.round((Date.now() / 1000 - t) / 60);
+  return `Checked ${m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`}`;
+}
+async function watchJob() {
+  if (watching) return;
+  watching = true;
+  $('#sync').disabled = true; $('#sync').classList.add('spin');
+  let st, worked = false;
+  try {
+    for (;;) {
+      st = await api('/api/identify');
+      if (!st.running) break;
+      worked = true;
+      $('#job').className = '';
+      $('#job').textContent = (st.current ? st.current[0].toUpperCase() + st.current.slice(1) : 'Working') + (st.pending ? ` (+${st.pending} queued)` : '') + '…';
+      await new Promise(r => setTimeout(r, 3000));
+    }
+  } finally {
+    watching = false;
+    $('#sync').disabled = false; $('#sync').classList.remove('spin');
+  }
+  const last = st && st.last;
+  if (last && !last.ok) {
+    $('#job').className = last.setup ? 'bad' : '';
+    $('#job').textContent = last.setup ? `${last.error} (open Settings)` : `${last.label} failed: ${last.error}`;
+  } else if (!DEMO) {
+    $('#job').className = ''; $('#job').textContent = agoText(st?.last_import);
+  }
+  if (!worked) return;
+  await loadSeasons();
+  const typing = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+  if (view === 'settings' || typing) return refreshCounts();
+  if (view === 'review') { const id = rv.items[rv.i]?.id; await loadReview(id); renderReview(); refreshCounts(); }
+  else render();
+}
+
+(async () => {
+  if (DEMO) {
+    // Read-only: no syncing or settings; a note under the header says where the data is from.
+    $('#sync').style.display = $('[data-go="settings"]').style.display = 'none';
+    document.body.classList.add('demo');
+    $('#job').textContent = `Read-only demo with real trail-camera data from ${DEMO.exported}. Browse freely; changes aren’t saved.`;
+    if (!DEMO.map) $('[data-go="map"]').style.display = 'none';
+  }
+  await loadSeasons();
+  const [s, st] = DEMO ? [{}, {}] : await Promise.all([api('/api/settings'), api('/api/stats?season=all')]);
+  if (!DEMO && !s.setup_done && st.photos === 0) {
+    $$('#tabs button').forEach(b => b.classList.remove('on'));
+    await showSettings(true);
+  } else {
+    await render();
+  }
+  watchJob();
+})();
+</script>
+</body>
+</html>

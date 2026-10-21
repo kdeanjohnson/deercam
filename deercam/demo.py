@@ -4,8 +4,10 @@ Every API answer the UI can ask for is fetched from the real endpoints and saved
 index.html runs in demo mode and reads those files instead of the server. Photos and crops are
 copied alongside. Nothing that changes data works in the demo."""
 import json
+import os
 import re
 import shutil
+import stat
 from datetime import datetime
 from pathlib import Path
 
@@ -37,7 +39,8 @@ def export(out: Path, include_map: bool = True) -> int:
 
     client = TestClient(app)
     if out.exists():
-        shutil.rmtree(out)
+        # onexc: git marks its object files read-only, which stops rmtree on Windows
+        shutil.rmtree(out, onexc=lambda fn, path, _: (os.chmod(path, stat.S_IWRITE), fn(path)))
     (out / "api").mkdir(parents=True)
     written = 0
 

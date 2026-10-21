@@ -126,7 +126,7 @@ def _scheduler():
                 except Exception:
                     log.exception("daily database backup failed for %s", r["id"])
                 hours = settings.sync_interval_hours
-                if (hours and settings.setup_done and not jobs.status()["running"]
+                if (hours and settings.reveal_email and not jobs.status()["running"]  # signed-in ranches only
                         and time.time() - jobs.last_import.get(r["id"], 0) >= hours * 3600):
                     jobs.submit("checking for new photos", _import)
 

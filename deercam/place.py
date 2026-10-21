@@ -9,7 +9,7 @@ import threading
 import requests
 
 from . import db
-from .config import settings
+from .config import settings, spawn
 
 log = logging.getLogger(__name__)
 _lock = threading.Lock()
@@ -49,7 +49,7 @@ def refresh_region() -> None:
 
 
 def refresh_region_soon() -> None:
-    threading.Thread(target=refresh_region, daemon=True).start()
+    spawn(refresh_region)
 
 
 # ---- rough area from the ZIP code Reveal files the weather under

@@ -31,6 +31,9 @@
   .hdr-actions { margin-left:auto; display:flex; gap:6px; align-items:center; }
   .pill-select { appearance:none; background:var(--soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236a7079' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center;
                  border:0; border-radius:18px; padding:7px 28px 7px 12px; font-size:13px; font-weight:600; max-width:48vw; }
+  /* phone with two ranches: the ranch and season pickers take the brand's place */
+  @media (max-width: 560px) { header:has(#ranch:not([hidden])) .brand { display:none; } header:has(#ranch:not([hidden])) .hdr-actions { margin-left:0; width:100%; }
+    header:has(#ranch:not([hidden])) #ranch { flex:1; max-width:none; min-width:0; } }
   .iconbtn { width:36px; height:36px; border-radius:50%; border:0; background:var(--soft); display:inline-flex; align-items:center; justify-content:center; font-size:17px; }
   .iconbtn:disabled { opacity:.45; }
   .iconbtn.spin span { display:inline-block; animation:spin 1s linear infinite; }
@@ -456,6 +459,7 @@
 <header id="top">
   <div class="brand">DeerCam</div>
   <div class="hdr-actions">
+    <select id="ranch" class="pill-select" hidden title="Ranch: each has its own cameras, photos and bucks"></select>
     <select id="season" class="pill-select" title="Season (antler year). Past seasons are archived: still browsable, kept out of the way."></select>
     <button class="iconbtn" id="sync" title="Check for new photos"><span>↻</span></button>
     <button class="iconbtn" data-go="engine" title="Engine Room: what came in each day">▦</button>
@@ -556,6 +560,23 @@ function toast(html, ms = 4000) {
 }
 
 // ------------------------------------------------------------------ seasons, counts, header
+
+// Each ranch (one place with cameras) has its own photos and bucks; the server reads the current one
+// from the `ranch` cookie. The picker only shows once there's more than one.
+let ranchList = [];
+async function loadRanches() {
+  if (DEMO) return;
+  ranchList = await api('/api/ranches');
+  const sel = $('#ranch');
+  sel.innerHTML = ranchList.map(r => `<option value="${esc(r.id)}" ${r.current ? 'selected' : ''}>${esc(r.name)}</option>`).join('');
+  sel.hidden = ranchList.length < 2;
+}
+function switchRanch(id) {
+  document.cookie = `ranch=${encodeURIComponent(id)}; path=/; max-age=31536000; samesite=lax`;
+  location.hash = '#home';
+  location.reload();
+}
+$('#ranch').addEventListener('change', e => switchRanch(e.target.value));
 
 async function loadSeasons() {
   const keep = $('#season').value;
@@ -1887,6 +1908,7 @@ async function showSettings(firstRun = false) {
   $('#main').innerHTML = `${firstRun ? `<h1 class="title">Welcome to DeerCam</h1><div class="pad meta" style="margin:-4px 0 16px; max-width:720px">Sign in to Reveal so DeerCam can read
       the cameras shared with you, pick the AI that looks at the deer, check the season settings, then choose how far back to import.</div>` : '<h1 class="title">Settings</h1>'}
     <div class="settings">
+    ${firstRun || DEMO ? '' : ranchSection()}
     <section id="s-reveal">
       <h3>1. Tactacam Reveal account</h3>
       <div class="meta">The account the cameras are shared with. DeerCam only reads photos; it never changes anything on the account.</div>
@@ -1940,6 +1962,20 @@ async function showSettings(firstRun = false) {
   if (cfg.reveal_signed_in) loadCameras();
 }
 
+function ranchSection() {
+  const cur = ranchList.find(r => r.current) || {};
+  const others = ranchList.filter(r => !r.current);
+  return `<section id="s-ranch">
+      <h3>Ranch</h3>
+      <div class="meta">Each ranch is one place with cameras, with its own Reveal login, photos, bucks and map. Bucks are only matched within a ranch.</div>
+      <div class="row"><label>Name</label><input id="rn-name" value="${esc(cur.name)}"><button class="act" id="rn-save">Rename</button></div>
+      ${others.length ? `<div class="row"><label>Other ranches</label><span style="display:flex; gap:6px; flex-wrap:wrap">${others.map(r =>
+        `<button class="act" data-ranch="${esc(r.id)}">Switch to ${esc(r.name)}</button>`).join('')}</span></div>` : ''}
+      <div class="row"><label>Add a ranch</label><input id="rn-new" placeholder="e.g. Club lease, Kansas"><button class="act primary" id="rn-add">Add</button></div>
+      <div class="row"><label></label><span id="rn-msg" class="meta"></span></div>
+    </section>`;
+}
+
 function fillProvider() {
   const name = $('#ai-provider').value, p = cfg.providers[name], same = name === cfg.vision_provider;
   $('#ai-url-row').style.display = name === 'custom' ? '' : 'none';
@@ -1972,6 +2008,18 @@ async function loadCameras(cameras) {
 
 async function settingsClick(e) {
   const t = e.target;
+  if (t.dataset.ranch) return switchRanch(t.dataset.ranch);
+  if (t.id === 'rn-save' || t.id === 'rn-add') {
+    const input = $(t.id === 'rn-save' ? '#rn-name' : '#rn-new'), name = input.value.trim();
+    if (!name) return input.focus();
+    try {
+      if (t.id === 'rn-add') return switchRanch((await post('/api/ranches', { name })).id);  // opens its first-run setup
+      await post('/api/ranch', { name });
+      await loadRanches();
+      $('#rn-msg').className = 'ok'; $('#rn-msg').textContent = 'Renamed';
+    } catch (err) { $('#rn-msg').className = 'bad'; $('#rn-msg').textContent = err.detail || 'Not saved'; }
+    return;
+  }
   if (t.id === 'rv-signin') {
     const email = $('#rv-email').value.trim(), password = $('#rv-pass').value;
     if (!email || (!password && !cfg.reveal_password)) { $('#rv-msg').className = 'bad'; $('#rv-msg').textContent = 'Enter the email and password.'; return; }
@@ -2205,7 +2253,7 @@ async function watchJob() {
     $('#job').textContent = `Read-only demo with real trail-camera data from ${DEMO.exported}. Browse freely; changes aren’t saved.`;
     if (!DEMO.map) $('[data-go="map"]').style.display = $('[data-go="timeline"]').style.display = 'none';
   }
-  await loadSeasons();
+  await Promise.all([loadRanches(), loadSeasons()]);
   const [s, st] = DEMO ? [{}, {}] : await Promise.all([api('/api/settings'), api('/api/stats?season=all')]);
   if (!DEMO && !s.setup_done && st.photos === 0) {
     $$('#tabs button').forEach(b => b.classList.remove('on'));

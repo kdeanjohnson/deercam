@@ -1,11 +1,11 @@
 """Ask the vision LLM what each animal crop is, and describe racks on bucks."""
 import json
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import as_completed
 from datetime import datetime
 
 from . import db
-from .config import settings
+from .config import pool, settings
 from .vision import AntlerCheck, DeerAnalysis, ImagePart, get_provider
 from .vision.base import ANALYZE_PROMPT, ANALYZE_SYSTEM, VERIFY_PROMPT, VERIFY_SYSTEM
 
@@ -37,8 +37,8 @@ def analyze(limit: int | None = None, workers: int = 6) -> int:
         return provider.structured(ANALYZE_SYSTEM.format(region=settings.effective_region), [image], prompt, DeerAnalysis)
 
     done = 0
-    with ThreadPoolExecutor(workers) as pool, db.session() as conn:
-        futures = {pool.submit(work, row): row for row in rows}
+    with pool(workers) as executor, db.session() as conn:
+        futures = {executor.submit(work, row): row for row in rows}
         for fut in as_completed(futures):
             row = futures[fut]
             try:
@@ -79,8 +79,8 @@ def verify_bucks(workers: int = 6) -> dict[str, int]:
         return provider.structured(VERIFY_SYSTEM, [image], VERIFY_PROMPT, AntlerCheck)
 
     counts = {"yes": 0, "unclear": 0, "no": 0}
-    with ThreadPoolExecutor(workers) as pool, db.session() as conn:
-        futures = {pool.submit(work, row): row for row in rows}
+    with pool(workers) as executor, db.session() as conn:
+        futures = {executor.submit(work, row): row for row in rows}
         for fut in as_completed(futures):
             row = futures[fut]
             try:

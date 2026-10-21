@@ -53,4 +53,8 @@ python -m deercam export-demo site   # read-only static copy of the UI and data,
 
 The first time, every buck lands in Review. Name a few there and the rest get matched against them.
 
-All state lives in `DATA_DIR` (default `./data`): `deercam.db`, `photos/`, `crops/`, `models/`, `settings.json`, plus a daily database snapshot in `backups/`. None of it is committed.
+## Ranches
+
+A ranch is one place with cameras, e.g. your home place or a club lease in another state. Each ranch has its own Reveal login, photos, bucks, hit list, map and season settings, and bucks are only matched within a ranch. Add one under Settings → Ranch; once there are two, a picker appears in the header. On the command line, `python -m deercam ranches` lists them and `--ranch <id>` picks one (default: the first).
+
+All state lives in `DATA_DIR` (default `./data`): one folder per ranch in `ranches/<id>/` (`deercam.db`, `photos/`, `crops/`, `settings.json`, `camera_locations.json`, and a daily database snapshot in `backups/`), plus the shared model weights in `models/`. Data from before ranches is moved into the first ranch automatically. None of it is committed.

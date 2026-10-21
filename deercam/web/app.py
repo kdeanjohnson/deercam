@@ -10,11 +10,10 @@ from typing import Literal
 import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from PIL import Image
 from pydantic import BaseModel
 
-from .. import db, patterns, pipeline, place
+from .. import db, patterns, pipeline, place, ranches
 from ..analyze import local_time
 from ..config import settings
 from ..identify import QUERY_COLS, Galleries, add_notes, after_naming, identify, merge_bucks, propagate_bursts, suggest_returning
@@ -22,80 +21,155 @@ from ..reveal import RevealClient, SignInError, token_file
 from ..vision import PROVIDERS, AntlerCheck, ImagePart, NameIdeas, SetupError, get_provider, list_models
 from ..vision.base import NAME_SYSTEM, VERIFY_PROMPT, VERIFY_SYSTEM
 
-settings.data_dir.mkdir(parents=True, exist_ok=True)
+ranches.migrate_legacy()
 app = FastAPI(title="DeerCam")
-app.mount("/media", StaticFiles(directory=settings.data_dir), name="media")
 log = logging.getLogger(__name__)
 
 
+class RanchMiddleware:
+    """Every request works on one ranch: the one in the `ranch` cookie, else the first."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        cookies = dict(h.split("=", 1) for c in (v.decode("latin-1") for k, v in scope["headers"] if k == b"cookie")
+                       for h in (x.strip() for x in c.split(";")) if "=" in h)
+        rid = cookies.get("ranch")
+        with ranches.use(rid if ranches.exists(rid) else ranches.default_id()):
+            await self.app(scope, receive, send)
+
+
+app.add_middleware(RanchMiddleware)
+
+
+@app.get("/media/{path:path}")
+def media(path: str):
+    """Photos and crops of the current ranch."""
+    root = settings.data_dir.resolve()
+    f = (root / path).resolve()
+    if not f.is_relative_to(root) or f.parts[len(root.parts)] not in ("photos", "crops") or not f.is_file():
+        raise HTTPException(404)
+    return FileResponse(f)
+
+
 class Jobs:
-    """One background worker for imports and LLM matching, so naming several bucks in a row queues
-    up instead of running overlapping passes over the same crops."""
+    """One background worker for imports and LLM matching, shared by all ranches, so naming several
+    bucks in a row queues up instead of running overlapping passes over the same crops. A job runs on
+    the ranch it was submitted from, and each ranch sees only its own jobs."""
 
     def __init__(self):
         self.tasks: queue.Queue = queue.Queue()
-        self.current: str | None = None
-        self.last: dict | None = None  # how the most recent job ended, for the UI
-        self.last_import: float = 0.0
+        self.lock = threading.Lock()
+        self.current: tuple[str, str] | None = None  # (ranch, label)
+        self.pending: dict[str, int] = {}
+        self.last: dict[str, dict] = {}  # ranch -> how its most recent job ended, for the UI
+        self.last_import: dict[str, float] = {}
         threading.Thread(target=self._run, daemon=True).start()
 
     def submit(self, label: str, fn, *args, **kwargs):
-        self.tasks.put((label, fn, args, kwargs))
+        rid = ranches.current_id()
+        with self.lock:
+            self.pending[rid] = self.pending.get(rid, 0) + 1
+        self.tasks.put((rid, label, fn, args, kwargs))
 
     def step(self, label: str):
-        self.current = label
+        self.current = (ranches.current_id(), label)
 
     def status(self) -> dict:
-        return {"running": self.current is not None or not self.tasks.empty(),
-                "current": self.current, "pending": self.tasks.qsize(), "last": self.last,
-                "last_import": self.last_import or None}
+        rid = ranches.current_id()
+        cur = self.current[1] if self.current and self.current[0] == rid else None
+        pending = self.pending.get(rid, 0) - (cur is not None)
+        return {"running": cur is not None or pending > 0, "current": cur, "pending": pending,
+                "last": self.last.get(rid), "last_import": self.last_import.get(rid)}
 
     def _run(self):
         while True:
-            label, fn, args, kwargs = self.tasks.get()
-            self.current = label
+            rid, label, fn, args, kwargs = self.tasks.get()
+            self.current = (rid, label)
             try:
-                result = fn(*args, **kwargs)
-                log.info("%s: %s", label, result)
-                self.last = {"label": label, "ok": True, "result": result, "at": time.time()}
+                with ranches.use(rid):
+                    result = fn(*args, **kwargs)
+                log.info("%s [%s]: %s", label, rid, result)
+                self.last[rid] = {"label": label, "ok": True, "result": result, "at": time.time()}
             except (SignInError, SetupError) as e:
-                log.warning("%s: %s", label, e)
-                self.last = {"label": label, "ok": False, "error": str(e), "setup": True, "at": time.time()}
+                log.warning("%s [%s]: %s", label, rid, e)
+                self.last[rid] = {"label": label, "ok": False, "error": str(e), "setup": True, "at": time.time()}
             except Exception as e:
-                log.exception("%s failed", label)
-                self.last = {"label": label, "ok": False, "error": str(e), "at": time.time()}
+                log.exception("%s [%s] failed", label, rid)
+                self.last[rid] = {"label": label, "ok": False, "error": str(e), "at": time.time()}
             finally:
                 self.current = None
+                with self.lock:
+                    self.pending[rid] -= 1
 
 
 jobs = Jobs()
 
 
 def _import(**kwargs):
-    jobs.last_import = time.time()
+    jobs.last_import[ranches.current_id()] = time.time()
     return pipeline.run(step=jobs.step, **kwargs)
 
 
 def _scheduler():
-    """Check Reveal for new photos every sync_interval_hours while the server runs."""
+    """For every ranch: a daily database snapshot, and a check for new photos every
+    sync_interval_hours while the server runs."""
     while True:
         time.sleep(60)
-        try:
-            db.backup()
-        except Exception:
-            log.exception("daily database backup failed")
-        hours = settings.sync_interval_hours
-        if (hours and settings.setup_done and not jobs.status()["running"]
-                and time.time() - jobs.last_import >= hours * 3600):
-            jobs.submit("checking for new photos", _import)
+        for r in ranches.all_ranches():
+            with ranches.use(r["id"]):
+                try:
+                    db.backup()
+                except Exception:
+                    log.exception("daily database backup failed for %s", r["id"])
+                hours = settings.sync_interval_hours
+                if (hours and settings.setup_done and not jobs.status()["running"]
+                        and time.time() - jobs.last_import.get(r["id"], 0) >= hours * 3600):
+                    jobs.submit("checking for new photos", _import)
 
 
-with db.session() as _conn:
-    db.restore_pins(_conn)
-    if any(_conn.execute("SELECT 1 FROM cameras WHERE location_source='manual'")):
-        db.save_pins(_conn)
-place.refresh_region_soon()
+for _r in ranches.all_ranches():
+    with ranches.use(_r["id"]), db.session() as _conn:
+        db.restore_pins(_conn)
+        if any(_conn.execute("SELECT 1 FROM cameras WHERE location_source='manual'")):
+            db.save_pins(_conn)
+        place.refresh_region_soon()
 threading.Thread(target=_scheduler, daemon=True).start()
+
+
+# ---------------------------------------------------------------- ranches
+
+
+@app.get("/api/ranches")
+def list_ranches():
+    cur = ranches.current_id()
+    return [r | {"current": r["id"] == cur} for r in ranches.all_ranches()]
+
+
+class RanchName(BaseModel):
+    name: str
+
+
+@app.post("/api/ranches")
+def create_ranch(body: RanchName):
+    """A new, empty ranch. The browser switches to it by setting the `ranch` cookie."""
+    try:
+        rid = ranches.create(body.name)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"id": rid}
+
+
+@app.post("/api/ranch")
+def rename_ranch(body: RanchName):
+    try:
+        ranches.rename(ranches.current_id(), body.name)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True}
 
 
 def _drop_empty_groups(conn):
@@ -287,7 +361,7 @@ def _sample_image():
                             ORDER BY sex='buck' DESC, (x2-x1)*(y2-y1) DESC LIMIT 1""").fetchone()
     if r:
         return settings.data_dir / r["crop_path"]
-    path = settings.data_dir / "models" / "setup-test.jpg"  # nothing imported yet: a plain test image
+    path = settings.models_dir / "setup-test.jpg"  # nothing imported yet: a plain test image
     path.parent.mkdir(parents=True, exist_ok=True)
     Image.new("RGB", (640, 480), (90, 110, 70)).save(path)
     return path

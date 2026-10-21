@@ -19,7 +19,7 @@ Low-confidence results go to the review queue instead of being assigned.
 """
 import json
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import as_completed
 from datetime import datetime
 
 import numpy as np
@@ -27,7 +27,7 @@ import torch
 from PIL import Image
 
 from . import db
-from .config import settings
+from .config import pool, settings
 from .vision import ImagePart, MatchDecision, get_provider
 from .vision.base import MATCH_SYSTEM, RETURNING_SYSTEM
 
@@ -260,8 +260,8 @@ def identify(recheck: bool = False, limit: int | None = None, workers: int = 6,
             images, prompt, label_to_buck = _match_request(unit[0], gallery)
             return provider.structured(MATCH_SYSTEM, images, prompt, MatchDecision), label_to_buck
 
-        with ThreadPoolExecutor(workers) as pool:
-            futures = {pool.submit(work, u, g): u for u, g in units}
+        with pool(workers) as executor:
+            futures = {executor.submit(work, u, g): u for u, g in units}
             for fut in as_completed(futures):
                 unit = futures[fut]
                 ids = [q["id"] for q in unit]
@@ -316,8 +316,8 @@ def merge_generic_into(buck_id: int, workers: int = 6) -> int:
         return g, provider.structured(MATCH_SYSTEM, images, prompt, MatchDecision), label_to_buck
 
     merged = 0
-    with ThreadPoolExecutor(workers) as pool, db.session() as conn:
-        for fut in as_completed([pool.submit(work, item) for item in reps.items()]):
+    with pool(workers) as executor, db.session() as conn:
+        for fut in as_completed([executor.submit(work, item) for item in reps.items()]):
             try:
                 g, decision, label_to_buck = fut.result()
             except Exception as e:

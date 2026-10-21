@@ -1,8 +1,15 @@
 """Settings come from three places, later ones winning: built-in defaults, the environment / .env,
-and DATA_DIR/settings.json, which the setup page in the UI writes. Everything path-like lives under
-DATA_DIR so the whole thing can later be mounted as a single Docker volume."""
+and the ranch's settings.json, which the setup page in the UI writes. Everything path-like lives under
+DATA_DIR so the whole thing can be mounted as a single Docker volume.
+
+Each ranch (one place with cameras) has its own folder, DATA_DIR/ranches/<id>/, and its own Settings.
+`settings` is the current ranch's, chosen per request, background job or command (ranches.use()).
+Code that runs with no ranch chosen fails loudly rather than touching some other ranch's data."""
+import contextvars
 import json
 import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -10,6 +17,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
+
+ROOT = Path(os.environ.get("DATA_DIR") or "data").resolve()
 
 
 def _env(name: str, default: str | None = None) -> str | None:
@@ -42,7 +51,9 @@ class Settings:
     # sharedCameraIds to leave out of syncing; new cameras someone shares are included by default
     excluded_cameras: list[str] = field(default_factory=list)
 
-    data_dir: Path = field(default_factory=lambda: Path(_env("DATA_DIR", "data")).resolve())
+    data_dir: Path = ROOT  # the ranch's folder
+    # Only the first ranch may use REVEAL_EMAIL / REVEAL_PASSWORD from .env; other ranches bring their own login.
+    env_reveal: bool = True
 
     # Detection
     detector_weights: str = field(default_factory=lambda: _env("DETECTOR_WEIGHTS", "MDV6-yolov10-e-1280.pt"))
@@ -87,6 +98,10 @@ class Settings:
     shooting_minutes: int = field(default_factory=lambda: int(_env("SHOOTING_MINUTES", "30")))
     setup_done: bool = False
 
+    def __post_init__(self):
+        if not self.env_reveal:
+            self.reveal_email = self.reveal_password = None
+
     @property
     def auto_region(self) -> str | None:
         """Where the cameras are: a place name, or coordinates until the name lookup has worked."""
@@ -117,7 +132,7 @@ class Settings:
 
     @property
     def models_dir(self) -> Path:
-        return self.data_dir / "models"
+        return ROOT / "models"  # model weights are shared by all ranches
 
     def load_saved(self) -> None:
         if self.settings_file.exists():
@@ -132,7 +147,7 @@ class Settings:
     def save(self, changes: dict) -> None:
         """Apply and persist values from the setup page. None clears a saved value back to the default."""
         saved = json.loads(self.settings_file.read_text(encoding="utf-8")) if self.settings_file.exists() else {}
-        defaults = Settings()  # built-in + environment, without settings.json
+        defaults = Settings(data_dir=self.data_dir, env_reveal=self.env_reveal)  # without settings.json
         for k, v in changes.items():
             if k not in EDITABLE:
                 raise KeyError(k)
@@ -159,8 +174,37 @@ class Settings:
         return self.season_of(datetime.now(timezone.utc))
 
 
-settings = Settings()
-settings.load_saved()
+_current: contextvars.ContextVar[Settings] = contextvars.ContextVar("ranch")
+
+
+class _CurrentRanch:
+    """Stands in for the current ranch's Settings, so modules can keep `from .config import settings`."""
+
+    @staticmethod
+    def _get() -> Settings:
+        try:
+            return _current.get()
+        except LookupError:
+            raise RuntimeError("no ranch chosen: wrap this in ranches.use()") from None
+
+    def __getattr__(self, name):
+        return getattr(self._get(), name)
+
+    def __setattr__(self, name, value):
+        setattr(self._get(), name, value)
+
+
+settings = _CurrentRanch()
+
+
+def spawn(target, *args) -> None:
+    """Start a daemon thread that works on the current ranch (threads don't inherit it on their own)."""
+    threading.Thread(target=contextvars.copy_context().run, args=(target, *args), daemon=True).start()
+
+
+def pool(workers: int) -> ThreadPoolExecutor:
+    """A thread pool whose threads work on the current ranch."""
+    return ThreadPoolExecutor(workers, initializer=_current.set, initargs=(_current.get(),))
 
 
 def torch_device() -> str:

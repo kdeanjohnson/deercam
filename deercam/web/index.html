@@ -199,6 +199,216 @@
   #lightbox img { max-width:100vw; max-height:100vh; }
   #tip { position:fixed; pointer-events:none; background:var(--ink); color:#fff; border-radius:8px; padding:6px 9px; font-size:12px; display:none; z-index:60; max-width:260px; }
 
+  /* ---- timeline: camera tiles over a live sky + time slider */
+  body.tl-on { padding-bottom:0; overflow:hidden; background:#05070d; }
+  body.tl-on header { background:rgba(8,10,16,.55); color:#f2f4f7; border-bottom-color:rgba(255,255,255,.06); }
+  body.tl-on header .iconbtn { background:rgba(255,255,255,.08); color:#e9ecf1; }
+  body.tl-on #job { position:fixed; z-index:21; left:0; right:0; color:#aab2bd; background:rgba(8,10,16,.6); }
+  #tl { position:fixed; left:0; right:0; bottom:0; overflow:hidden; color:#eef1f5;
+        --glass:rgba(12,15,22,.62); --glass-line:rgba(255,255,255,.1); --dim:#a3acb8; }
+  .tl-sky { position:absolute; inset:0; transition:background .5s linear; }
+  .tl-fx { position:absolute; inset:0; pointer-events:none; }
+  canvas.tl-fx { width:100%; height:100%; }
+  #tl-stars { transition:opacity .6s linear; }
+  .tl-clouds { opacity:0; background-repeat:repeat; background-size:900px 900px; transition:opacity .6s linear, filter .6s linear; }
+  .tl-moon { position:absolute; top:7%; right:6%; width:64px; height:64px; pointer-events:none; filter:drop-shadow(0 0 18px rgba(244,238,219,.35)); transition:opacity .6s linear; }
+  .tl-glass { background:var(--glass); backdrop-filter:blur(20px) saturate(1.4); -webkit-backdrop-filter:blur(20px) saturate(1.4);
+              border:1px solid var(--glass-line); border-radius:20px; box-shadow:0 12px 40px rgba(0,0,0,.3); }
+
+  /* conditions card */
+  .tl-hud { position:absolute; z-index:5; top:14px; left:14px; width:316px; padding:16px 18px 14px; }
+  .tl-date { font-size:12.5px; color:var(--dim); font-weight:600; letter-spacing:.02em; text-transform:uppercase; }
+  .tl-time { font-size:44px; font-weight:250; letter-spacing:-.03em; line-height:1.05; font-variant-numeric:tabular-nums; margin:2px 0 8px; }
+  .tl-time small { font-size:15px; font-weight:500; color:var(--dim); letter-spacing:0; margin-left:4px; }
+  .tl-light { display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:600; padding:5px 11px 5px 9px; border-radius:20px; background:rgba(255,255,255,.07); }
+  .tl-light i { width:9px; height:9px; border-radius:50%; display:inline-block; box-shadow:0 0 10px currentColor; }
+  .tl-light span { color:var(--dim); font-weight:500; }
+  .tl-metrics { display:grid; grid-template-columns:1fr 1fr; gap:12px 14px; margin-top:14px; padding-top:14px; border-top:1px solid var(--glass-line); }
+  .tl-m { display:flex; gap:10px; align-items:center; min-width:0; }
+  .tl-m > div { min-width:0; }
+  .tl-m svg { flex:none; }
+  .tl-m b { display:block; font-size:17px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .tl-m span { display:block; font-size:11.5px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tl-src { margin-top:12px; font-size:11px; color:#79828e; }
+  .tl-src.warn { color:#d9a65b; }
+
+  /* camera tiles */
+  .tl-grid { position:absolute; z-index:4; top:14px; left:346px; right:14px; bottom:300px; display:grid; gap:12px; }
+  .tl-tile { margin:0; position:relative; min-height:0; border-radius:18px; overflow:hidden; background:rgba(0,0,0,.35); cursor:zoom-in;
+             box-shadow:0 10px 34px rgba(0,0,0,.35); outline:2px solid transparent; outline-offset:-2px; transition:outline-color .3s; }
+  .tl-tile.hot { outline-color:var(--k); }
+  .tl-photo { position:absolute; inset:0; overflow:hidden; }
+  .tl-photo img { width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity .25s, filter .4s; }
+  .tl-photo img.in { opacity:1; }
+  .tl-tile.stale .tl-photo img { filter:grayscale(.85) brightness(.45); }
+  .tl-tile.empty { cursor:default; }
+  .tl-boxes { position:absolute; inset:0; pointer-events:none; }
+  .tl-box { position:absolute; border:2px solid var(--k); border-radius:8px; box-shadow:0 0 0 1px rgba(0,0,0,.35); }
+  .tl-box span { position:absolute; left:-2px; top:-22px; font-size:11px; font-weight:700; color:#0b0d10; background:var(--k); padding:2px 7px; border-radius:6px; white-space:nowrap; }
+  .tl-tile.stale .tl-box { display:none; }
+  .tl-tile figcaption { position:absolute; left:0; right:0; top:0; display:flex; justify-content:space-between; align-items:center; gap:8px;
+                        padding:10px 12px 22px; background:linear-gradient(rgba(0,0,0,.6), transparent); font-size:12.5px; font-weight:650; }
+  .tl-tname { display:inline-flex; align-items:center; gap:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tl-tname i { width:8px; height:8px; border-radius:50%; background:var(--c); flex:none; }
+  .tl-age { color:#dfe4ea; font-weight:550; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .tl-seen { position:absolute; left:10px; bottom:10px; display:none; align-items:center; gap:6px; padding:5px 11px 5px 8px; border-radius:16px;
+             background:var(--k); color:#0b0d10; font-size:12.5px; font-weight:750; }
+  .tl-tile.hot .tl-seen { display:inline-flex; }
+  .tl-seen svg { width:16px; height:16px; }
+
+  /* time slider */
+  .tl-panel { position:absolute; z-index:6; left:50%; transform:translateX(-50%); width:min(1180px, calc(100% - 28px));
+              bottom:calc(var(--nav-h) + 30px + env(safe-area-inset-bottom)); padding:10px 14px 12px; }
+  .tl-bar { display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+  .tl-btn { border:0; background:rgba(255,255,255,.08); color:#eef1f5; height:32px; min-width:32px; border-radius:16px; display:inline-flex; align-items:center;
+            justify-content:center; gap:6px; padding:0 10px; font-size:12.5px; font-weight:600; }
+  .tl-btn:hover { background:rgba(255,255,255,.15); }
+  .tl-btn.play { width:40px; height:40px; border-radius:50%; background:#fff; color:#0b0d10; padding:0; }
+  .tl-btn svg { width:14px; height:14px; }
+  .tl-btn.play svg { width:16px; height:16px; }
+  .tl-span { margin-left:6px; font-size:12.5px; color:var(--dim); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tl-seg { margin-left:auto; display:flex; background:rgba(255,255,255,.07); border-radius:16px; padding:3px; }
+  .tl-seg button { border:0; background:none; color:var(--dim); font-size:12px; font-weight:650; padding:5px 11px; border-radius:13px; white-space:nowrap; }
+  .tl-seg button.on { background:rgba(255,255,255,.92); color:#0b0d10; }
+  .tl-seg .short { display:none; }
+  .tl-track { display:grid; grid-template-columns:124px 1fr; outline:none; }
+  .tl-labels div { height:var(--h); display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:600; color:var(--dim); white-space:nowrap; overflow:hidden; padding-right:8px; }
+  .tl-labels div i { width:7px; height:7px; border-radius:50%; flex:none; }
+  .tl-plot { position:relative; touch-action:none; cursor:ew-resize; border-radius:10px; overflow:hidden; }
+  .tl-plot canvas { position:absolute; inset:0; width:100%; height:100%; }
+  .tl-icons { position:absolute; inset:0; }
+  .tl-ico { position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%; border:1.5px solid var(--k); color:var(--k);
+            background:rgba(12,14,18,.9); display:flex; align-items:center; justify-content:center; padding:0; cursor:pointer;
+            transition:transform .15s; box-shadow:0 2px 8px rgba(0,0,0,.4); }
+  .tl-ico:hover, .tl-ico.near { transform:scale(1.22); z-index:2; }
+  .tl-ico.near { background:var(--k); color:#0b0d10; }
+  .tl-ico svg { width:15px; height:15px; }
+  .tl-ico b { position:absolute; top:-6px; right:-8px; min-width:15px; height:15px; padding:0 3px; border-radius:8px; font-size:9.5px; line-height:15px;
+              background:#fff; color:#0b0d10; font-weight:800; text-align:center; }
+  .tl-ico.target::before { content:""; position:absolute; inset:-5px; border-radius:50%; border:1.5px solid #ff6b2c; }
+  .tl-head { position:absolute; top:0; bottom:0; width:0; pointer-events:none; }
+  .tl-head::before { content:""; position:absolute; top:0; bottom:0; left:-1px; width:2px; background:#fff; box-shadow:0 0 12px rgba(255,255,255,.6); }
+  .tl-head::after { content:""; position:absolute; top:-1px; left:-7px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.5); }
+  .tl-hover { position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,.35); pointer-events:none; display:none; }
+  .tl-hover span { position:absolute; top:2px; left:6px; font-size:10.5px; font-weight:650; color:#fff; white-space:nowrap; background:rgba(0,0,0,.6); padding:1px 6px; border-radius:6px; }
+  .tl-legend { display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:8px; padding-left:124px; font-size:11px; color:var(--dim); }
+  .tl-legend span { display:inline-flex; align-items:center; gap:5px; }
+  .tl-legend svg { width:13px; height:13px; }
+  .tl-legend .note { margin-left:auto; color:#79828e; }
+  .tl-card { position:fixed; z-index:40; width:230px; pointer-events:none; overflow:hidden; border-radius:14px; display:none; }
+  .tl-card img { width:100%; aspect-ratio:4/3; object-fit:cover; background:#000; }
+  .tl-card div { padding:9px 11px 10px; font-size:12px; color:var(--dim); line-height:1.4; }
+  .tl-card div b { color:#fff; font-size:13.5px; display:block; }
+  .tl-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--dim); font-size:14px; z-index:8; }
+
+  @media (max-width: 760px) {
+    .tl-hud { width:auto; right:14px; padding:12px 14px; }
+    .tl-time { font-size:32px; margin-bottom:6px; }
+    .tl-metrics { grid-template-columns:repeat(4, auto); gap:8px 12px; margin-top:10px; padding-top:10px; }
+    .tl-m svg { display:none; }
+    .tl-m b { font-size:14px; }
+    .tl-grid { left:14px; top:206px; gap:8px; }
+    .tl-tile { border-radius:12px; }
+    .tl-tile figcaption { padding:7px 8px 16px; font-size:11px; }
+    .tl-age { display:none; }
+    .tl-moon { display:none; }
+    .tl-track { grid-template-columns:64px 1fr; }
+    .tl-legend { padding-left:0; }
+    .tl-legend .note { display:none; }
+    .tl-span, #tl-speed, .tl-src { display:none; }
+    .tl-seg button { padding:5px 8px; }
+    .tl-seg .long { display:none; } .tl-seg .short { display:inline; }
+    .tl-panel { padding:10px 10px 10px; }
+  }
+
+  /* ---- engine room: day-by-day calendar of what came in */
+  .er { padding:0 16px 24px; }
+  .er-sub { color:var(--ink2); font-size:14px; margin:-4px 0 18px; }
+  .er-tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:22px; }
+  .er-tile { background:var(--soft); border-radius:var(--radius); padding:14px 16px; }
+  .er-tile b { display:block; font-size:28px; font-weight:750; letter-spacing:-.02em; font-variant-numeric:tabular-nums; line-height:1.1; }
+  .er-tile span { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink2); font-weight:600; margin-top:3px; }
+  .er-tile svg { width:15px; height:15px; }
+  .er-bar { height:5px; border-radius:3px; background:var(--soft2); margin-top:9px; overflow:hidden; }
+  .er-bar i { display:block; height:100%; background:#3987e5; border-radius:3px; }
+  .er-wrap { display:grid; grid-template-columns:minmax(0, 1fr); gap:22px; }
+  .er-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .er-head h2 { font-size:22px; letter-spacing:-.01em; margin:0 8px 0 0; }
+  .er-nav { width:34px; height:34px; border:0; border-radius:50%; background:var(--soft); font-size:16px; }
+  .er-nav:disabled { opacity:.35; cursor:default; }
+  .er-scale { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink2); }
+  .er-scale i { width:18px; height:10px; border-radius:3px; display:inline-block; }
+  .er-cal { display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:5px; }
+  .er-dow { font-size:11.5px; font-weight:700; color:var(--ink2); text-transform:uppercase; letter-spacing:.04em; padding:0 4px 2px; }
+  .er-day { position:relative; min-height:96px; border-radius:12px; padding:7px 6px 7px; border:0; text-align:left; background:var(--soft);
+            display:flex; flex-direction:column; gap:3px; color:var(--ink); transition:transform .12s, box-shadow .12s;
+            box-shadow:inset 0 3px 0 var(--heat, transparent); }
+  .er-day.out { background:none; box-shadow:none; cursor:default; }
+  .er-day.none { background:#fafbfc; color:#b4b9c0; cursor:default; }
+  button.er-day:not(.out):not(.none):hover { transform:translateY(-1px); box-shadow:inset 0 3px 0 var(--heat, transparent), 0 6px 18px rgba(21,23,26,.12); }
+  .er-day.sel { box-shadow:inset 0 3px 0 var(--heat, transparent), 0 0 0 2px var(--ink); }
+  .er-top { display:flex; align-items:center; justify-content:space-between; gap:4px; }
+  .er-n { font-size:12px; font-weight:750; }
+  .er-marks { display:flex; gap:5px; }
+  .er-mk { display:inline-flex; align-items:center; gap:1px; font-size:11px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .er-mk svg { width:14px; height:14px; }
+  .er-tot { font-size:17px; font-weight:750; letter-spacing:-.01em; line-height:1.1; font-variant-numeric:tabular-nums; }
+  .er-tot small { font-size:10.5px; font-weight:600; color:var(--ink2); letter-spacing:0; }
+  .er-rows { display:flex; flex-direction:column; gap:2px; margin-top:2px; }
+  .er-row { position:relative; display:grid; grid-template-columns:auto minmax(0, 1fr) 27px; gap:3px; align-items:center;
+            font-size:10px; line-height:15px; padding:0 3px; border-radius:4px; background:rgba(255,255,255,.75); overflow:hidden; font-variant-numeric:tabular-nums; }
+  .er-row i { position:absolute; left:0; top:0; bottom:0; background:#cde2fb; z-index:0; }
+  .er-row.done i { background:#b8e0c2; }
+  .er-row b, .er-row em { position:relative; z-index:1; }
+  .er-row b { font-weight:700; white-space:nowrap; display:flex; align-items:center; gap:3px; }
+  .er-row em:nth-of-type(1) { white-space:nowrap; overflow:hidden; letter-spacing:-.02em; }
+  .er-row u, .er-cam-key u { width:5px; height:5px; border-radius:50%; flex:none; display:inline-block; }
+  .er-row.nil { background:rgba(255,255,255,.4); color:var(--ink2); }
+  .er-tot { display:flex; align-items:baseline; gap:3px; }
+  .er-totp { margin-left:auto; font-weight:750 !important; color:var(--ink) !important; }
+  .er-cam-key { display:inline-flex; align-items:center; gap:5px; margin-right:12px; }
+  .er-row em { font-style:normal; color:var(--ink2); text-align:right; }
+  .er-row em:last-child { color:var(--ink); font-weight:700; }
+  .er-key { font-size:12px; color:var(--ink2); margin:-2px 0 10px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+  .er-key b { color:var(--ink); font-weight:650; }
+  .er-key svg { width:14px; height:14px; }
+  .er-side { background:var(--soft); border-radius:var(--radius); padding:16px 18px; align-self:start; }
+  .er-side h3 { margin:0 0 2px; font-size:19px; }
+  .er-side .meta { margin-bottom:12px; }
+  .er-counts { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px; margin-bottom:16px; }
+  .er-counts div { background:#fff; border-radius:12px; padding:8px; min-width:0; }
+  .er-counts b { display:block; font-size:19px; font-variant-numeric:tabular-nums; }
+  .er-counts span { display:flex; align-items:center; gap:4px; font-size:11.5px; color:var(--ink2); font-weight:600; }
+  .er-counts svg { width:13px; height:13px; flex:none; }
+  .er-counts span { white-space:nowrap; overflow:hidden; }
+  .er-side h4 { margin:14px 0 8px; font-size:13px; color:var(--ink2); text-transform:uppercase; letter-spacing:.04em; }
+  .er-cam { display:grid; grid-template-columns:110px 1fr 40px; gap:8px; align-items:center; font-size:13px; margin:5px 0; }
+  .er-cam span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .er-cam em { font-style:normal; text-align:right; font-variant-numeric:tabular-nums; color:var(--ink2); }
+  .er-cam div { height:12px; background:#fff; border-radius:4px; overflow:hidden; }
+  .er-cam div i { display:block; height:100%; background:#3987e5; border-radius:0 4px 4px 0; }
+  .er-hours { display:flex; align-items:flex-end; gap:2px; height:70px; padding-bottom:1px; border-bottom:1px solid var(--line); }
+  .er-hours i { flex:1; background:#3987e5; border-radius:4px 4px 0 0; min-height:1px; position:relative; }
+  .er-hours i:hover { background:#1c5cab; }
+  .er-hlabels { display:flex; justify-content:space-between; font-size:10.5px; color:var(--ink2); margin-top:3px; }
+  .er-named { display:flex; flex-wrap:wrap; gap:6px; }
+  .er-named span { background:#fff; border-radius:10px; padding:4px 9px; font-size:12.5px; font-weight:650; }
+  .er-open { margin-top:16px; width:100%; }
+  .er-note { font-size:12.5px; color:var(--ink2); margin-top:14px; line-height:1.45; }
+  #tabs { max-width:calc(100vw - 16px); overflow-x:auto; scrollbar-width:none; }
+  #tabs::-webkit-scrollbar { display:none; }
+  @media (min-width: 1000px) {
+    .er-wrap { grid-template-columns:minmax(0, 1fr) 290px; gap:16px; }
+    .er-side { position:sticky; top:72px; }
+  }
+  @media (max-width: 620px) {
+    .er-day { min-height:62px; padding:5px; border-radius:9px; }
+    .er-tot { font-size:13px; } .er-tot small, .er-rows { display:none; }
+    .er-mk { font-size:9.5px; } .er-mk svg { width:11px; height:11px; }
+    .er-cal { gap:4px; }
+    .er-scale { display:none; }
+  }
+
   /* ---- wider screens */
   @media (min-width: 720px) {
     .feed { grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); padding:0 16px; }
@@ -235,9 +445,11 @@
 <main id="main"></main>
 <nav id="tabs">
   <button data-go="feed">Feed</button>
+  <button data-go="timeline">Timeline</button>
   <button data-go="bucks">Bucks</button>
   <button data-go="review">Review<span class="count" id="rcount"></span></button>
   <button data-go="map">Map</button>
+  <button data-go="engine">Engine Room</button>
 </nav>
 <div id="lightbox"><img alt=""></div>
 <div id="tip"></div>
@@ -828,6 +1040,776 @@ async function mapClick(e) {
   }
 }
 
+// ------------------------------------------------------------------ timeline (cameras + sky + time slider)
+// One moment at a time: drag the slider and every camera shows what it saw then, while the sky behind
+// follows the real sun and moon over the cameras' area and Reveal's weather for that moment.
+// Animal icons sit on one lane per camera.
+
+const TL_KINDS = {
+  buck:   { label: 'Buck',   color: '#f2b544', rank: 5 },
+  doe:    { label: 'Doe',    color: '#e8a08e', rank: 4 },
+  fawn:   { label: 'Fawn',   color: '#ead2a2', rank: 3 },
+  other:  { label: 'Other animal', color: '#86c9b2', rank: 2 },
+  animal: { label: 'Animal, not labeled yet', color: '#cfd8e3', rank: 1 },
+};
+const TL_SVG = {
+  doe: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.4 9.6C6 9.6 3.4 8.2 2.4 6.3c2.4-.6 5.2.3 6.8 2.1zM15.6 9.6c2.4 0 5-1.4 6-3.3-2.4-.6-5.2.3-6.8 2.1z"/><path d="M12 21.5c-1.6 0-2.5-1.3-2.9-3L8.2 13c-.3-1.9.9-3.8 2.6-4.1h2.4c1.7.3 2.9 2.2 2.6 4.1l-.9 5.5c-.4 1.7-1.3 3-2.9 3z"/></svg>`,
+  buck: `<svg viewBox="0 0 24 24"><g fill="currentColor"><path d="M8.7 11.3c-2.2.1-4.3-.8-5.4-2.4 2.2-.8 4.5-.3 6.1 1.2zM15.3 11.3c2.2.1 4.3-.8 5.4-2.4-2.2-.8-4.5-.3-6.1 1.2z"/><path d="M12 22c-1.5 0-2.4-1.2-2.8-2.8l-.8-4.9c-.3-1.8.8-3.5 2.4-3.8h2.4c1.6.3 2.7 2 2.4 3.8l-.8 4.9c-.4 1.6-1.3 2.8-2.8 2.8z"/></g><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.6 10.1C9.8 7.2 8 4.9 5 3.6M8.6 6.7l-.2-3.3M7 5.1 5.6 2M13.4 10.1c.8-2.9 2.6-5.2 5.6-6.5M15.4 6.7l.2-3.3M17 5.1 18.4 2"/></g></svg>`,
+  fawn: `<svg viewBox="0 0 24 24" fill="currentColor"><g transform="translate(12 13) scale(.8) translate(-12 -13)"><path d="M8.4 9.6C6 9.6 3.4 8.2 2.4 6.3c2.4-.6 5.2.3 6.8 2.1zM15.6 9.6c2.4 0 5-1.4 6-3.3-2.4-.6-5.2.3-6.8 2.1z"/><path d="M12 21.5c-1.6 0-2.5-1.3-2.9-3L8.2 13c-.3-1.9.9-3.8 2.6-4.1h2.4c1.7.3 2.9 2.2 2.6 4.1l-.9 5.5c-.4 1.7-1.3 3-2.9 3z"/></g></svg>`,
+  other: `<svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="15.8" rx="4.4" ry="3.9"/><circle cx="6.4" cy="10.6" r="2"/><circle cx="9.7" cy="6.9" r="2"/><circle cx="14.3" cy="6.9" r="2"/><circle cx="17.6" cy="10.6" r="2"/></svg>`,
+  animal: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.6" fill="currentColor"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".55"/></svg>`,
+  camera: `<svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="3.4" fill="currentColor"/><circle cx="12" cy="10" r="3.6" fill="#0d1014"/><circle cx="12" cy="10" r="1.7" fill="#7fb2ff"/><rect x="8.2" y="15.8" width="7.6" height="2.2" rx="1.1" fill="#0d1014" opacity=".6"/><circle cx="16.2" cy="5.7" r=".95" fill="#ff5a4e"/></svg>`,
+  play: `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 2.6v10.8c0 .5.6.8 1 .5l8.3-5.4c.4-.3.4-.8 0-1L5.5 2.1c-.4-.3-1 0-1 .5z"/></svg>`,
+  pause: `<svg viewBox="0 0 16 16" fill="currentColor"><rect x="3.5" y="2.5" width="3.2" height="11" rx="1"/><rect x="9.3" y="2.5" width="3.2" height="11" rx="1"/></svg>`,
+  prev: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg>`,
+  next: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5 10.5 8 6 12.5"/></svg>`,
+};
+const TL_CAM_COLORS = ['#7cb8ff', '#ffb86b', '#b99cff', '#6fe0bd', '#ff8fa3', '#e6df7a', '#9fd2ff', '#ffa3e0'];
+const TL_LIGHT = { day: '#9ec5f4', shooting: '#f0a35e', night: '#5a6fb0' };
+const TL_RANGES = [['Day', 1, '1D'], ['3 days', 3, '3D'], ['Week', 7, '1W'], ['Month', 30, '1M']];
+const TL_SPEEDS = [[1800, '½ h/s'], [3600, '1 h/s'], [3 * 3600, '3 h/s'], [12 * 3600, '12 h/s']];
+const HOUR = 3600e3, DAY = 864e5;
+const TL = { map: null };
+
+// ---- sun and moon. sunTimes is the same NOAA formula as deercam/sun.py, so labels agree with the rest of the app.
+const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+function sunTimes(ms, lat, lon) {
+  const local = new Date(ms + lon / 15 * HOUR);  // local solar day, as in sun.light()
+  const y = local.getUTCFullYear(), m = local.getUTCMonth(), d = local.getUTCDate();
+  const n = Math.round((Date.UTC(y, m, d) - Date.UTC(y, 0, 1)) / DAY) + 1;
+  const g = 2 * Math.PI / 365 * (n - 1);
+  const eq = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+  const decl = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g)
+             + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+  const phi = rad(lat);
+  const cosHa = Math.cos(rad(90.833)) / (Math.cos(phi) * Math.cos(decl)) - Math.tan(phi) * Math.tan(decl);
+  if (cosHa < -1 || cosHa > 1) return null;
+  const ha = deg(Math.acos(cosHa)), mid = Date.UTC(y, m, d);
+  return { rise: mid + (720 - 4 * (lon + ha) - eq) * 60e3, set: mid + (720 - 4 * (lon - ha) - eq) * 60e3 };
+}
+function lightAt(ms, lat, lon, shooting = 30) {
+  const s = sunTimes(ms, lat, lon);
+  if (!s) return null;
+  const mr = (ms - s.rise) / 60e3, ms_ = (ms - s.set) / 60e3;
+  const kind = mr >= 0 && ms_ <= 0 ? 'day' : (-shooting <= mr && mr < 0) || (0 < ms_ && ms_ <= shooting) ? 'shooting' : 'night';
+  const [ref, mins] = Math.abs(mr) <= Math.abs(ms_) ? ['sunrise', mr] : ['sunset', ms_];
+  const a = Math.round(Math.abs(mins));
+  return { kind, label: `${a < 90 ? `${a} min` : `${(a / 60).toFixed(1)} h`} ${mins >= 0 ? 'after' : 'before'} ${ref}`, ...s };
+}
+function sunPos(ms, lat, lon) {
+  const d = ms / DAY - 10957.5;  // days since J2000
+  const g = rad(357.529 + 0.98560028 * d), q = 280.459 + 0.98564736 * d;
+  const L = rad(q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)), e = rad(23.439 - 0.00000036 * d);
+  const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L)), dec = Math.asin(Math.sin(e) * Math.sin(L));
+  const ha = rad(((18.697374558 + 24.06570982441908 * d) % 24) * 15 + lon) - ra, phi = rad(lat);
+  const alt = Math.asin(Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(ha));
+  const az = Math.atan2(-Math.sin(ha), Math.tan(dec) * Math.cos(phi) - Math.sin(phi) * Math.cos(ha));
+  return { alt: deg(alt), az: (deg(az) + 360) % 360 };
+}
+const SYNODIC = 29.530588853, NEW_MOON = Date.UTC(2000, 0, 6, 18, 14);
+function moonAt(ms) {
+  const age = (((ms - NEW_MOON) / DAY) % SYNODIC + SYNODIC) % SYNODIC;
+  const illum = (1 - Math.cos(2 * Math.PI * age / SYNODIC)) / 2, waxing = age < SYNODIC / 2;
+  const names = ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'];
+  return { illum, waxing, name: names[Math.floor((age / SYNODIC) * 8 + 0.5) % 8] };
+}
+
+// Color of the light band on the slider for a sun altitude.
+function bandColor(alt) {
+  const stops = [[-18, [14, 22, 46]], [-6, [30, 46, 96]], [-1, [92, 86, 160]], [2, [236, 150, 92]], [8, [150, 192, 238]], [30, [170, 206, 244]]];
+  let i = stops.findIndex(s => s[0] > alt);
+  if (i <= 0) return `rgb(${(i === 0 ? stops[0] : stops.at(-1))[1]})`;
+  const [a0, c0] = stops[i - 1], [a1, c1] = stops[i], f = (alt - a0) / (a1 - a0);
+  return `rgb(${c0.map((v, j) => Math.round(v + (c1[j] - v) * f))})`;
+}
+const skyCover = sky => {
+  const s = (sky || '').toLowerCase();
+  if (/storm|thunder|rain|shower|drizzle|snow|sleet|fog|overcast/.test(s)) return .85;
+  if (/mostly cloudy/.test(s)) return .65;
+  if (/cloudy/.test(s)) return .8;
+  if (/partly/.test(s)) return .38;
+  if (/mostly (clear|sunny)/.test(s)) return .14;
+  return 0;
+};
+
+// ---- data lookups
+function tlBisect(arr, t, key = x => x) {  // first index with key >= t
+  let lo = 0, hi = arr.length;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (key(arr[m]) < t) lo = m + 1; else hi = m; }
+  return lo;
+}
+function tlOffset(ms) {  // camera clock minus UTC, in minutes
+  const o = TL.data.offsets;
+  if (!o.length) return -new Date(ms).getTimezoneOffset();
+  const i = tlBisect(o, ms + 1, x => x[0]) - 1;
+  return o[Math.max(0, i)][1];
+}
+const tlLocal = ms => new Date(ms + tlOffset(ms) * 60e3);
+const tlClock = ms => { const d = tlLocal(ms), h = d.getUTCHours(); return { hm: `${(h % 12) || 12}:${String(d.getUTCMinutes()).padStart(2, '0')}`, ap: h < 12 ? 'AM' : 'PM' }; };
+const tlDate = (ms, opts = { weekday: 'short', month: 'short', day: 'numeric' }) => tlLocal(ms).toLocaleDateString('en-US', { ...opts, timeZone: 'UTC' });
+const tlStamp = ms => { const c = tlClock(ms); return `${tlDate(ms)}, ${c.hm} ${c.ap}`; };
+const tlUtcLabel = ms => { const o = tlOffset(ms); return `UTC${o < 0 ? '−' : '+'}${Math.abs(o / 60)}`; };
+function tlWeather(ms) {
+  const w = TL.data.weather;
+  if (!w.length) return null;
+  const i = tlBisect(w, ms, x => x.t), a = w[i - 1], b = w[i];
+  const near = !a ? b : !b ? a : (ms - a.t <= b.t - ms ? a : b);
+  if (Math.abs(near.t - ms) > 3 * HOUR) return null;
+  let temp = near.temp;
+  if (a && b && b.t - a.t < 4 * HOUR && a.temp != null && b.temp != null) temp = a.temp + (b.temp - a.temp) * (ms - a.t) / (b.t - a.t);
+  return { ...near, temp };
+}
+
+// ---- page
+
+
+
+
+
+
+
+function tlWhere() {  // where sun times are worked out: placed cameras' middle, else the ZIP area from Reveal's weather
+  const placed = TL.data.cameras.filter(c => c.lat != null), a = TL.data.area;
+  if (placed.length) return { lat: placed.reduce((s, c) => s + c.lat, 0) / placed.length, lon: placed.reduce((s, c) => s + c.lon, 0) / placed.length, label: 'the cameras' };
+  if (a) return { lat: a.lat, lon: a.lon, label: `ZIP ${a.zip}${a.name ? `, ${a.name}` : ''}` };
+  return { lat: 37, lon: -96, label: null };
+}
+
+async function showTimeline() {
+  tlDestroy();
+  const data = await api('/api/timeline');
+  if (view !== 'timeline') return;
+  data.cameras.forEach((c, i) => { c.color = TL_CAM_COLORS[i % TL_CAM_COLORS.length]; c.photos = []; });
+  for (const p of data.photos) if (p[1] != null) data.cameras[p[1]].photos.push(p);
+  data.byPhoto = {};
+  for (const a of data.animals) (data.byPhoto[a.photo] ??= []).push(a);
+  Object.assign(TL, { data, playing: false, speed: 3600, dirty: true, raf: 0, lastFrame: 0, cloudX: 0, cloudY: 0, shown: {} });
+  $('#main').innerHTML = `<div id="tl">
+    <div class="tl-sky" id="tl-sky"></div><canvas class="tl-fx" id="tl-stars"></canvas><div class="tl-fx tl-glow"></div>
+    <div class="tl-fx tl-clouds"></div><canvas class="tl-fx" id="tl-wind"></canvas>
+    <div class="tl-moon" id="tl-moon"></div>
+    <div class="tl-hud tl-glass" id="tl-hud"></div>
+    <div class="tl-grid" id="tl-grid">${data.cameras.map((c, i) => `<figure class="tl-tile" data-cam="${i}" style="--c:${c.color}">
+        <div class="tl-photo"><img alt=""><div class="tl-boxes"></div></div>
+        <figcaption><span class="tl-tname"><i></i>${esc(c.name || c.camera_id)}</span><span class="tl-age"></span></figcaption>
+        <div class="tl-seen"></div></figure>`).join('')}</div>
+    <div class="tl-panel tl-glass" id="tl-panel"></div>
+    <div class="tl-card tl-glass" id="tl-card"></div>
+  </div>`;
+  tlLayout();
+  if (!data.start) { $('#tl').insertAdjacentHTML('beforeend', '<div class="tl-empty">No photos yet. Sync from Reveal first.</div>'); return; }
+  const fromHash = Number(arg);
+  TL.t = fromHash > data.start - 30 * DAY && fromHash < data.end + DAY ? fromHash : data.end;
+  tlSetRange(3);
+  tlPanel();
+  tlClouds();
+  $('#tl-grid').addEventListener('click', e => {
+    const tile = e.target.closest('.tl-tile'), src = tile && TL.shown[tile.dataset.cam];
+    if (src) { $('#lightbox img').src = src; $('#lightbox').style.display = 'flex'; }
+  });
+  TL.onResize = () => { tlLayout(); tlSizeCanvas(); tlStars(); $$('#tl-grid .tl-tile').forEach(tlFitBoxes); };
+  TL.onKey = tlKey;
+  addEventListener('resize', TL.onResize);
+  addEventListener('keydown', TL.onKey);
+  tlLayout();
+  tlSizeCanvas();
+  tlStars();
+  TL.raf = requestAnimationFrame(tlFrame);
+}
+
+function tlDestroy() {
+  cancelAnimationFrame(TL.raf);
+  if (TL.onResize) removeEventListener('resize', TL.onResize);
+  if (TL.onKey) removeEventListener('keydown', TL.onKey);
+  Object.assign(TL, { onResize: null, onKey: null, raf: 0 });
+}
+
+function tlLayout() {
+  const tl = $('#tl');
+  if (!tl) return;
+  tl.style.top = `${$('header').getBoundingClientRect().bottom}px`;
+  const panel = $('#tl-panel'), grid = $('#tl-grid');
+  if (!panel || !grid) return;
+  const box = tl.getBoundingClientRect(), pr = panel.getBoundingClientRect();
+  grid.style.bottom = `${box.bottom - pr.top + 14}px`;
+  // Lay the tiles out in the most square grid that keeps each photo near 16:10.
+  const n = TL.data.cameras.length || 1, W = grid.clientWidth, H = grid.clientHeight;
+  let best = 1, bestArea = 0;
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols), w = (W - 12 * (cols - 1)) / cols, h = Math.min((H - 12 * (rows - 1)) / rows, w / 1.6);
+    if (h * 1.6 * h > bestArea) { bestArea = h * 1.6 * h; best = cols; }
+  }
+  grid.style.gridTemplateColumns = `repeat(${best}, minmax(0, 1fr))`;
+  grid.style.gridTemplateRows = `repeat(${Math.ceil(n / best)}, minmax(0, 1fr))`;
+}
+
+// Sky colors, top and horizon, by sun altitude.
+const TL_SKY = [
+  [-90, [4, 6, 14], [9, 14, 30]], [-12, [6, 9, 22], [14, 22, 48]], [-7, [12, 18, 46], [34, 40, 84]],
+  [-3, [26, 34, 78], [128, 84, 118]], [0, [40, 62, 120], [232, 140, 96]], [4, [52, 98, 170], [246, 190, 130]],
+  [12, [56, 116, 196], [160, 200, 238]], [90, [44, 104, 192], [150, 196, 242]],
+];
+function skyAt(alt, cover) {
+  let i = TL_SKY.findIndex(k => k[0] > alt);
+  if (i <= 0) i = i === 0 ? 1 : TL_SKY.length - 1;
+  const a = TL_SKY[i - 1], b = TL_SKY[i], f = Math.min(1, Math.max(0, (alt - a[0]) / (b[0] - a[0])));
+  const mix = (x, y) => x.map((v, j) => v + (y[j] - v) * f);
+  const gray = c => { const l = (c[0] + c[1] + c[2]) / 3; return c.map(v => Math.round(v + (l - v) * cover * .7)); };
+  return { top: gray(mix(a[1], b[1])), low: gray(mix(a[2], b[2])) };
+}
+function tlStars() {
+  const c = $('#tl-stars');
+  if (!c) return;
+  const dpr = TL.dpr || 1; c.width = c.clientWidth * dpr; c.height = c.clientHeight * dpr;
+  const g = c.getContext('2d');
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 260; i++) {
+    const x = rnd() * c.width, y = rnd() * c.height * .8, r = (rnd() < .08 ? 1.3 : .7) * dpr;
+    g.fillStyle = `rgba(255,255,255,${.25 + rnd() * .6})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+  }
+}
+
+function tlScene() {
+  const t = TL.t, where = tlWhere(), sun = sunPos(t, where.lat, where.lon), moon = moonAt(t), w = tlWeather(t);
+  const lt = lightAt(t, where.lat, where.lon), cover = skyCover(w?.sky);
+  const sky = skyAt(sun.alt, cover);
+  $('#tl-sky').style.background = `linear-gradient(180deg, rgb(${sky.top}) 0%, rgb(${sky.low}) 100%)`;
+  const dark = Math.min(1, Math.max(0, (-sun.alt - 4) / 10));
+  $('#tl-stars').style.opacity = (dark * (1 - cover) * .9).toFixed(3);
+  // warm glow on the horizon, on the side the sun is (east right, west left)
+  const warm = Math.max(0, 1 - Math.abs(sun.alt - 1) / 9) * (1 - .6 * cover);
+  const gx = 50 + 46 * Math.sin(rad(sun.az));
+  $('.tl-glow').style.background = warm > .02 ? `radial-gradient(ellipse 60% 55% at ${gx}% 100%, rgba(255,170,100,${(warm * .55).toFixed(3)}), transparent 70%)` : 'none';
+  const clouds = $('.tl-clouds');
+  clouds.style.opacity = (cover * .75).toFixed(3);
+  clouds.style.filter = `brightness(${(.25 + .75 * (1 - dark)).toFixed(2)})`;
+  // the moon, when the sun is down
+  const r = 22, k = moon.illum, rx = r * Math.abs(1 - 2 * k);
+  const mEl = $('#tl-moon');
+  mEl.style.opacity = (Math.min(1, Math.max(0, (-sun.alt - 2) / 8)) * (1 - .5 * cover)).toFixed(3);
+  if (mEl.dataset.k !== k.toFixed(2)) {
+    mEl.dataset.k = k.toFixed(2);
+    mEl.innerHTML = `<svg viewBox="-26 -26 52 52"><circle r="${r}" fill="rgba(255,255,255,.06)"/><path d="M0 ${-r}A${r} ${r} 0 0 ${moon.waxing ? 1 : 0} 0 ${r}A${rx} ${r} 0 0 ${(k > .5) === moon.waxing ? 1 : 0} 0 ${-r}Z" fill="#f4eedb"/></svg>`;
+  }
+  TL.wind = w ? { deg: w.wind_deg, speed: w.wind || 0, rain: /rain|shower|drizzle|storm|thunder/i.test(w.sky || ''), snow: /snow|flurr|sleet/i.test(w.sky || ''), night: sun.alt < -4 } : null;
+  tlHud(t, w, lt, moon, where);
+  tlCams(t);
+}
+
+// The photo fills its tile (object-fit: cover, so edges are cropped); size the box layer to the whole
+// image as drawn, so animal boxes in 0..1 photo coordinates land on the animal.
+function tlFitBoxes(tile) {
+  const img = tile.querySelector('img'), layer = tile.querySelector('.tl-boxes');
+  if (!img.naturalWidth) return;
+  const W = tile.clientWidth, H = tile.clientHeight, k = Math.max(W / img.naturalWidth, H / img.naturalHeight);
+  const w = img.naturalWidth * k, h = img.naturalHeight * k;
+  Object.assign(layer.style, { width: `${w}px`, height: `${h}px`, left: `${(W - w) / 2}px`, top: `${(H - h) / 2}px`, right: 'auto', bottom: 'auto' });
+}
+
+// Each tile shows the newest photo its camera took at or before the slider's time, with boxes around
+// any animals the detector found in it. Photos older than 45 minutes fade back.
+function tlCams(t) {
+  TL.data.cameras.forEach((c, ci) => {
+    const tile = $(`#tl-grid .tl-tile[data-cam="${ci}"]`);
+    if (!tile) return;
+    const ps = c.photos, p = ps[tlBisect(ps, t + 1, x => x[0]) - 1];
+    const img = tile.querySelector('img'), age = p ? (t - p[0]) / 60e3 : Infinity;
+    if (p && TL.shown[ci] !== p[2]) {
+      TL.shown[ci] = p[2];
+      img.classList.remove('in'); img.onload = () => { img.classList.add('in'); tlFitBoxes(tile); }; img.src = p[2];
+      const anims = TL.data.byPhoto[p[2]] || [];
+      tile.querySelector('.tl-boxes').innerHTML = anims.filter(a => a.box?.every(v => v != null)).map(a => {
+        const [x1, y1, x2, y2] = a.box, k = TL_KINDS[a.kind];
+        return `<div class="tl-box" style="left:${x1 * 100}%;top:${y1 * 100}%;width:${(x2 - x1) * 100}%;height:${(y2 - y1) * 100}%;--k:${k.color}"><span>${esc(a.buck || k.label.replace(', not labeled yet', ''))}</span></div>`;
+      }).join('');
+    }
+    if (!p) { TL.shown[ci] = null; img.removeAttribute('src'); tile.querySelector('.tl-boxes').innerHTML = ''; }
+    tile.classList.toggle('stale', age > 45);
+    tile.classList.toggle('empty', !p);
+    tile.querySelector('.tl-age').textContent = !p ? 'No photos yet'
+      : age < 1 ? 'Just now' : age < 60 ? `${Math.round(age)} min ago` : age < 48 * 60 ? `${Math.round(age / 60)} h ago · ${tlClock(p[0]).hm} ${tlClock(p[0]).ap}` : `Last photo ${tlDate(p[0])}`;
+    const near = TL.data.animals.filter(a => a.cam === ci && Math.abs(a.t - t) < 10 * 60e3);
+    const best = near.sort((a, b) => TL_KINDS[b.kind].rank - TL_KINDS[a.kind].rank)[0];
+    tile.classList.toggle('hot', !!best);
+    tile.style.setProperty('--k', best ? TL_KINDS[best.kind].color : 'transparent');
+    tile.querySelector('.tl-seen').innerHTML = best ? `${TL_SVG[best.kind]}<span>${esc(best.buck || TL_KINDS[best.kind].label.replace(', not labeled yet', ''))}${near.length > 1 ? ` · ${near.length}` : ''}</span>` : '';
+  });
+}
+
+// ---- slider
+const TL_ROW = { dates: 18, light: 12, temp: 30, lane: 26 };
+function tlSetRange(days) {
+  const d = TL.data, span = Math.min(days * DAY, Math.max(d.end - d.start, HOUR * 6));
+  TL.rangeDays = days;
+  let v0 = TL.t - span * .7;
+  v0 = Math.max(d.start, Math.min(v0, d.end + HOUR - span));
+  TL.v0 = v0; TL.v1 = v0 + span;
+}
+function tlPanel() {
+  const cams = TL.data.cameras;
+  const rows = [['', TL_ROW.dates], ['Light', TL_ROW.light], ['Temp', TL_ROW.temp], ...cams.map(c => [c, TL_ROW.lane])];
+  TL.trackH = rows.reduce((s, r) => s + r[1], 0) + 6;
+  const kinds = Object.entries(TL_KINDS);
+  $('#tl-panel').innerHTML = `
+    <div class="tl-bar">
+      <button class="tl-btn play" id="tl-play" title="Play (space)">${TL_SVG.play}</button>
+      <button class="tl-btn" id="tl-prev" title="Previous animal ([)">${TL_SVG.prev}</button>
+      <button class="tl-btn" id="tl-next" title="Next animal (])">${TL_SVG.next}</button>
+      <button class="tl-btn" id="tl-speed" title="Playback speed">${TL_SPEEDS.find(s => s[0] === TL.speed)[1]}</button>
+      <span class="tl-span" id="tl-span"></span>
+      <div class="tl-seg" id="tl-ranges">${TL_RANGES.map(([l, d, short]) => `<button data-days="${d}" class="${d === TL.rangeDays ? 'on' : ''}"><span class="long">${l}</span><span class="short">${short}</span></button>`).join('')}</div>
+      <button class="tl-btn" id="tl-latest" title="Jump to the newest photo">Latest</button>
+    </div>
+    <div class="tl-track" id="tl-track" tabindex="0">
+      <div class="tl-labels">${rows.map(([r, h]) => `<div style="--h:${h}px">${typeof r === 'string' ? r : `<i style="background:${r.color}"></i>${esc(r.name || r.camera_id)}`}</div>`).join('')}</div>
+      <div class="tl-plot" id="tl-plot" style="height:${TL.trackH}px"><canvas id="tl-canvas"></canvas><div class="tl-icons" id="tl-icons"></div>
+        <div class="tl-hover" id="tl-hover"><span></span></div><div class="tl-head" id="tl-head"></div></div>
+    </div>
+    <div class="tl-legend">${kinds.map(([k, v]) => `<span style="color:${v.color}">${TL_SVG[k]}<em style="color:var(--dim);font-style:normal">${v.label}</em></span>`).join('')}
+      <span class="note" id="tl-note"></span></div>`;
+  $('#tl-play').onclick = () => tlPlay(!TL.playing);
+  $('#tl-prev').onclick = () => tlJump(-1);
+  $('#tl-next').onclick = () => tlJump(1);
+  $('#tl-latest').onclick = () => { tlSeek(TL.data.end); tlSetRange(TL.rangeDays); tlDrawTrack(); };
+  $('#tl-speed').onclick = () => {
+    const i = (TL_SPEEDS.findIndex(s => s[0] === TL.speed) + 1) % TL_SPEEDS.length;
+    TL.speed = TL_SPEEDS[i][0]; $('#tl-speed').textContent = TL_SPEEDS[i][1];
+  };
+  $('#tl-ranges').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    tlSetRange(Number(b.dataset.days));
+    $$('#tl-ranges button').forEach(x => x.classList.toggle('on', x === b));
+    tlDrawTrack();
+  };
+  const plot = $('#tl-plot');
+  const xToT = x => TL.v0 + (x / plot.clientWidth) * (TL.v1 - TL.v0);
+  let dragging = false;
+  plot.addEventListener('pointerdown', e => {
+    const ico = e.target.closest('.tl-ico');
+    if (ico) { tlSeek(Number(ico.dataset.t)); return; }
+    dragging = true; plot.setPointerCapture(e.pointerId); tlPlay(false);
+    tlSeek(xToT(e.offsetX));
+  });
+  plot.addEventListener('pointermove', e => {
+    const r = plot.getBoundingClientRect(), x = e.clientX - r.left;
+    if (dragging) tlSeek(xToT(Math.max(0, Math.min(r.width, x))));
+    const hv = $('#tl-hover');
+    hv.style.display = 'block'; hv.style.left = `${x}px`;
+    hv.querySelector('span').textContent = tlStamp(xToT(x));
+    hv.querySelector('span').style.transform = x > r.width - 130 ? 'translateX(calc(-100% - 12px))' : '';
+    tlHoverIcon(e);
+  });
+  plot.addEventListener('pointerup', () => { dragging = false; });
+  plot.addEventListener('pointerleave', () => { $('#tl-hover').style.display = 'none'; $('#tl-card').style.display = 'none'; });
+  plot.addEventListener('wheel', e => {
+    e.preventDefault();
+    const r = plot.getBoundingClientRect(), span = TL.v1 - TL.v0;
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && !e.ctrlKey) {
+      tlPan(e.deltaX / r.width * span);
+    } else {
+      const f = Math.exp(e.deltaY * (e.ctrlKey ? .012 : .0025)), at = xToT(e.clientX - r.left);
+      const ns = Math.max(2 * HOUR, Math.min(TL.data.end - TL.data.start + 2 * HOUR, span * f));
+      TL.v0 = at - (at - TL.v0) * ns / span; TL.v1 = TL.v0 + ns;
+      tlPan(0);
+      $$('#tl-ranges button').forEach(x => x.classList.remove('on'));
+    }
+  }, { passive: false });
+}
+function tlPan(dt) {
+  const span = TL.v1 - TL.v0, lo = TL.data.start - span * .1, hi = TL.data.end + span * .1;
+  TL.v0 = Math.max(lo, Math.min(hi - span, TL.v0 + dt)); TL.v1 = TL.v0 + span;
+  tlDrawTrack();
+}
+function tlSizeCanvas() {
+  const fx = $('#tl-wind'), dpr = Math.min(2, devicePixelRatio || 1);
+  if (fx) { fx.width = fx.clientWidth * dpr; fx.height = fx.clientHeight * dpr; }
+  const c = $('#tl-canvas');
+  if (c) { c.width = c.clientWidth * dpr; c.height = c.clientHeight * dpr; }
+  TL.dpr = dpr;
+  tlDrawTrack();
+}
+
+function tlDrawTrack() {
+  const c = $('#tl-canvas');
+  if (!c || !c.width) return;
+  const g = c.getContext('2d'), dpr = TL.dpr, W = c.width / dpr, H = c.height / dpr, { v0, v1 } = TL, span = v1 - v0;
+  const X = t => (t - v0) / span * W;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+  const where = tlWhere();
+  let y = 0;
+  // day dividers + labels
+  const yDates = y; y += TL_ROW.dates;
+  const yLight = y; y += TL_ROW.light;
+  const yTemp = y; y += TL_ROW.temp;
+  const yLanes = y;
+  g.font = '600 10.5px -apple-system, system-ui, sans-serif'; g.textBaseline = 'middle';
+  const off = tlOffset(v0) * 60e3;
+  const firstMid = Math.ceil((v0 + off) / DAY) * DAY - off;
+  const step = span > 20 * DAY ? 7 : span > 9 * DAY ? 2 : 1;
+  for (let m = firstMid - DAY, k = 0; m < v1 + DAY; m += DAY, k++) {
+    const x = X(m);
+    g.fillStyle = 'rgba(255,255,255,.07)'; g.fillRect(Math.round(x), yLight, 1, H - yLight);
+    if (k % step === 0 && x > -40 && x < W) {
+      g.fillStyle = '#c9d0d9';
+      g.fillText(tlDate(m + HOUR), x + 5, yDates + 8);
+    }
+  }
+  // sub-day hour ticks when zoomed in
+  if (span < 4 * DAY) {
+    const hstep = span < 1.5 * DAY ? 3 : 6;
+    g.fillStyle = '#7d8691'; g.font = '500 9.5px -apple-system, system-ui, sans-serif';
+    for (let h = Math.ceil((v0 + off) / HOUR) * HOUR - off; h < v1; h += HOUR) {
+      const lh = tlLocal(h).getUTCHours();
+      if (lh % hstep || lh === 0) continue;
+      const x = X(h);
+      g.fillRect(x, yLight - 3, 1, 2);
+      if (span < 2.2 * DAY) g.fillText(`${(lh % 12) || 12}${lh < 12 ? 'a' : 'p'}`, x + 3, yDates + 8);
+    }
+  }
+  // light band from the sun's altitude
+  const bandStep = 2;
+  for (let x = 0; x < W; x += bandStep) {
+    g.fillStyle = bandColor(sunPos(v0 + (x / W) * span, where.lat, where.lon).alt);
+    g.fillRect(x, yLight + 1, bandStep + .5, TL_ROW.light - 3);
+  }
+  // temperature line
+  const ws = TL.data.weather.filter(w => w.temp != null && w.t >= v0 - 6 * HOUR && w.t <= v1 + 6 * HOUR);
+  if (ws.length > 1) {
+    const lo = Math.min(...ws.map(w => w.temp)), hi = Math.max(...ws.map(w => w.temp)), pad = 5;
+    const Y = t => yTemp + pad + (1 - (t - lo) / Math.max(1, hi - lo)) * (TL_ROW.temp - pad * 2);
+    const grad = g.createLinearGradient(0, yTemp, 0, yTemp + TL_ROW.temp);
+    grad.addColorStop(0, 'rgba(255,190,120,.28)'); grad.addColorStop(1, 'rgba(255,190,120,0)');
+    g.beginPath();
+    let gap = false;
+    ws.forEach((w, i) => {
+      const x = X(w.t), yy = Y(w.temp);
+      if (i === 0 || w.t - ws[i - 1].t > 4 * HOUR) { g.moveTo(x, yy); gap = gap || i > 0; } else g.lineTo(x, yy);
+    });
+    g.strokeStyle = 'rgba(255,196,130,.9)'; g.lineWidth = 1.5; g.lineJoin = 'round'; g.stroke();
+    if (!gap) { g.lineTo(X(ws.at(-1).t), yTemp + TL_ROW.temp); g.lineTo(X(ws[0].t), yTemp + TL_ROW.temp); g.closePath(); g.fillStyle = grad; g.fill(); }
+    g.fillStyle = '#8b939e'; g.font = '500 9.5px -apple-system, system-ui, sans-serif';
+    g.fillText(`${Math.round(hi)}°`, W - 26, yTemp + 7); g.fillText(`${Math.round(lo)}°`, W - 26, yTemp + TL_ROW.temp - 6);
+  } else {
+    g.fillStyle = '#6c757f'; g.font = '500 10px -apple-system, system-ui, sans-serif';
+    g.fillText('No weather from Reveal in this range', 8, yTemp + TL_ROW.temp / 2);
+  }
+  // lanes: one per camera, with a hairline for every photo the camera took
+  TL.data.cameras.forEach((cam, i) => {
+    const ly = yLanes + i * TL_ROW.lane;
+    g.fillStyle = i % 2 ? 'rgba(255,255,255,.025)' : 'rgba(255,255,255,.045)';
+    g.fillRect(0, ly, W, TL_ROW.lane);
+    g.fillStyle = cam.color; g.globalAlpha = .38;
+    const ps = cam.photos, a = tlBisect(ps, v0, p => p[0]), b = tlBisect(ps, v1, p => p[0]);
+    let lastX = -9;
+    for (let j = a; j < b; j++) {
+      const x = X(ps[j][0]);
+      if (x - lastX < .8) continue;
+      g.fillRect(x, ly + 7, 1, TL_ROW.lane - 14); lastX = x;
+    }
+    g.globalAlpha = 1;
+  });
+  $('#tl-span').textContent = `${tlDate(v0, { month: 'short', day: 'numeric' })} – ${tlDate(v1, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  tlIcons(X, yLanes);
+  tlHead();
+}
+
+function tlIcons(X, yLanes) {
+  const box = $('#tl-icons'), W = box.clientWidth;
+  const all = TL.data.animals.filter(a => a.t >= TL.v0 && a.t <= TL.v1 && a.cam != null);
+  const groups = [];
+  const open = {};
+  for (const a of all) {
+    const x = X(a.t), g = open[a.cam];
+    if (g && x - g.x < 28) { g.items.push(a); if (TL_KINDS[a.kind].rank > TL_KINDS[g.kind].rank) g.kind = a.kind; continue; }
+    open[a.cam] = { x, cam: a.cam, kind: a.kind, items: [a] };
+    groups.push(open[a.cam]);
+  }
+  TL.groups = groups;
+  box.innerHTML = groups.filter(g => g.x > -12 && g.x < W + 12).map((g, i) => {
+    const k = TL_KINDS[g.kind], target = g.items.some(a => a.tag === 'target');
+    return `<button class="tl-ico${target ? ' target' : ''}" data-g="${i}" data-t="${g.items[0].t}" style="left:${g.x}px; top:${yLanes + g.cam * TL_ROW.lane + TL_ROW.lane / 2}px; --k:${k.color}">${TL_SVG[g.kind]}${g.items.length > 1 ? `<b>${g.items.length > 99 ? '99+' : g.items.length}</b>` : ''}</button>`;
+  }).join('');
+  const total = TL.data.animals.length;
+  $('#tl-note').textContent = !total ? 'No animals found yet. Detection finds them in new photos.'
+    : TL.data.animals.every(a => a.kind === 'animal') ? 'Add an AI key in Settings to label bucks, does and fawns.' : '';
+}
+function tlHoverIcon(e) {
+  const card = $('#tl-card'), ico = e.target.closest('.tl-ico');
+  if (!ico) { card.style.display = 'none'; return; }
+  const g = TL.groups[Number(ico.dataset.g)], a = g.items.find(x => x.buck) || g.items[0], k = TL_KINDS[g.kind];
+  const cam = TL.data.cameras[g.cam], kinds = {};
+  g.items.forEach(x => { kinds[x.kind] = (kinds[x.kind] || 0) + 1; });
+  card.innerHTML = `<img src="${a.crop || a.photo}" alt=""><div><b style="color:${k.color}">${esc(a.buck || k.label)}</b>
+    ${esc(cam.name || '')} · ${tlStamp(g.items[0].t)}${g.items.length > 1 ? `<br>${Object.entries(kinds).map(([kk, n]) => `${n} ${TL_KINDS[kk].label.toLowerCase()}`).join(', ')} in this stretch` : ''}
+    ${a.summary ? `<br>${esc(a.summary)}` : a.species ? `<br>${esc(a.species)}` : ''}</div>`;
+  card.style.display = 'block';
+  const r = ico.getBoundingClientRect();
+  card.style.left = `${Math.max(10, Math.min(innerWidth - 240, r.left + r.width / 2 - 115))}px`;
+  card.style.top = `${r.top - card.offsetHeight - 12}px`;
+}
+
+function tlHead() {
+  const plot = $('#tl-plot');
+  if (!plot) return;
+  const x = (TL.t - TL.v0) / (TL.v1 - TL.v0) * plot.clientWidth;
+  $('#tl-head').style.transform = `translateX(${x}px)`;
+  $('#tl-head').style.display = x < -2 || x > plot.clientWidth + 2 ? 'none' : '';
+  $$('#tl-icons .tl-ico').forEach(b => b.classList.toggle('near', Math.abs(Number(b.dataset.t) - TL.t) < 12 * 60e3));
+}
+
+function tlSeek(t) {
+  TL.t = Math.max(TL.data.start, Math.min(TL.data.end, t));
+  const span = TL.v1 - TL.v0;
+  if (TL.t < TL.v0 || TL.t > TL.v1) { TL.v0 = TL.t - span / 2; TL.v1 = TL.v0 + span; tlDrawTrack(); }
+  TL.dirty = true;
+  clearTimeout(TL.hashT);
+  TL.hashT = setTimeout(() => history.replaceState(null, '', `#timeline/${Math.round(TL.t)}`), 400);
+}
+function tlJump(dir) {
+  const as = TL.data.animals;
+  if (!as.length) return;
+  const gap = 20 * 60e3;  // skip the rest of the same visit
+  const a = dir > 0 ? as.find(x => x.t > TL.t + gap) : [...as].reverse().find(x => x.t < TL.t - gap);
+  if (a) { tlPlay(false); tlSeek(a.t); }
+}
+function tlPlay(on) {
+  TL.playing = on;
+  if (on && TL.t >= TL.data.end - 60e3) tlSeek(TL.data.start);
+  const b = $('#tl-play'); if (b) b.innerHTML = on ? TL_SVG.pause : TL_SVG.play;
+}
+function tlKey(e) {
+  if (view !== 'timeline' || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+  if (e.key === ' ') { e.preventDefault(); tlPlay(!TL.playing); }
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    e.preventDefault(); tlPlay(false);
+    tlSeek(TL.t + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? HOUR : 5 * 60e3));
+  }
+  else if (e.key === ']') tlJump(1);
+  else if (e.key === '[') tlJump(-1);
+}
+
+// ---- the scene at TL.t
+function tlFrame(now) {
+  const dt = TL.lastFrame ? Math.min(100, now - TL.lastFrame) : 16;
+  TL.lastFrame = now;
+  if (TL.playing) {
+    tlSeek(TL.t + dt * TL.speed);
+    if (TL.t >= TL.data.end) tlPlay(false);
+    const span = TL.v1 - TL.v0;
+    if (TL.t > TL.v0 + span * .85) { TL.v0 = TL.t - span * .15; TL.v1 = TL.v0 + span; tlDrawTrack(); }
+  }
+  if (TL.dirty) { TL.dirty = false; tlScene(); tlHead(); }
+  tlWind(dt);
+  TL.raf = requestAnimationFrame(tlFrame);
+}
+
+
+function tlHud(t, w, lt, moon, where) {
+  const clock = tlClock(t), color = TL_LIGHT[lt?.kind] || '#999';
+  const lightName = { day: 'Daylight', shooting: 'Shooting light', night: 'Night' }[lt?.kind] || 'Light unknown';
+  const trend = { R: ['Rising', 'M3 11 8 5l5 6'], S: ['Steady', 'M3 8h10'], F: ['Falling', 'M3 5l5 6 5-6'] }[w?.trend];
+  const wind = w?.wind_deg != null ? `<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15" fill="none" stroke="rgba(255,255,255,.18)"/>
+      <text x="17" y="6.4" text-anchor="middle" font-size="5.5" font-weight="700" fill="#8f98a3">N</text>
+      <g transform="rotate(${w.wind_deg} 17 17)"><path d="M17 6.5v19M12.6 21l4.4 4.6 4.4-4.6" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g></svg>` : '';
+  const r = 13, k = moon.illum, rx = r * Math.abs(1 - 2 * k);
+  const moonSvg = `<svg width="30" height="30" viewBox="-15 -15 30 30"><circle r="${r}" fill="#2a3140"/>
+      <path d="M0 ${-r}A${r} ${r} 0 0 ${moon.waxing ? 1 : 0} 0 ${r}A${rx} ${r} 0 0 ${(k > .5) === moon.waxing ? 1 : 0} 0 ${-r}Z" fill="#f1ead6"/></svg>`;
+  const sky = w?.sky ? (lt?.kind === 'night' ? w.sky.replace(/partly sunny/i, 'Partly cloudy').replace(/sunny/i, 'clear').replace(/^clear$/i, 'Clear') : w.sky) : null;
+  const agoMin = w ? Math.round(Math.abs(w.t - t) / 60e3) : null;
+  $('#tl-hud').innerHTML = `
+    <div class="tl-date">${tlDate(t, { weekday: 'long', month: 'long', day: 'numeric' })}</div>
+    <div class="tl-time">${clock.hm}<small>${clock.ap}</small></div>
+    <div class="tl-light" style="color:${color}"><i style="background:${color}"></i>${lightName}${lt ? `<span>· ${lt.label}</span>` : ''}</div>
+    <div class="tl-metrics">
+      <div class="tl-m"><svg width="22" height="30" viewBox="0 0 22 30"><path d="M8 4.5a3 3 0 0 1 6 0v12.2a6 6 0 1 1-6 0z" fill="none" stroke="#ffc482" stroke-width="1.6"/><circle cx="11" cy="22" r="3.2" fill="#ffc482"/></svg>
+        <div title="${w?.lo != null ? `12-hour range ${w.lo}° to ${w.hi}°` : ''}"><b>${w?.temp != null ? `${Math.round(w.temp)}°F` : '—'}</b><span>${w?.dep ? `${w.dep > 0 ? '+' : '−'}${Math.abs(w.dep)}° vs yesterday` : w?.lo != null ? `${w.lo}° to ${w.hi}° over 12 h` : 'No reading'}</span></div></div>
+      <div class="tl-m">${wind}<div><b>${w?.wind_dir ? `${w.wind_dir} ${Math.round(w.wind)}` : '—'}<small style="font-size:11px;font-weight:500;color:var(--dim)"> mph</small></b>
+        <span>${w?.gust != null ? `Gusts ${Math.round(w.gust)} mph` : 'No wind reading'}</span></div></div>
+      <div class="tl-m"><svg width="22" height="22" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="rgba(255,255,255,.2)"/>${trend ? `<path d="${trend[1]}" fill="none" stroke="#9fd0ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>` : ''}</svg>
+        <div><b>${w?.pressure != null ? w.pressure.toFixed(2) : '—'}<small style="font-size:11px;font-weight:500;color:var(--dim)"> inHg</small></b><span>${trend ? trend[0] : 'Pressure'}</span></div></div>
+      <div class="tl-m">${moonSvg}<div><b>${Math.round(moon.illum * 100)}%</b><span>${moon.name}</span></div></div>
+    </div>
+    <div class="tl-src${!w ? ' warn' : ''}">${[
+      w ? `${esc(sky || 'Weather')} · Reveal reading ${agoMin < 2 ? 'at this time' : `${agoMin} min ${w.t < t ? 'earlier' : 'later'}`}` : 'No Reveal weather within 3 hours of this time',
+      where.label ? `Sun times for ${esc(where.label)}` : 'Sun times are approximate',
+      `Camera time, ${tlUtcLabel(t)}`].filter(Boolean).join('<br>')}</div>`;
+}
+
+
+
+// ---- weather layers: a soft drifting cloud texture, and wind streaks (or rain) on a canvas
+function tlClouds() {
+  const N = 256, c = document.createElement('canvas'); c.width = c.height = N;
+  const g = c.getContext('2d'), img = g.createImageData(N, N);
+  const seed = [...Array(64 * 64)].map(() => Math.random());
+  const noise = (x, y, p) => {  // tileable value noise, period p
+    const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+    const v = (a, b) => seed[((a % p + p) % p) * 64 + ((b % p + p) % p)];
+    const s = t => t * t * (3 - 2 * t), u = s(xf), w = s(yf);
+    return (v(xi, yi) * (1 - u) + v(xi + 1, yi) * u) * (1 - w) + (v(xi, yi + 1) * (1 - u) + v(xi + 1, yi + 1) * u) * w;
+  };
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    let n = 0, amp = .55, f = 4;
+    for (let o = 0; o < 5; o++) { n += amp * noise(x / N * f, y / N * f, f); amp *= .5; f *= 2; }
+    const a = Math.max(0, Math.min(1, (n - .42) * 2.6));
+    const i = (y * N + x) * 4;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = 255; img.data[i + 3] = a * 235;
+  }
+  g.putImageData(img, 0, 0);
+  $('.tl-clouds').style.backgroundImage = `url(${c.toDataURL()})`;
+  TL.streaks = [...Array(150)].map(() => ({ x: Math.random(), y: Math.random(), l: .4 + Math.random() * .6, a: .25 + Math.random() * .75 }));
+}
+function tlWind(dt) {
+  const cv = $('#tl-wind');
+  if (!cv) return;
+  const g = cv.getContext('2d'), W = cv.width, H = cv.height, w = TL.wind;
+  g.clearRect(0, 0, W, H);
+  if (!w || w.deg == null) return;
+  const toward = rad(w.deg + 180), dx = Math.sin(toward), dy = -Math.cos(toward);
+  const sp = (0.00002 + w.speed * 0.0000075) * dt;  // screen fractions per frame
+  TL.cloudX += dx * (.004 + w.speed * .0016) * dt; TL.cloudY += dy * (.004 + w.speed * .0016) * dt;
+  $('.tl-clouds').style.backgroundPosition = `${TL.cloudX.toFixed(1)}px ${TL.cloudY.toFixed(1)}px`;
+  const n = w.rain || w.snow ? 150 : Math.min(150, Math.round(w.speed * 9));
+  const dpr = TL.dpr || 1, len = (w.rain ? 18 : 10 + w.speed * 2.2) * dpr;
+  g.lineCap = 'round';
+  for (let i = 0; i < n; i++) {
+    const s = TL.streaks[i];
+    if (w.rain) { s.x += dx * sp * .5; s.y += sp * 9; } else if (w.snow) { s.x += dx * sp * .6; s.y += sp * 1.6; } else { s.x += dx * sp * (1 + s.l); s.y += dy * sp * (1 + s.l); }
+    if (s.x < -.05) s.x += 1.1; if (s.x > 1.05) s.x -= 1.1; if (s.y < -.05) s.y += 1.1; if (s.y > 1.05) s.y -= 1.1;
+    const x = s.x * W, y = s.y * H;
+    const alpha = (w.night ? .09 : .16) * s.a * (w.rain ? 1.6 : 1);
+    if (w.snow) { g.fillStyle = `rgba(255,255,255,${alpha * 3})`; g.beginPath(); g.arc(x, y, 1.6 * dpr * s.l, 0, 7); g.fill(); continue; }
+    const vx = w.rain ? dx * .25 : dx, vy = w.rain ? 1 : dy, L2 = len * s.l;
+    const gr = g.createLinearGradient(x, y, x - vx * L2, y - vy * L2);
+    gr.addColorStop(0, `rgba(255,255,255,${alpha})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.strokeStyle = gr; g.lineWidth = (w.rain ? 1 : 1.3) * dpr;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x - vx * L2, y - vy * L2); g.stroke();
+  }
+}
+
+// ------------------------------------------------------------------ engine room (calendar of what came in)
+// Every day the cameras sent photos: how many, and how many bucks, does and fawns were in them. Days are
+// the cameras' own calendar days. Shade is photo count (one blue ramp, darker = more).
+
+const ER_KINDS = { buck: ['Bucks', '#b7791f'], doe: ['Does', '#c0625a'], fawn: ['Fawns', '#a8843f'] };
+const ER_RAMP = ['#e3eefc', '#cde2fb', '#b7d3f6', '#9ec5f4', '#86b6ef'];  // light steps of the blue ramp, so text stays dark and readable
+let er = null;
+
+async function showEngine() {
+  const data = await api('/api/engine');
+  if (view !== 'engine') return;
+  const months = [...new Set(data.days.map(d => d.date.slice(0, 7)))];
+  er = { data, months, month: er?.month && months.includes(er.month) ? er.month : months.at(-1), sel: er?.sel ?? data.days.at(-1)?.date,
+         byDate: Object.fromEntries(data.days.map(d => [d.date, d])), max: Math.max(1, ...data.days.map(d => d.photos)), codes: erCodes(data.cameras) };
+  renderEngine();
+}
+
+const erIcon = (k, color) => TL_SVG[k].replace('<svg ', `<svg style="color:${color}" `);
+const erShade = n => n ? ER_RAMP[Math.min(ER_RAMP.length - 1, Math.floor(Math.sqrt(n / er.max) * ER_RAMP.length))] : null;
+const erFmt = n => n.toLocaleString('en-US');
+// Short camera codes for the calendar: one-word names stay (up to 5 letters), longer ones become their
+// initials plus any number, e.g. "Harry’s Oats" -> HO, "Ken’s tactacam 1" -> KT1. Made unique if two collide.
+const ER_DOTS = ['#2a78d6', '#e07b1f', '#7c5cd6', '#1f9e74', '#d6456b', '#9a8a12', '#4a90b8', '#b8509a'];
+function erCodes(cams) {
+  const seen = {};
+  return cams.map(c => {
+    const words = (c.name || c.camera_id).replace(/[’']s\b/gi, '').split(/\s+/).filter(Boolean);
+    let code = words.length === 1 ? words[0].slice(0, 5) : words.map(w => /^\d+$/.test(w) ? w : w[0].toUpperCase()).join('');
+    seen[code] = (seen[code] || 0) + 1;
+    return seen[code] > 1 ? `${code}${seen[code]}` : code;
+  });
+}
+
+function renderEngine() {
+  const { data } = er, t = data.totals;
+  if (!data.days.length) { $('#main').innerHTML = '<h1 class="title">Engine Room</h1><div class="empty">No photos yet. Sync from Reveal first.</div>'; return; }
+  const labeled = t.buck + t.doe + t.fawn + t.other;
+  const tile = (n, label, extra = '') => `<div class="er-tile"><b>${erFmt(n)}</b><span>${label}</span>${extra}</div>`;
+  $('#main').innerHTML = `<h1 class="title">Engine Room</h1>
+    <div class="er"><div class="er-sub">What's come in from Reveal, day by day. Pick a day for its cameras and hours.</div>
+    <div class="er-tiles">
+      ${tile(t.photos, `Photos over ${t.days} days`)}
+      ${tile(t.detected, 'Checked for animals', `<div class="er-bar"><i style="width:${(100 * t.detected / Math.max(1, t.photos)).toFixed(1)}%"></i></div>`)}
+      ${tile(t.animals, 'Animals found')}
+      ${Object.entries(ER_KINDS).map(([k, [label, c]]) => tile(t[k], `${erIcon(k, c)}${label}`)).join('')}
+    </div>
+    <div class="er-wrap"><section id="er-calwrap"></section><aside class="er-side" id="er-side"></aside></div>
+    ${!labeled && t.animals ? `<div class="er-note">${erFmt(t.animals)} animals are waiting to be labeled. Bucks, does and fawns are counted once an AI key is added in Settings.</div>` : ''}
+    <div class="er-note">A sighting is one deer in one photo, so a buck that stays for ten photos counts ten times. Named bucks are listed per day once you've named them in Review.</div>
+    </div>`;
+  renderCalendar();
+  renderDay();
+}
+
+function renderCalendar() {
+  const [y, m] = er.month.split('-').map(Number), first = new Date(Date.UTC(y, m - 1, 1)), days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const i = er.months.indexOf(er.month), lead = first.getUTCDay();
+  const cells = [];
+  for (let k = 0; k < lead; k++) cells.push('<div class="er-day out"></div>');
+  for (let dd = 1; dd <= days; dd++) {
+    const key = `${er.month}-${String(dd).padStart(2, '0')}`, d = er.byDate[key];
+    if (!d) { cells.push(`<div class="er-day none"><span class="er-n">${dd}</span></div>`); continue; }
+    // Compact: date and buck/doe marks on top, then one line per camera: photos, checked, percent checked.
+    const pct = (n, of) => of ? Math.floor(100 * n / of) : 0;
+    const marks = (d.buck ? `<span class="er-mk" title="${erFmt(d.buck)} buck sightings">${erIcon('buck', ER_KINDS.buck[1])}${erFmt(d.buck)}</span>` : '')
+      + (d.doe ? `<span class="er-mk" title="${erFmt(d.doe)} doe sightings">${erIcon('doe', ER_KINDS.doe[1])}${erFmt(d.doe)}</span>` : '');
+    // Same row order every day, so a camera is always on the same line.
+    const rows = er.data.cameras.map((c, j) => {
+      const n = d.cams[j], done = d.cams_detected[j], pc = pct(done, n);
+      return `<span class="er-row${n && pc === 100 ? ' done' : ''}${n ? '' : ' nil'}" title="${esc(c.name)}: ${erFmt(n)} photos, ${erFmt(done)} checked (${pc}%)">
+        <i style="width:${n ? pc : 0}%"></i><b><u style="background:${ER_DOTS[j % ER_DOTS.length]}"></u>${esc(er.codes[j])}</b>${n ? `<em>${erFmt(done)}/${erFmt(n)}</em><em>${pc}%</em>` : '<em>—</em><em></em>'}</span>`;
+    }).join('');
+    cells.push(`<button class="er-day${key === er.sel ? ' sel' : ''}" data-day="${key}" style="--heat:${erShade(d.photos)}">
+      <span class="er-top"><span class="er-n">${dd}</span><span class="er-marks">${marks}</span></span>
+      <span class="er-tot">${erFmt(d.photos)}<small> photos</small><small class="er-totp">${pct(d.detected, d.photos)}%</small></span>
+      <span class="er-rows">${rows}</span></button>`);
+  }
+  const label = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  $('#er-calwrap').innerHTML = `<div class="er-head"><h2>${label}</h2>
+      <button class="er-nav" data-month="-1" ${i <= 0 ? 'disabled' : ''} title="Previous month">‹</button>
+      <button class="er-nav" data-month="1" ${i >= er.months.length - 1 ? 'disabled' : ''} title="Next month">›</button>
+      <div class="er-scale">Fewer photos ${ER_RAMP.map(c => `<i style="background:${c}"></i>`).join('')} More</div></div>
+    <div class="er-key">${er.data.cameras.map((c, j) => `<span class="er-cam-key"><u style="background:${ER_DOTS[j % ER_DOTS.length]}"></u><b>${esc(er.codes[j])}</b> ${esc(c.name || c.camera_id)}</span>`).join('')}</div>
+    <div class="er-key">Each line is <b>checked for animals / photos</b> and <b>% checked</b>; the fill turns green when a camera's day is done. ${erIcon('buck', ER_KINDS.buck[1])} marks a day with a buck.</div>
+    <div class="er-cal">${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div class="er-dow">${d}</div>`).join('')}${cells.join('')}</div>`;
+  $$('#er-calwrap [data-month]').forEach(b => b.onclick = () => { er.month = er.months[i + Number(b.dataset.month)]; renderCalendar(); });
+  $$('#er-calwrap [data-day]').forEach(b => {
+    b.onclick = () => { er.sel = b.dataset.day; renderCalendar(); renderDay(); };
+    b.onmousemove = e => {
+      const d = er.byDate[b.dataset.day], tip = $('#tip');
+      tip.innerHTML = `<b>${erLong(d.date)}</b><br>${erFmt(d.photos)} photos${er.data.cameras.map((c, j) => d.cams[j] ? `<br>${esc(c.name)}: ${erFmt(d.cams[j])}` : '').join('')}`;
+      tip.style.display = 'block'; tip.style.left = `${Math.min(innerWidth - 270, e.clientX + 14)}px`; tip.style.top = `${e.clientY + 14}px`;
+    };
+    b.onmouseleave = () => { $('#tip').style.display = 'none'; };
+  });
+}
+
+const erLong = key => new Date(`${key}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
+
+function renderDay() {
+  const d = er.byDate[er.sel], side = $('#er-side');
+  if (!d) { side.innerHTML = '<div class="meta">Pick a day.</div>'; return; }
+  const camMax = Math.max(1, ...d.cams), hMax = Math.max(1, ...d.hours);
+  const hourLabel = h => `${(h % 12) || 12} ${h < 12 ? 'AM' : 'PM'}`;
+  side.innerHTML = `<h3>${erLong(d.date)}</h3>
+    <div class="meta">${erFmt(d.photos)} photos · ${erFmt(d.animals)} animals found${d.detected < d.photos ? ` · ${erFmt(d.photos - d.detected)} photos not checked yet` : ''}</div>
+    <div class="er-counts">${Object.entries(ER_KINDS).map(([k, [label, c]]) => `<div><b>${erFmt(d[k])}</b><span>${erIcon(k, c)}${label}</span></div>`).join('')}
+      <div><b>${erFmt(d.unlabeled + d.other)}</b><span>${erIcon('animal', '#6a7079')}Other</span></div></div>
+    <h4>Photos by camera</h4>
+    ${er.data.cameras.map((c, j) => `<div class="er-cam"><span>${esc(c.name || c.camera_id)}</span><div><i style="width:${100 * d.cams[j] / camMax}%"></i></div><em>${erFmt(d.cams[j])}</em></div>`).join('')}
+    <h4>Photos by hour</h4>
+    <div class="er-hours">${d.hours.map((n, h) => `<i style="height:${100 * n / hMax}%" data-h="${h}" data-n="${n}"></i>`).join('')}</div>
+    <div class="er-hlabels"><span>12 AM</span><span>6 AM</span><span>Noon</span><span>6 PM</span><span>11 PM</span></div>
+    ${d.named.length ? `<h4>Named bucks</h4><div class="er-named">${d.named.map(([n, c]) => `<span>${esc(n)} · ${c}</span>`).join('')}</div>` : ''}
+    <button class="btn primary er-open" id="er-open">Open this day in Timeline</button>`;
+  $('#er-open').onclick = () => go('timeline', d.noon_ms);
+  $$('.er-hours i').forEach(b => {
+    b.onmousemove = e => { const tip = $('#tip'); tip.innerHTML = `${hourLabel(+b.dataset.h)}: ${erFmt(+b.dataset.n)} photos`; tip.style.display = 'block'; tip.style.left = `${e.clientX + 12}px`; tip.style.top = `${e.clientY - 34}px`; };
+    b.onmouseleave = () => { $('#tip').style.display = 'none'; };
+  });
+}
+
 // ------------------------------------------------------------------ settings / first-run setup
 
 let cfg = null;
@@ -995,18 +1977,20 @@ document.addEventListener('change', async e => {
   }
 });
 
-// ------------------------------------------------------------------ navigation (hash routes: #feed, #bucks, #buck/2, #review/372, #map, #settings)
+// ------------------------------------------------------------------ navigation (hash routes: #feed, #timeline/<ms>, #engine, #bucks, #buck/2, #review/372, #map, #settings)
 
 async function render() {
   const [v, a] = (location.hash.slice(1) || 'feed').split('/');
-  view = ['feed', 'bucks', 'buck', 'review', 'map', 'settings'].includes(v) ? v : 'feed';
+  view = ['feed', 'timeline', 'bucks', 'buck', 'review', 'map', 'engine', 'settings'].includes(v) ? v : 'feed';
   arg = a ?? null;
   const tab = view === 'buck' ? 'bucks' : view;
   $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.go === tab));
-  $('#season').style.visibility = view === 'settings' ? 'hidden' : '';
+  $('#season').style.visibility = ['settings', 'timeline', 'engine'].includes(view) ? 'hidden' : '';
   if (lmap && view !== 'map') { lmap.remove(); lmap = null; }
+  if (view !== 'timeline') tlDestroy();
+  document.body.classList.toggle('tl-on', view === 'timeline');
   if (view === 'buck') await showBuck(Number(arg));
-  else await ({ feed: showFeed, bucks: showBucks, review: showReview, map: showMap, settings: () => showSettings() }[view])();
+  else await ({ feed: showFeed, timeline: showTimeline, engine: showEngine, bucks: showBucks, review: showReview, map: showMap, settings: () => showSettings() }[view])();
   refreshCounts();
 }
 
@@ -1153,7 +2137,7 @@ async function watchJob() {
     $('#sync').style.display = $('[data-go="settings"]').style.display = 'none';
     document.body.classList.add('demo');
     $('#job').textContent = `Read-only demo with real trail-camera data from ${DEMO.exported}. Browse freely; changes aren’t saved.`;
-    if (!DEMO.map) $('[data-go="map"]').style.display = 'none';
+    if (!DEMO.map) $('[data-go="map"]').style.display = $('[data-go="timeline"]').style.display = 'none';
   }
   await loadSeasons();
   const [s, st] = DEMO ? [{}, {}] : await Promise.all([api('/api/settings'), api('/api/stats?season=all')]);

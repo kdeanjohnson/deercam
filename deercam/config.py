@@ -161,3 +161,17 @@ class Settings:
 
 settings = Settings()
 settings.load_saved()
+
+
+def torch_device() -> str:
+    """Best available torch device: NVIDIA GPU (Windows/Linux), Apple GPU (Mac), else CPU.
+    TORCH_DEVICE=cpu|mps|cuda in .env overrides it, e.g. if the Apple GPU ever stalls."""
+    import torch
+    forced = (_env("TORCH_DEVICE") or "").strip().lower()
+    if forced:
+        return forced
+    if torch.cuda.is_available():
+        return "cuda"
+    if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"

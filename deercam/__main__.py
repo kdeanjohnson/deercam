@@ -32,6 +32,7 @@ def main():
     p_srv = sub.add_parser("serve")
     p_srv.add_argument("--port", type=int, default=8600)
     p_srv.add_argument("--host", default="127.0.0.1")
+    p_srv.add_argument("--reload", action="store_true", help="restart automatically when code changes (for development)")
     p_demo = sub.add_parser("export-demo")
     p_demo.add_argument("out", help="output folder (replaced)")
     p_demo.add_argument("--no-map", action="store_true", help="leave camera locations out")
@@ -67,7 +68,10 @@ def main():
         print(f"wrote {export(Path(args.out), include_map=not args.no_map)} API answers to {args.out}")
     if args.cmd == "serve":
         import uvicorn
-        uvicorn.run("deercam.web.app:app", host=args.host, port=args.port)
+        from pathlib import Path
+        uvicorn.run("deercam.web.app:app", host=args.host, port=args.port, reload=args.reload,
+                    reload_dirs=[str(Path(__file__).parent)] if args.reload else None,
+                    reload_includes=["*.py", "*.html"] if args.reload else None)
 
 
 if __name__ == "__main__":

@@ -50,3 +50,47 @@ def refresh_region() -> None:
 
 def refresh_region_soon() -> None:
     threading.Thread(target=refresh_region, daemon=True).start()
+
+
+# ---- rough area from the ZIP code Reveal files the weather under
+
+def area_file():
+    return settings.data_dir / "area.json"
+
+
+def area() -> dict | None:
+    """{"zip", "lat", "lon", "name"} for the middle of the cameras' ZIP code, or None. Shared cameras come
+    without GPS, but Reveal's weatherRecordId starts with the ZIP the camera's weather is looked up for.
+    Good enough for sunrise/sunset (a minute or so), not for placing a camera."""
+    import json
+    try:
+        return json.loads(area_file().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def zip_of(weather_record_id: str | None) -> str | None:
+    head = (weather_record_id or "").split("-")[0]
+    return head if len(head) == 5 and head.isdigit() else None
+
+
+def update_area(zip_code: str) -> None:
+    """Look up the ZIP's middle once (OpenStreetMap Nominatim) and keep it in DATA_DIR/area.json. Never raises."""
+    import json
+    if (area() or {}).get("zip") == zip_code:
+        return
+    try:
+        r = requests.get("https://nominatim.openstreetmap.org/search",
+                         params={"postalcode": zip_code, "country": "us", "format": "json", "limit": 1, "addressdetails": 1},
+                         headers={"User-Agent": "DeerCam (personal trail-camera tool)"}, timeout=20)
+        r.raise_for_status()
+        hits = r.json()
+        if not hits:
+            return
+        a = hits[0].get("address", {})
+        name = ", ".join(p for p in (a.get("county"), a.get("state")) if p) or None
+        area_file().write_text(json.dumps({"zip": zip_code, "lat": float(hits[0]["lat"]), "lon": float(hits[0]["lon"]),
+                                           "name": name}, indent=2), encoding="utf-8")
+        log.info("camera area from ZIP %s: %s", zip_code, name)
+    except Exception as e:
+        log.info("couldn't look up ZIP %s: %s", zip_code, e)

@@ -9,6 +9,7 @@ import json
 from collections import Counter
 from datetime import datetime
 
+from . import place
 from .config import settings
 from .sun import light
 
@@ -31,8 +32,13 @@ SIGHTINGS_SQL = """
 
 
 def _fallback_location(conn) -> tuple[float, float] | None:
+    """Where sun times are worked out for cameras with no pin: the placed cameras' middle, else the
+    middle of their ZIP code (from Reveal's weather records)."""
     r = conn.execute("SELECT AVG(lat), AVG(lon) FROM cameras WHERE lat IS NOT NULL").fetchone()
-    return (r[0], r[1]) if r[0] is not None else None
+    if r[0] is not None:
+        return (r[0], r[1])
+    a = place.area()
+    return (a["lat"], a["lon"]) if a else None
 
 
 def _local(meta_json: str | None) -> datetime | None:

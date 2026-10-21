@@ -153,7 +153,8 @@ def _similarity_order(rows: list) -> list:
 
 @app.get("/")
 def index():
-    return FileResponse(__file__.replace("app.py", "index.html"))
+    # no-cache: the browser re-checks on every load, so edits to index.html show up on refresh
+    return FileResponse(__file__.replace("app.py", "index.html"), headers={"Cache-Control": "no-cache"})
 
 
 # ---------------------------------------------------------------- setup
@@ -766,3 +767,150 @@ def run_identify():
 @app.get("/api/identify")
 def identify_status():
     return jobs.status()
+
+
+# ------------------------------------------------------------------ timeline (map + time slider)
+
+def _epoch_ms(iso: str) -> int:
+    return int(datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp() * 1000)
+
+
+def _camera_local_ms(meta: dict) -> int | None:
+    """Reveal's photoTimestamp is the camera clock as MMDDYYYYHHMMSS, local time."""
+    ts = (meta or {}).get("photoTimestamp") or ""
+    try:
+        return int(datetime.strptime(ts, "%m%d%Y%H%M%S").replace(tzinfo=timezone.utc).timestamp() * 1000)
+    except ValueError:
+        return None
+
+
+@app.get("/api/timeline")
+def timeline(days: int = 30):
+    """Everything the Timeline page scrubs through, for the last `days` days of photos:
+    cameras, every photo trigger, the weather Reveal attached, animals found, and the cameras'
+    UTC offset over time (so times read in the cameras' own time zone, DST included)."""
+    with db.session() as conn:
+        latest = conn.execute("SELECT MAX(taken_utc) FROM photos").fetchone()[0]
+        cams = [dict(r) for r in conn.execute("SELECT camera_id, name, lat, lon, location_source FROM cameras ORDER BY name")]
+        if not latest:
+            return {"cameras": cams, "photos": [], "weather": [], "animals": [], "offsets": [], "start": None, "end": None}
+        end = _epoch_ms(latest)
+        start = end - days * 86_400_000
+        since = datetime.fromtimestamp(start / 1000, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+        photos = conn.execute("SELECT photo_id, camera_id, taken_utc, path, weather_json, meta_json FROM photos "
+                              "WHERE taken_utc >= ? ORDER BY taken_utc", (since,)).fetchall()
+        dets = conn.execute(
+            """SELECT d.id, d.photo_id, d.species, d.sex, d.status, d.conf, d.crop_path, d.analysis_json,
+                      d.x1, d.y1, d.x2, d.y2, d.match_status, b.name AS buck, b.tag, b.generic
+               FROM detections d JOIN photos p USING(photo_id) LEFT JOIN bucks b ON b.id = d.buck_id
+               WHERE p.taken_utc >= ? AND d.status <> 'too_small' AND d.match_status IS NOT 'rejected'""",
+            (since,)).fetchall()
+
+    cam_ix = {c["camera_id"]: i for i, c in enumerate(cams)}
+    out_photos, weather, offsets, when = [], {}, [], {}
+    for r in photos:
+        t = _epoch_ms(r["taken_utc"])
+        when[r["photo_id"]] = (t, cam_ix.get(r["camera_id"]), r["path"])
+        out_photos.append([t, cam_ix.get(r["camera_id"]), f"/media/{r['path']}"])
+        meta = json.loads(r["meta_json"]) if r["meta_json"] else {}
+        local = _camera_local_ms(meta)
+        if local is not None:
+            off = round((local - t) / 900_000) * 15  # minutes, to the nearest quarter hour
+            if not offsets or offsets[-1][1] != off:
+                offsets.append([t, off])
+        w = json.loads(r["weather_json"]) if r["weather_json"] else None
+        if w and w.get("observationTime"):
+            obs = _epoch_ms(w["observationTime"])
+            wd = w.get("windDirection") or {}
+            rng = w.get("temperatureRange12Hours") or {}
+            weather[obs] = {
+                "t": obs, "temp": w.get("temperature"), "lo": rng.get("min"), "hi": rng.get("max"),
+                "dep": w.get("past24HoursTemperatureDeparture"), "sky": w.get("weatherLabel"),
+                "pressure": w.get("barometricPressure"), "trend": w.get("pressureTendency"),
+                "wind_deg": wd.get("degrees"), "wind_dir": wd.get("cardinalLabelShort"), "wind": wd.get("speed"),
+                "gust": w.get("windGust"), "moon": w.get("moonPhase"), "sun": w.get("sunPhase"),
+            }
+
+    animals = []
+    for d in dets:
+        t, ci, path = when.get(d["photo_id"], (None, None, None))
+        if t is None:
+            continue
+        a = json.loads(d["analysis_json"]) if d["analysis_json"] else {}
+        if d["species"] == "other":
+            kind = "other"
+        elif d["sex"] in ("buck", "doe", "fawn"):
+            kind = d["sex"]
+        else:
+            kind = "animal"  # found by the detector, not labeled by the AI yet
+        animals.append({
+            "id": d["id"], "t": t, "cam": ci, "kind": kind, "conf": d["conf"],
+            "species": a.get("other_species") or None, "age": a.get("age_class"),
+            "summary": a.get("summary"), "buck": None if d["generic"] else d["buck"], "tag": d["tag"],
+            "crop": f"/media/{d['crop_path']}" if d["crop_path"] else None, "photo": f"/media/{path}",
+            "box": [d["x1"], d["y1"], d["x2"], d["y2"]],
+        })
+    animals.sort(key=lambda a: a["t"])
+    return {"cameras": cams, "photos": out_photos, "weather": sorted(weather.values(), key=lambda w: w["t"]),
+            "animals": animals, "offsets": offsets, "start": start, "end": end, "area": place.area()}
+
+
+# ------------------------------------------------------------------ engine room (calendar of what came in)
+
+@app.get("/api/engine")
+def engine_room():
+    """Per local day (the camera's own clock): photos per camera and per hour, animals the detector found,
+    and how the AI labeled them. A "sighting" is one animal in one photo, so a buck that stands in front
+    of the camera for ten photos counts ten times; named bucks are listed separately."""
+    with db.session() as conn:
+        cams = [dict(r) for r in conn.execute("SELECT camera_id, name FROM cameras ORDER BY name")]
+        ix = {c["camera_id"]: i for i, c in enumerate(cams)}
+        photos = conn.execute("SELECT photo_id, camera_id, taken_utc, detected, meta_json FROM photos").fetchall()
+        dets = conn.execute(
+            """SELECT d.photo_id, d.status, d.species, d.sex, d.match_status, b.name, b.generic
+               FROM detections d LEFT JOIN bucks b ON b.id = d.buck_id
+               WHERE d.match_status IS NOT 'rejected'""").fetchall()
+    days, day_of = {}, {}
+    for r in photos:
+        meta = json.loads(r["meta_json"]) if r["meta_json"] else {}
+        ts = meta.get("photoTimestamp") or ""
+        if len(ts) != 14:
+            continue
+        key = f"{ts[4:8]}-{ts[0:2]}-{ts[2:4]}"
+        d = days.setdefault(key, {"date": key, "photos": 0, "cams": [0] * len(cams), "cams_detected": [0] * len(cams), "hours": [0] * 24, "detected": 0,
+                                  "animals": 0, "buck": 0, "doe": 0, "fawn": 0, "other": 0, "unlabeled": 0, "named": {}, "_off": []})
+        local = _camera_local_ms(meta)
+        if local is not None:
+            d["_off"].append(local - _epoch_ms(r["taken_utc"]))
+        d["photos"] += 1
+        d["detected"] += r["detected"]
+        d["hours"][int(ts[8:10])] += 1
+        if r["camera_id"] in ix:
+            d["cams"][ix[r["camera_id"]]] += 1
+            d["cams_detected"][ix[r["camera_id"]]] += r["detected"]
+        day_of[r["photo_id"]] = d
+    totals = {k: 0 for k in ("animals", "buck", "doe", "fawn", "other", "unlabeled", "too_small")}
+    for r in dets:
+        d = day_of.get(r["photo_id"])
+        if d is None:
+            continue
+        if r["status"] == "too_small":
+            totals["too_small"] += 1
+            continue
+        kind = "other" if r["species"] == "other" else r["sex"] if r["sex"] in ("buck", "doe", "fawn") else "unlabeled"
+        d["animals"] += 1
+        d[kind] += 1
+        totals["animals"] += 1
+        totals[kind] += 1
+        if kind == "buck" and r["name"] and not r["generic"]:
+            d["named"][r["name"]] = d["named"].get(r["name"], 0) + 1
+    out = sorted(days.values(), key=lambda d: d["date"])
+    for d in out:
+        d["named"] = sorted(d["named"].items(), key=lambda kv: -kv[1])
+        # noon on the camera clock, as a UTC instant, so the UI can open the Timeline on this day
+        off = sorted(d.pop("_off"))
+        off = round(off[len(off) // 2] / 900_000) * 900_000 if off else 0
+        y, m, dd = map(int, d["date"].split("-"))
+        d["noon_ms"] = int(datetime(y, m, dd, 12, tzinfo=timezone.utc).timestamp() * 1000) - off
+    return {"cameras": cams, "days": out, "totals": totals | {
+        "photos": len(photos), "detected": sum(r["detected"] for r in photos), "days": len(out)}}

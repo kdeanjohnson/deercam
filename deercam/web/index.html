@@ -86,12 +86,29 @@
   .post .ph { position:relative; background:#111; }
   .post .ph img { width:100%; aspect-ratio:4/3; object-fit:cover; cursor:zoom-in; }
   .who { position:absolute; left:12px; top:12px; border:0; background:rgba(255,255,255,.95); border-radius:20px; padding:3px 12px 3px 3px;
-         display:flex; align-items:center; gap:7px; font-weight:700; font-size:14px; box-shadow:0 1px 4px rgba(0,0,0,.2); }
+         display:flex; align-items:center; gap:7px; font-weight:700; font-size:14px; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,.2); }
   .who img { width:28px; height:28px; border-radius:50%; object-fit:cover; }
   .who.unk { padding-left:12px; color:var(--accent); }
   .who.grp { color:var(--ink2); }
   .count-pill { position:absolute; right:12px; bottom:12px; background:rgba(0,0,0,.6); color:#fff; font-size:12px; border-radius:10px; padding:2px 8px; }
   .post .info { display:flex; justify-content:space-between; gap:10px; padding:8px 16px 0; font-size:13px; color:var(--ink2); }
+
+  /* ---- home */
+  .hunt { display:grid; grid-template-columns:1fr; gap:18px; padding:0 16px; }
+  .hcard { border:0; background:var(--soft); padding:0; text-align:left; border-radius:var(--radius); overflow:hidden; display:flex; flex-direction:column; min-width:0; }
+  .hcard .ph { position:relative; background:#111; }
+  .hcard .ph img, .hcard .ph .noimg { width:100%; aspect-ratio:16/10; object-fit:cover; object-position:center 30%; }
+  .hcard.absent .ph img { opacity:.6; }
+  .hcard .cap { position:absolute; left:0; right:0; bottom:0; padding:36px 14px 10px; color:#fff; background:linear-gradient(transparent, rgba(0,0,0,.75)); }
+  .hcard .cap b { display:block; font-size:26px; letter-spacing:-.02em; line-height:1.1; }
+  .hcard .cap span { font-size:13px; opacity:.92; }
+  .hcard dl { margin:0; padding:10px 14px 12px; display:grid; grid-template-columns:76px 1fr; gap:6px 10px; font-size:14px; }
+  .hcard dt { color:var(--ink2); font-size:13px; padding-top:1px; }
+  .hcard dd { margin:0; min-width:0; }
+  .hcard dd .meta { font-size:12px; }
+  .nudge { display:block; width:calc(100% - 32px); margin:18px 16px 0; border:0; border-radius:14px; padding:12px 14px; text-align:left;
+           background:#e8f0fd; color:var(--accent); font-weight:600; font-size:14px; }
+  .morelink { display:block; margin:6px 16px 0; }
 
   /* ---- bucks grid */
   .bgrid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; padding:0 16px; }
@@ -202,6 +219,8 @@
   /* ---- wider screens */
   @media (min-width: 720px) {
     .feed { grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); padding:0 16px; }
+    .hunt { grid-template-columns:repeat(auto-fill, minmax(360px, 1fr)); }
+    .nudge { max-width:520px; }
     .post .ph, .post .ph img { border-radius:var(--radius); }
     .post .info { padding:8px 2px 0; }
     .bgrid { grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); }
@@ -234,7 +253,7 @@
 <div id="job"></div>
 <main id="main"></main>
 <nav id="tabs">
-  <button data-go="feed">Feed</button>
+  <button data-go="home">Home</button>
   <button data-go="bucks">Bucks</button>
   <button data-go="review">Review<span class="count" id="rcount"></span></button>
   <button data-go="map">Map</button>
@@ -340,6 +359,52 @@ async function refreshCounts() {
 }
 
 addEventListener('scroll', () => $('#top').classList.toggle('scrolled', scrollY > 4), { passive: true });
+
+// ------------------------------------------------------------------ home: the bucks you're after
+
+const hr = h => `${h % 12 || 12} ${h < 12 ? 'AM' : 'PM'}`;
+const hourRange = (a, b) => hr(a).slice(-2) === hr(b).slice(-2) ? `${hr(a).slice(0, -3)}–${hr(b)}` : `${hr(a)}–${hr(b)}`;
+
+async function showHome() {
+  const [{ bucks: named, recent }, st] = await Promise.all([api(`/api/home?season=${season()}`), refreshCounts()]);
+  const targets = named.filter(b => b.tag === 'target');
+  // Hit list bucks lead; until there are some, every named buck that isn't a let-walk does.
+  const lead = targets.length ? targets : named.filter(b => b.tag !== 'pass' && !b.absent);
+  const rest = named.filter(b => !lead.includes(b));
+  const nudge = st.review ? `<button class="nudge" data-go="review">${st.review} buck photo${st.review === 1 ? '' : 's'} waiting in Review: who are they? ›</button>` : '';
+  if (!named.length) {
+    $('#main').innerHTML = `<h1 class="title">Your bucks</h1>
+      <div class="pad"><div class="hint">No named bucks yet. Name the ones you're after in Review, tag them ★ Hit list, and this page will follow them.</div></div>
+      ${nudge}<button class="link morelink" data-go="feed">All sightings ›</button>`;
+    return;
+  }
+  $('#main').innerHTML = `<h1 class="title">${targets.length ? 'Hit list' : 'Your bucks'}</h1>
+    ${targets.length ? '' : `<div class="pad"><div class="hint" style="margin-top:0">Tag the bucks you're after ★ Hit list on their page and they'll lead here.</div></div>`}
+    <div class="hunt">${lead.map(huntCard).join('')}</div>
+    ${nudge}
+    ${rest.length ? `<div class="pad"><h3>Other bucks</h3>
+      <div class="cands">${rest.map(b => `<button class="cand ${b.absent ? 'past' : ''}" data-buck="${b.id}">
+        ${b.thumb ? `<img src="${b.thumb}" alt="">` : '<span class="plus"></span>'}<b>${esc(b.name)}</b>
+        <small>${b.absent ? 'Not seen yet' : b.tag ? TAGS[b.tag] : `${b.daylight} daylight`}</small></button>`).join('')}</div></div>` : ''}
+    <button class="link morelink" data-go="bucks">All bucks and auto-groups ›</button>
+    ${recent.length ? `<div class="pad"><h3>Latest from your bucks</h3></div><div class="feed">${recent.map(post_).join('')}</div>` : ''}
+    <button class="link morelink" data-go="feed">All sightings ›</button>`;
+}
+
+function huntCard(b) {
+  const v = b.last_visit, best = b.best;
+  const rows = b.absent
+    ? [['Last seen', `Not on camera yet this season<div class="meta">Last seen ${esc(seasonLabel(b.last_season))}${v ? ` at ${esc(v.camera)}` : ''}</div>`]]
+    : [['Last seen', v ? `${esc(when(v.local))} · ${esc(v.camera)}<div class="meta">${lightTag(v.light, v.light_label)}</div>` : '—'],
+       ['Daylight', `${b.daylight} of ${b.visits} visit${b.visits === 1 ? '' : 's'}`],
+       ['Best bet', best ? `${esc(best.camera)} · ${hourRange(best.from, best.to)}<div class="meta">${best.visits} of ${best.of} daylight visit${best.of === 1 ? '' : 's'}</div>`
+                         : '<span class="meta">No daylight visits yet</span>']];
+  if (b.season_notes) rows.push(['Marks', esc(b.season_notes)]);
+  return `<button class="hcard ${b.absent ? 'absent' : ''}" data-buck="${b.id}">
+    <div class="ph">${b.thumb ? `<img src="${b.thumb}" alt="" loading="lazy">` : '<div class="noimg"></div>'}
+      <div class="cap"><b>${esc(b.name)}${star(b)}</b><span>${b.rack ? esc(rackLine(b.rack)) : ''}${b.tag && b.tag !== 'target' ? ` · ${TAGS[b.tag]}` : ''}</span></div></div>
+    <dl>${rows.map(([k, val]) => `<dt>${k}</dt><dd>${val}</dd>`).join('')}</dl></button>`;
+}
 
 // ------------------------------------------------------------------ feed
 
@@ -995,18 +1060,18 @@ document.addEventListener('change', async e => {
   }
 });
 
-// ------------------------------------------------------------------ navigation (hash routes: #feed, #bucks, #buck/2, #review/372, #map, #settings)
+// ------------------------------------------------------------------ navigation (hash routes: #home, #feed, #bucks, #buck/2, #review/372, #map, #settings)
 
 async function render() {
-  const [v, a] = (location.hash.slice(1) || 'feed').split('/');
-  view = ['feed', 'bucks', 'buck', 'review', 'map', 'settings'].includes(v) ? v : 'feed';
+  const [v, a] = (location.hash.slice(1) || 'home').split('/');
+  view = ['home', 'feed', 'bucks', 'buck', 'review', 'map', 'settings'].includes(v) ? v : 'home';
   arg = a ?? null;
-  const tab = view === 'buck' ? 'bucks' : view;
+  const tab = { buck: 'bucks', feed: 'home' }[view] || view;
   $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.go === tab));
   $('#season').style.visibility = view === 'settings' ? 'hidden' : '';
   if (lmap && view !== 'map') { lmap.remove(); lmap = null; }
   if (view === 'buck') await showBuck(Number(arg));
-  else await ({ feed: showFeed, bucks: showBucks, review: showReview, map: showMap, settings: () => showSettings() }[view])();
+  else await ({ home: showHome, feed: showFeed, bucks: showBucks, review: showReview, map: showMap, settings: () => showSettings() }[view])();
   refreshCounts();
 }
 

@@ -144,6 +144,20 @@ def _breakdown(vs: list[dict], key: str, order: list[str] | None = None) -> list
     return [{"key": k, "all": allc[k], "daylight": dayc[k]} for k in keys]
 
 
+def best_bet(vs: list[dict]) -> dict | None:
+    """Where and when he's most often seen in daylight: the camera with the most daylight visits and
+    its busiest two-hour window."""
+    day = [v for v in vs if is_daylight(v) and v["hour"] is not None]
+    if not day:
+        return None
+    cam = Counter(v["camera_id"] for v in day).most_common(1)[0][0]
+    at = [v for v in day if v["camera_id"] == cam]
+    hours = Counter(v["hour"] for v in at)
+    start = max(range(24), key=lambda h: (hours[h] + hours[(h + 1) % 24], hours[h]))
+    return {"camera_id": cam, "camera": at[0]["camera"], "visits": len(at), "of": len(day),
+            "from": start, "to": (start + 2) % 24}
+
+
 def summarize(vs: list[dict]) -> dict:
     hours = [{"hour": h, "day": 0, "shooting": 0, "night": 0, "unknown": 0} for h in range(24)]
     for v in vs:

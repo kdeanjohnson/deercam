@@ -56,6 +56,7 @@ def export(out: Path, include_map: bool = True) -> int:
     get("/api/identify")
     for s in seasons:
         get(f"/api/stats?season={s}")
+        get(f"/api/home?season={s}")
         cams = get(f"/api/map?season={s}")["cameras"]
         for only in ("all", "target", "daylight"):
             get(f"/api/feed?season={s}&only={only}")

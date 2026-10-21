@@ -367,12 +367,18 @@ def stats(season: str | None = None):
 
 
 def _thumb(conn, buck_id: int, season: int | None) -> str | None:
-    r = conn.execute(f"""SELECT d.crop_path FROM detections d JOIN photos p USING(photo_id)
+    r = _best_detection(conn, buck_id, season)
+    return f"/media/{r['crop_path']}" if r else None
+
+
+def _best_detection(conn, buck_id: int, season: int | None):
+    """His best photo: confirmed before auto-matched, then the biggest crop."""
+    return conn.execute(f"""SELECT d.id, d.crop_path, d.analysis_json, p.path AS photo_path
+                         FROM detections d JOIN photos p USING(photo_id)
                          WHERE d.buck_id=? AND d.match_status IN ('confirmed','auto')
                          {'' if season is None else 'AND season(p.taken_utc)=?'}
                          ORDER BY d.match_status='confirmed' DESC, (d.x2-d.x1)*(d.y2-d.y1) DESC LIMIT 1""",
                      (buck_id,) if season is None else (buck_id, season)).fetchone()
-    return f"/media/{r['crop_path']}" if r else None
 
 
 @app.get("/api/bucks")
@@ -677,6 +683,25 @@ def feed(season: str | None = None, only: Literal["all", "target", "daylight"] =
         out.append(v | {"buck": b["name"] if b else None, "tag": b["tag"] if b else None,
                         "generic": bool(b and b["generic"]), "thumb": thumbs.get(v["buck_id"])})
     return out
+
+
+@app.get("/api/home")
+def home(season: str | None = None):
+    """The hunting view: living named bucks (hit list first), each with his best photo and rack,
+    his last visit and where and when he's most often seen in daylight; plus the latest visits by
+    named bucks."""
+    s = _season(season)
+    named = [b for b in bucks(season) if not b["generic"] and b["status"] == "alive"]
+    with db.session() as conn:
+        for b in named:
+            shown = b.get("last_season", s)
+            vs = patterns.load_visits(conn, buck_id=b["id"], season=shown)
+            best = _best_detection(conn, b["id"], shown)
+            b |= {"last_visit": vs[0] if vs else None, "best": patterns.best_bet(vs),
+                  "photo": f"/media/{best['photo_path']}" if best else None,
+                  "rack": json.loads(best["analysis_json"] or "{}").get("rack") if best else None}
+    recent = [v for v in feed(season=season, limit=400) if v["buck_id"] is not None and not v["generic"]]
+    return {"bucks": named, "recent": recent[:6]}
 
 
 @app.get("/api/detections/{det_id}/candidates")

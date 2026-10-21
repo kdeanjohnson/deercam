@@ -77,6 +77,9 @@ def export(out: Path, include_map: bool = True) -> int:
     for b in get("/api/bucks?season=all"):
         get(f"/api/bucks/{b['id']}")
     get("/api/stats?season=all")
+    get("/api/engine")
+    if include_map:
+        get("/api/timeline")
 
     for d in ("photos", "crops"):
         shutil.copytree(settings.data_dir / d, out / "media" / d)

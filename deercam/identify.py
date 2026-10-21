@@ -43,7 +43,8 @@ QUERY_COLS = ("d.id, d.crop_path, d.embedding, d.analysis_json, d.x1, d.y1, d.x2
 class Embedder:
     def __init__(self):
         from transformers import AutoImageProcessor, AutoModel
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        from .config import torch_device
+        self.device = torch_device()
         self.processor = AutoImageProcessor.from_pretrained(settings.embed_model)
         self.model = AutoModel.from_pretrained(settings.embed_model).to(self.device).eval()
 

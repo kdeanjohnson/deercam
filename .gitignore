@@ -6,3 +6,5 @@ __pycache__/
 *.pt
 .reveal_tokens.json
 site/
+.venv/
+.DS_Store

@@ -46,9 +46,10 @@ def _crop(img: Image.Image, box: tuple[float, float, float, float]) -> Image.Ima
 def detect(batch_size: int = 8) -> int:
     from ultralytics import YOLO
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    from .config import torch_device
+    device = torch_device()
     if device == "cpu":
-        log.warning("CUDA not available; MegaDetector will be slow")
+        log.warning("No GPU (CUDA or Apple MPS) available; MegaDetector will be slow")
     model = YOLO(str(_weights_path()))
     settings.crops_dir.mkdir(parents=True, exist_ok=True)
 

@@ -13,17 +13,33 @@ Identifies individual bucks on Tactacam Reveal cell cams, and shows when and whe
 - **Seasons**: matching stays within an antler year, because racks regrow. A buck returning from last season is only ever a suggestion for you to confirm.
 - **Patterns**: sightings are grouped into visits (one buck at one camera, with photos less than 30 minutes apart). Daylight and shooting light are worked out from sunrise and sunset at each camera. A buck page has an hour-of-day chart plus daylight visits by camera, wind, temperature, moon and pressure.
 - **Hit list**: tag bucks Hit list, Watch or Let walk.
+- **Timeline**: a satellite map with a time slider. Drag through the days and the map's light follows the real sun over the cameras (daylight, shooting light, night, moonlight), with Reveal's weather for that moment: temperature, wind with drifting streaks, sky and clouds, pressure trend. Each camera shows its latest photo, and buck/doe/fawn icons sit on one lane per camera. Space plays, arrow keys step, `[` and `]` jump between animals, and the address bar links to the moment shown.
 - **Map**: place the cameras on satellite imagery. Pins are also mirrored to `data/camera_locations.json`. The area the cameras are in (e.g. "Garvin County, Oklahoma") is told to the AI as context.
 
 Only photos you've confirmed are used as references, so auto-match mistakes don't compound.
 
 ## Setup
 
+Needs Python 3.10 or newer.
+
+**Windows / Linux with an NVIDIA GPU:**
+
 ```bash
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 pip install -r requirements.txt
 python -m deercam serve     # http://localhost:8600, opens a first-run setup page
 ```
+
+**Mac:** the regular PyTorch build uses the Apple GPU (MPS) automatically.
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install torch torchvision
+pip install -r requirements.txt
+python -m deercam serve
+```
+
+Add `--reload` to `serve` while editing code, so the server restarts when you save a file.
 
 The setup page asks for the Reveal login, the AI provider and key, the season start and how far back to import. Everything there can also go in `.env` (see `.env.example`). Values saved in the UI live in `data/settings.json` and take precedence over `.env`.
 

@@ -360,6 +360,51 @@
   .tl-card div b { color:var(--ink); font-size:13.5px; display:block; }
   .tl-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--ink2); font-size:14px; z-index:8; }
 
+  /* map mode: the cameras as pins on the satellite map, the timeline docked below. The map takes on the
+     light of the moment (darker at night, warm on the sun's side at dawn and dusk), cloud shadows, and wind. */
+  .tl-titlebar { display:flex; align-items:center; gap:12px; }
+  .tl-mode { margin-left:auto; }
+  .tl-mode button { background:var(--soft); }
+  .tl-mode button.on { background:var(--ink); }
+  #tl-map { position:absolute; inset:0; z-index:0; display:none; background:#1d2328; }  /* own stacking context: Leaflet's panes stay under the cards */
+  #tl.mode-map #tl-map { display:block; }
+  #tl.mode-map .tl-grid { display:none; }
+  #tl.mode-map .tl-hud { top:12px; box-shadow:0 8px 28px rgba(0,0,0,.28); }
+  #tl.mode-map .tl-panel { box-shadow:0 8px 28px rgba(0,0,0,.28); }
+  #tl-map .leaflet-tile-pane { transition:filter .6s linear; }
+  #tl-map .leaflet-control-zoom { margin-top:12px; margin-right:16px; border:0; box-shadow:0 2px 10px rgba(0,0,0,.25); }
+  .tlm-amb { position:absolute; pointer-events:none; }
+  .tlm-amb > * { position:absolute; inset:0; width:100%; height:100%; }
+  .tlm-shade, .tlm-glow { transition:background .6s linear; }
+  .tlm-clouds { filter:brightness(0); opacity:0; background-repeat:repeat; background-size:1100px 1100px; transition:opacity .6s linear; }
+  .tlm-icon { background:none; border:0; }
+  .tlm-pin { position:relative; width:0; height:0; --k:#fff; }
+  .tlm-halo { position:absolute; left:0; top:0; width:var(--r, 0px); height:var(--r, 0px); transform:translate(-50%, -50%); border-radius:50%;
+              background:radial-gradient(circle, var(--c) 0%, transparent 70%); opacity:.55; transition:width .5s, height .5s; pointer-events:none; }
+  .tlm-ring { position:absolute; left:-11px; top:-11px; width:22px; height:22px; border-radius:50%; border:3px solid var(--k); opacity:0; pointer-events:none; }
+  .tlm-ring.go { animation:tlm-ping 1.9s ease-out; }
+  @keyframes tlm-ping { 0% { transform:scale(.6); opacity:1; } 100% { transform:scale(5.5); opacity:0; } }
+  .tlm-dot { position:absolute; left:-9px; top:-9px; width:18px; height:18px; border-radius:50%; background:var(--c); border:3px solid #fff;
+             box-shadow:0 1px 8px rgba(0,0,0,.45); }
+  .tlm-name { position:absolute; left:15px; top:-13px; white-space:nowrap; background:#fff; color:var(--ink); border-radius:14px; padding:4px 10px;
+              font-size:12px; font-weight:700; box-shadow:0 1px 6px rgba(0,0,0,.3); }
+  .tlm-card { position:absolute; left:0; bottom:20px; transform:translateX(-50%) translateY(6px); width:150px; border-radius:12px; overflow:hidden;
+              background:#000; box-shadow:0 8px 24px rgba(0,0,0,.45); outline:3px solid var(--k); outline-offset:-3px; cursor:zoom-in;
+              opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; }
+  .tlm-pin.fresh .tlm-card { opacity:1; pointer-events:auto; transform:translateX(-50%); }
+  .tlm-pin.fresh .tlm-name { display:none; }
+  #tl-map .tlm-card img { display:block; width:150px; height:112px; max-width:none; object-fit:cover; }
+  .tlm-card .cap { position:absolute; left:0; right:0; top:0; display:flex; justify-content:space-between; gap:6px; padding:6px; font-size:11px; font-weight:700; }
+  .tlm-card .cap span { background:#fff; color:var(--ink); border-radius:12px; padding:2px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tlm-card .cap span + span { flex:none; color:var(--ink2); font-weight:600; background:rgba(255,255,255,.9); }
+  .tlm-seen { position:absolute; left:6px; bottom:6px; display:none; align-items:center; gap:4px; padding:2px 8px 2px 6px; border-radius:12px;
+              background:var(--k); color:#fff; font-size:11.5px; font-weight:700; }
+  .tlm-pin.hot .tlm-seen { display:inline-flex; }
+  .tlm-seen svg { width:13px; height:13px; }
+  .tlm-note { position:absolute; z-index:5; right:16px; bottom:calc(var(--panel-h, 200px) + 18px); display:none; background:#fff; color:var(--ink2);
+              font-size:12px; padding:6px 12px; border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.2); }
+  #tl.mode-map .tlm-note:not(:empty) { display:block; }
+
   @media (max-width: 760px) {
     .tl-hud { width:auto; right:16px; }
     .tl-skyhead { padding:10px 14px 12px; }
@@ -1505,7 +1550,9 @@ async function showTimeline() {
   data.byPhoto = {};
   for (const a of data.animals) (data.byPhoto[a.photo] ??= []).push(a);
   Object.assign(TL, { data, playing: false, speed: 3600, dirty: true, raf: 0, lastFrame: 0, cloudX: 0, cloudY: 0, shown: {} });
-  $('#main').innerHTML = `<h1 class="title" id="tl-title">Timeline</h1><div id="tl">
+  $('#main').innerHTML = `<h1 class="title tl-titlebar" id="tl-title">Timeline
+    <div class="tl-seg tl-mode" id="tl-mode"><button data-mode="cams">Cameras</button><button data-mode="map">Map</button></div></h1><div id="tl">
+    <div id="tl-map"></div><div class="tlm-note" id="tlm-note"></div>
     <div class="tl-hud" id="tl-hud"><div class="tl-skyhead">
       <div class="tl-sky" id="tl-sky"></div><canvas class="tl-fx" id="tl-stars"></canvas><div class="tl-fx tl-glow"></div>
       <div class="tl-fx tl-clouds"></div><canvas class="tl-fx" id="tl-wind"></canvas>
@@ -1526,17 +1573,10 @@ async function showTimeline() {
   tlPanel();
   tlClouds();
   $('#tl-grid').addEventListener('click', e => {
-    const tile = e.target.closest('.tl-tile'), src = tile && TL.shown[tile.dataset.cam];
-    if (!src) return;
-    // The deer most likely to be a buck that has no name yet (the AI may not have been able to tell)
-    const deer = (TL.data.byPhoto[src] || []).filter(a => !a.buck && a.kind !== 'other')
-      .sort((a, b) => TL_KINDS[b.kind].rank - TL_KINDS[a.kind].rank)[0];
-    const tag = $('#lightbox .lb-tag');
-    tag.style.display = deer && !document.body.classList.contains('role-viewer') ? '' : 'none';
-    tag.textContent = 'Who is this? Tag him ›';
-    tag.dataset.det = deer?.id ?? '';
-    $('#lightbox img').src = src; $('#lightbox').style.display = 'flex';
+    const tile = e.target.closest('.tl-tile');
+    tlOpen(tile && TL.shown[tile.dataset.cam]);
   });
+  $('#tl-mode').onclick = e => { const b = e.target.closest('button'); if (b) tlSetMode(b.dataset.mode); };
   TL.onResize = () => { tlLayout(); tlSizeCanvas(); tlStars(); $$('#tl-grid .tl-tile').forEach(tlFitBoxes); };
   // On phones the tiles sit under the conditions card, whose height changes with what it shows.
   TL.hudSize = new ResizeObserver(() => { tlLayout(); $$('#tl-grid .tl-tile').forEach(tlFitBoxes); });
@@ -1548,10 +1588,36 @@ async function showTimeline() {
   tlSizeCanvas();
   tlStars();
   TL.raf = requestAnimationFrame(tlFrame);
+  tlSetMode(localStorage.getItem('tlMode') || 'cams');
+}
+
+// A camera's photo full size, with "Who is this?" for an unnamed deer in it.
+function tlOpen(src) {
+  if (!src) return;
+  // The deer most likely to be a buck that has no name yet (the AI may not have been able to tell)
+  const deer = (TL.data.byPhoto[src] || []).filter(a => !a.buck && a.kind !== 'other')
+    .sort((a, b) => TL_KINDS[b.kind].rank - TL_KINDS[a.kind].rank)[0];
+  const tag = $('#lightbox .lb-tag');
+  tag.style.display = deer && !document.body.classList.contains('role-viewer') ? '' : 'none';
+  tag.textContent = 'Who is this? Tag him ›';
+  tag.dataset.det = deer?.id ?? '';
+  $('#lightbox img').src = src; $('#lightbox').style.display = 'flex';
+}
+
+function tlSetMode(mode) {
+  TL.mode = mode === 'map' ? 'map' : 'cams';
+  localStorage.setItem('tlMode', TL.mode);
+  $('#tl').classList.toggle('mode-map', TL.mode === 'map');
+  $$('#tl-mode button').forEach(b => b.classList.toggle('on', b.dataset.mode === TL.mode));
+  TL.shown = {};
+  TL.dirty = true;
+  if (TL.mode === 'map') tlMapInit();
 }
 
 function tlDestroy() {
   cancelAnimationFrame(TL.raf);
+  TL.map?.remove();
+  Object.assign(TL, { map: null, pins: null, amb: null });
   if (TL.onResize) removeEventListener('resize', TL.onResize);
   if (TL.onKey) removeEventListener('keydown', TL.onKey);
   TL.hudSize?.disconnect();
@@ -1628,7 +1694,111 @@ function tlScene() {
   }
   TL.wind = w ? { deg: w.wind_deg, speed: w.wind || 0, rain: /rain|shower|drizzle|storm|thunder/i.test(w.sky || ''), snow: /snow|flurr|sleet/i.test(w.sky || ''), night: sun.alt < -4 } : null;
   tlHud(t, w, lt, moon, where);
-  tlCams(t);
+  if (TL.mode === 'map') { tlMapScene(sun, cover, dark, warm); tlMapCams(t); } else tlCams(t);
+}
+
+// ---- map mode
+async function tlMapInit() {
+  const box = $('#tl-map');
+  if (TL.map) { TL.map.invalidateSize(); TL.ambFit(); return; }
+  box.innerHTML = '<div class="empty">Loading map…</div>';
+  if (!await loadLeaflet()) { box.innerHTML = '<div class="empty">The map needs an internet connection (the map library and satellite imagery load online).</div>'; return; }
+  if (view !== 'timeline' || TL.mode !== 'map' || TL.map || !$('#tl-map')) return;
+  box.innerHTML = '';
+  const m = TL.map = L.map(box, { zoomControl: false, zoomSnap: .25 });
+  L.control.zoom({ position: 'topright' }).addTo(m);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+              { maxZoom: 19, attribution: 'Imagery © Esri' }).addTo(m);
+  // The light of the moment sits between the imagery and the pins, always covering the visible map.
+  const pane = m.createPane('tlamb');
+  Object.assign(pane.style, { zIndex: 450, pointerEvents: 'none' });
+  const amb = TL.amb = L.DomUtil.create('div', 'tlm-amb', pane);
+  amb.innerHTML = '<div class="tlm-shade"></div><div class="tlm-glow"></div><div class="tlm-clouds"></div><canvas class="tlm-wind"></canvas>';
+  amb.querySelector('.tlm-clouds').style.backgroundImage = TL.cloudUrl ? `url(${TL.cloudUrl})` : '';
+  TL.ambFit = () => {
+    const p = m.containerPointToLayerPoint([0, 0]), size = m.getSize(), cv = amb.querySelector('canvas'), dpr = TL.dpr || 1;
+    L.DomUtil.setPosition(amb, p);
+    TL.ambP = p;
+    amb.style.width = `${size.x}px`; amb.style.height = `${size.y}px`;
+    if (cv.width !== Math.round(size.x * dpr)) { cv.width = Math.round(size.x * dpr); cv.height = Math.round(size.y * dpr); }
+  };
+  m.on('move zoom resize viewreset', TL.ambFit);
+  const placed = TL.data.cameras.filter(c => c.lat != null), unplaced = TL.data.cameras.filter(c => c.lat == null);
+  // Frame the cameras in the open space between the conditions card and the timeline.
+  const hud = $('#tl-hud'), panel = $('#tl-panel'), phone = innerWidth <= 760, panelH = $('#tl').getBoundingClientRect().bottom - panel.getBoundingClientRect().top;
+  $('#tl').style.setProperty('--panel-h', `${panelH}px`);
+  const where = tlWhere();
+  const H = box.clientHeight, top = phone ? hud.offsetHeight + 130 : 140, bottom = panelH + 16;
+  const squeeze = Math.min(1, H * .75 / (top + bottom));  // small screens: keep some map between the cards
+  if (placed.length) m.fitBounds(placed.map(c => [c.lat, c.lon]), {
+    paddingTopLeft: [phone ? 40 : hud.offsetWidth + 90, top * squeeze], paddingBottomRight: [phone ? 40 : 90, bottom * squeeze], maxZoom: 17 });
+  else m.setView([where.lat, where.lon], 12);
+  TL.pins = {};
+  TL.data.cameras.forEach((c, ci) => {
+    if (c.lat == null) return;
+    const html = `<div class="tlm-pin" style="--c:${c.color}"><div class="tlm-halo"></div><div class="tlm-ring"></div><div class="tlm-dot"></div>
+      <div class="tlm-name">${esc(c.name || c.camera_id)}</div>
+      <div class="tlm-card" data-cam="${ci}"><img alt=""><div class="cap"><span>${esc(c.name || c.camera_id)}</span><span class="tlm-age"></span></div>
+        <div class="tlm-seen"></div></div></div>`;
+    const marker = L.marker([c.lat, c.lon], { icon: L.divIcon({ className: 'tlm-icon', html, iconSize: null }), keyboard: false }).addTo(m);
+    const el = marker.getElement().querySelector('.tlm-pin');
+    el.querySelector('.tlm-card').addEventListener('click', () => tlOpen(TL.pins[ci]?.src));
+    TL.pins[ci] = { marker, el, src: null, last: null };
+  });
+  $('#tlm-note').textContent = !placed.length ? 'No cameras are on the map yet. Place them on the Map page.'
+    : unplaced.length ? `${unplaced.map(c => c.name || c.camera_id).join(', ')} ${unplaced.length === 1 ? 'isn’t' : 'aren’t'} on the map yet` : '';
+  TL.ambFit();
+  TL.dirty = true;
+}
+
+function tlMapScene(sun, cover, dark, warm) {
+  if (!TL.amb) return;
+  const night = Math.min(1, Math.max(0, (-sun.alt + 1) / 9));  // starts dimming right at sunset
+  $('#tl-map .leaflet-tile-pane').style.filter =
+    `brightness(${(1 - .5 * night - .12 * cover).toFixed(3)}) saturate(${(1 - .55 * night - .3 * cover).toFixed(3)})`;
+  TL.amb.querySelector('.tlm-shade').style.background = `rgba(10, 22, 60, ${(.38 * night).toFixed(3)})`;
+  // low sun: warm light from its side of the map (north is up)
+  const gx = 50 + 60 * Math.sin(rad(sun.az)), gy = 50 - 60 * Math.cos(rad(sun.az));
+  TL.amb.querySelector('.tlm-glow').style.background = warm > .02
+    ? `radial-gradient(circle at ${gx}% ${gy}%, rgba(255,150,80,${(warm * .38).toFixed(3)}), transparent 75%)` : 'none';
+  TL.amb.querySelector('.tlm-clouds').style.opacity = (cover * .22 * (1 - .7 * dark)).toFixed(3);
+}
+
+// Each placed camera: a pin, and while its newest photo is under 45 minutes old, that photo above it.
+// A new animal sets off a ripple in its color; the glow under a pin grows with the last 3 hours' animals.
+function tlMapCams(t) {
+  if (!TL.pins) return;
+  const as = TL.data.animals, a0 = tlBisect(as, t - 3 * HOUR, a => a.t), a1 = tlBisect(as, t + 1, a => a.t);
+  TL.data.cameras.forEach((c, ci) => {
+    const pin = TL.pins[ci];
+    if (!pin) return;
+    const ps = c.photos, p = ps[tlBisect(ps, t + 1, x => x[0]) - 1], age = p ? (t - p[0]) / 60e3 : Infinity, el = pin.el;
+    if (p && pin.src !== p[2]) { pin.src = p[2]; el.querySelector('img').src = p[2]; }
+    let recent = 0, newest = null;
+    const near = [];
+    for (let i = a0; i < a1; i++) {
+      const a = as[i];
+      if (a.cam !== ci) continue;
+      recent++;
+      if (t - a.t < 10 * 60e3) { near.push(a); if (!newest || a.t >= newest.t) newest = a; }
+    }
+    const best = near.sort((a, b) => TL_KINDS[b.kind].rank - TL_KINDS[a.kind].rank)[0];
+    el.classList.toggle('fresh', age <= 45);
+    el.classList.toggle('hot', !!best);
+    el.style.setProperty('--k', best ? TL_KINDS[best.kind].color : '#fff');
+    el.style.setProperty('--r', recent ? `${Math.round(40 + 22 * Math.sqrt(recent))}px` : '0px');
+    el.querySelector('.tlm-seen').innerHTML = best ? `${TL_SVG[best.kind]}<span>${esc(best.buck || TL_KINDS[best.kind].label.replace(', not labeled yet', ''))}${near.length > 1 ? ` · ${near.length}` : ''}</span>` : '';
+    el.querySelector('.tlm-age').textContent = !p ? '' : age < 1 ? 'Just now' : age < 60 ? `${Math.round(age)} min ago` : '';
+    if ((newest?.id ?? null) !== pin.last) {
+      pin.last = newest?.id ?? null;
+      if (newest) {
+        const ring = el.querySelector('.tlm-ring');
+        ring.style.borderColor = TL_KINDS[newest.kind].color;
+        ring.classList.remove('go'); void ring.offsetWidth; ring.classList.add('go');
+      }
+    }
+    pin.marker.setZIndexOffset(best ? 1000 : age <= 45 ? 500 : 0);
+  });
 }
 
 // The photo fills its tile (object-fit: cover, so edges are cropped); size the box layer to the whole
@@ -1993,36 +2163,46 @@ function tlClouds() {
     img.data[i] = img.data[i + 1] = img.data[i + 2] = 255; img.data[i + 3] = a * 235;
   }
   g.putImageData(img, 0, 0);
-  $('.tl-clouds').style.backgroundImage = `url(${c.toDataURL()})`;
+  TL.cloudUrl = c.toDataURL();
+  $('.tl-clouds').style.backgroundImage = `url(${TL.cloudUrl})`;
   TL.streaks = [...Array(150)].map(() => ({ x: Math.random(), y: Math.random(), l: .4 + Math.random() * .6, a: .25 + Math.random() * .75 }));
 }
 function tlWind(dt) {
-  const cv = $('#tl-wind');
-  if (!cv) return;
-  const g = cv.getContext('2d'), W = cv.width, H = cv.height, w = TL.wind;
-  g.clearRect(0, 0, W, H);
-  if (!w || w.deg == null) return;
+  const sky = $('#tl-wind'), mapCv = TL.mode === 'map' ? TL.amb?.querySelector('canvas') : null;
+  const cvs = [sky, mapCv].filter(Boolean);
+  cvs.forEach(cv => cv.getContext('2d').clearRect(0, 0, cv.width, cv.height));
+  const w = TL.wind;
+  if (!cvs.length || !w || w.deg == null || !TL.streaks) return;
   const toward = rad(w.deg + 180), dx = Math.sin(toward), dy = -Math.cos(toward);
   const sp = (0.00002 + w.speed * 0.0000075) * dt;  // screen fractions per frame
   TL.cloudX += dx * (.004 + w.speed * .0016) * dt; TL.cloudY += dy * (.004 + w.speed * .0016) * dt;
   $('.tl-clouds').style.backgroundPosition = `${TL.cloudX.toFixed(1)}px ${TL.cloudY.toFixed(1)}px`;
-  // Streak counts were made for a full-screen sky; the sky card is far smaller, so thin them out.
-  const fit = Math.sqrt(Math.min(1, W * H / ((TL.dpr || 1) ** 2 * 1e6)));
-  const n = Math.round((w.rain || w.snow ? 150 : Math.min(150, w.speed * 9)) * fit);
-  const dpr = TL.dpr || 1, len = (w.rain ? 18 : 10 + w.speed * 2.2) * dpr;
-  g.lineCap = 'round';
-  for (let i = 0; i < n; i++) {
-    const s = TL.streaks[i];
+  if (mapCv) {  // cloud shadows stay on the ground while the map pans
+    const p = TL.ambP || { x: 0, y: 0 };
+    TL.amb.querySelector('.tlm-clouds').style.backgroundPosition = `${(TL.cloudX * 1.8 - p.x).toFixed(1)}px ${(TL.cloudY * 1.8 - p.y).toFixed(1)}px`;
+  }
+  for (const s of TL.streaks) {
     if (w.rain) { s.x += dx * sp * .5; s.y += sp * 9; } else if (w.snow) { s.x += dx * sp * .6; s.y += sp * 1.6; } else { s.x += dx * sp * (1 + s.l); s.y += dy * sp * (1 + s.l); }
     if (s.x < -.05) s.x += 1.1; if (s.x > 1.05) s.x -= 1.1; if (s.y < -.05) s.y += 1.1; if (s.y > 1.05) s.y -= 1.1;
-    const x = s.x * W, y = s.y * H;
-    const alpha = (w.night ? .09 : .16) * s.a * (w.rain ? 1.6 : 1);
-    if (w.snow) { g.fillStyle = `rgba(255,255,255,${alpha * 3})`; g.beginPath(); g.arc(x, y, 1.6 * dpr * s.l, 0, 7); g.fill(); continue; }
-    const vx = w.rain ? dx * .25 : dx, vy = w.rain ? 1 : dy, L2 = len * s.l;
-    const gr = g.createLinearGradient(x, y, x - vx * L2, y - vy * L2);
-    gr.addColorStop(0, `rgba(255,255,255,${alpha})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
-    g.strokeStyle = gr; g.lineWidth = (w.rain ? 1 : 1.3) * dpr;
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x - vx * L2, y - vy * L2); g.stroke();
+  }
+  const dpr = TL.dpr || 1;
+  for (const cv of cvs) {
+    const g = cv.getContext('2d'), W = cv.width, H = cv.height, onMap = cv === mapCv;
+    // Streak counts were made for a full-screen sky; the sky card is far smaller, so thin them out.
+    const fit = Math.sqrt(Math.min(1, W * H / (dpr ** 2 * 1e6)));
+    const n = Math.round((w.rain || w.snow ? 150 : Math.min(150, w.speed * 9)) * fit);
+    const len = (w.rain ? 18 : 10 + w.speed * 2.2) * dpr * (onMap ? 1.6 : 1);
+    g.lineCap = 'round';
+    for (let i = 0; i < n; i++) {
+      const s = TL.streaks[i], x = s.x * W, y = s.y * H;
+      const alpha = (w.night ? .09 : .16) * s.a * (w.rain ? 1.6 : 1) * (onMap ? 1.5 : 1);
+      if (w.snow) { g.fillStyle = `rgba(255,255,255,${alpha * 3})`; g.beginPath(); g.arc(x, y, 1.6 * dpr * s.l, 0, 7); g.fill(); continue; }
+      const vx = w.rain ? dx * .25 : dx, vy = w.rain ? 1 : dy, L2 = len * s.l;
+      const gr = g.createLinearGradient(x, y, x - vx * L2, y - vy * L2);
+      gr.addColorStop(0, `rgba(255,255,255,${alpha})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.strokeStyle = gr; g.lineWidth = (w.rain ? 1 : 1.3) * dpr;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x - vx * L2, y - vy * L2); g.stroke();
+    }
   }
 }
 

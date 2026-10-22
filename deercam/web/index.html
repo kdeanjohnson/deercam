@@ -252,126 +252,131 @@
   #lightbox img { max-width:100vw; max-height:100vh; }
   #tip { position:fixed; pointer-events:none; background:var(--ink); color:#fff; border-radius:8px; padding:6px 9px; font-size:12px; display:none; z-index:60; max-width:260px; }
 
-  /* ---- timeline: camera tiles over a live sky + time slider */
-  body.tl-on { padding-bottom:0; overflow:hidden; background:#05070d; }
-  body.tl-on header { background:rgba(8,10,16,.55); color:#f2f4f7; border-bottom-color:rgba(255,255,255,.06); }
-  body.tl-on header .iconbtn { background:rgba(255,255,255,.08); color:#e9ecf1; }
-  body.tl-on #job { position:fixed; z-index:21; left:0; right:0; color:#aab2bd; background:rgba(8,10,16,.6); }
-  #tl { position:fixed; left:0; right:0; bottom:0; overflow:hidden; color:#eef1f5;
-        --glass:rgba(12,15,22,.62); --glass-line:rgba(255,255,255,.1); --dim:#a3acb8; }
+  /* ---- timeline: every camera's photo at one moment, the sky and weather then, and a time slider */
+  body.tl-on { padding-bottom:0; overflow:hidden; }
+  body.tl-on #job { position:fixed; z-index:21; left:0; right:0; background:rgba(255,255,255,.92); }
+  body.tl-on h1.title { margin-bottom:12px; }
+  #tl { position:fixed; left:0; right:0; bottom:0; overflow:hidden; --dim:var(--ink2); }
+
+  /* conditions card: the sky at that moment on top (sun, stars, moon, clouds, wind), readings below */
+  .tl-hud { position:absolute; z-index:5; top:0; left:16px; width:316px; overflow:hidden; background:var(--soft); border-radius:var(--radius); }
+  .tl-skyhead { position:relative; overflow:hidden; color:#fff; padding:14px 16px 16px; }
   .tl-sky { position:absolute; inset:0; transition:background .5s linear; }
   .tl-fx { position:absolute; inset:0; pointer-events:none; }
   canvas.tl-fx { width:100%; height:100%; }
   #tl-stars { transition:opacity .6s linear; }
-  .tl-clouds { opacity:0; background-repeat:repeat; background-size:900px 900px; transition:opacity .6s linear, filter .6s linear; }
-  .tl-moon { position:absolute; top:7%; right:6%; width:64px; height:64px; pointer-events:none; filter:drop-shadow(0 0 18px rgba(244,238,219,.35)); transition:opacity .6s linear; }
-  .tl-glass { background:var(--glass); backdrop-filter:blur(20px) saturate(1.4); -webkit-backdrop-filter:blur(20px) saturate(1.4);
-              border:1px solid var(--glass-line); border-radius:20px; box-shadow:0 12px 40px rgba(0,0,0,.3); }
-
-  /* conditions card */
-  .tl-hud { position:absolute; z-index:5; top:14px; left:14px; width:316px; padding:16px 18px 14px; }
-  .tl-date { font-size:12.5px; color:var(--dim); font-weight:600; letter-spacing:.02em; text-transform:uppercase; }
-  .tl-time { font-size:44px; font-weight:250; letter-spacing:-.03em; line-height:1.05; font-variant-numeric:tabular-nums; margin:2px 0 8px; }
-  .tl-time small { font-size:15px; font-weight:500; color:var(--dim); letter-spacing:0; margin-left:4px; }
-  .tl-light { display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:600; padding:5px 11px 5px 9px; border-radius:20px; background:rgba(255,255,255,.07); }
-  .tl-light i { width:9px; height:9px; border-radius:50%; display:inline-block; box-shadow:0 0 10px currentColor; }
-  .tl-light span { color:var(--dim); font-weight:500; }
-  .tl-metrics { display:grid; grid-template-columns:1fr 1fr; gap:12px 14px; margin-top:14px; padding-top:14px; border-top:1px solid var(--glass-line); }
+  .tl-clouds { opacity:0; background-repeat:repeat; background-size:600px 600px; transition:opacity .6s linear, filter .6s linear; }
+  .tl-moon { position:absolute; top:14px; right:16px; width:44px; height:44px; pointer-events:none; filter:drop-shadow(0 0 14px rgba(244,238,219,.35)); transition:opacity .6s linear; }
+  #tl-hudsky { position:relative; z-index:1; text-shadow:0 1px 10px rgba(0,0,0,.35); }
+  .tl-date { font-size:12.5px; font-weight:700; letter-spacing:.02em; text-transform:uppercase; opacity:.92; }
+  .tl-time { font-size:44px; font-weight:800; letter-spacing:-.03em; line-height:1.05; font-variant-numeric:tabular-nums; margin:2px 0 10px; }
+  .tl-time small { font-size:15px; font-weight:650; letter-spacing:0; margin-left:4px; opacity:.92; }
+  .tl-light { display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:650; padding:5px 11px 5px 9px; border-radius:20px;
+              background:#fff; color:var(--ink); text-shadow:none; }
+  .tl-light i { width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .tl-light span { color:var(--ink2); font-weight:500; }
+  #tl-hudbody { padding:14px 16px; }
+  .tl-metrics { display:grid; grid-template-columns:1fr 1fr; gap:12px 14px; }
   .tl-m { display:flex; gap:10px; align-items:center; min-width:0; }
   .tl-m > div { min-width:0; }
   .tl-m svg { flex:none; }
-  .tl-m b { display:block; font-size:17px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
-  .tl-m span { display:block; font-size:11.5px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .tl-src { margin-top:12px; font-size:11px; color:#79828e; }
-  .tl-src.warn { color:#d9a65b; }
+  .tl-m b { display:block; font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .tl-m span { display:block; font-size:12px; color:var(--ink2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tl-src { margin-top:12px; font-size:11.5px; color:var(--ink2); }
+  .tl-src.warn { color:var(--warn); }
 
-  /* camera tiles */
-  .tl-grid { position:absolute; z-index:4; top:14px; left:346px; right:14px; bottom:300px; display:grid; gap:12px; }
-  .tl-tile { margin:0; position:relative; min-height:0; border-radius:18px; overflow:hidden; background:rgba(0,0,0,.35); cursor:zoom-in;
-             box-shadow:0 10px 34px rgba(0,0,0,.35); outline:2px solid transparent; outline-offset:-2px; transition:outline-color .3s; }
+  /* camera tiles: like the photo cards elsewhere, with white name pills */
+  .tl-grid { position:absolute; z-index:4; top:0; left:348px; right:16px; bottom:300px; display:grid; gap:10px; }
+  .tl-tile { margin:0; position:relative; min-height:0; border-radius:var(--radius); overflow:hidden; background:var(--soft2); cursor:zoom-in;
+             outline:3px solid transparent; outline-offset:-3px; transition:outline-color .3s; }
   .tl-tile.hot { outline-color:var(--k); }
   .tl-photo { position:absolute; inset:0; overflow:hidden; }
   .tl-photo img { width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity .25s, filter .4s; }
   .tl-photo img.in { opacity:1; }
-  .tl-tile.stale .tl-photo img { filter:grayscale(.85) brightness(.45); }
+  .tl-tile.stale .tl-photo img { filter:grayscale(.85) brightness(.55); }
   .tl-tile.empty { cursor:default; }
   .tl-boxes { position:absolute; inset:0; pointer-events:none; }
-  .tl-box { position:absolute; border:2px solid var(--k); border-radius:8px; box-shadow:0 0 0 1px rgba(0,0,0,.35); }
-  .tl-box span { position:absolute; left:-2px; top:-22px; font-size:11px; font-weight:700; color:#0b0d10; background:var(--k); padding:2px 7px; border-radius:6px; white-space:nowrap; }
+  .tl-box { position:absolute; border:2px solid var(--k); border-radius:8px; box-shadow:0 0 0 1px rgba(0,0,0,.25); }
+  .tl-box span { position:absolute; left:-2px; top:-22px; font-size:11px; font-weight:700; color:#fff; background:var(--k); padding:2px 7px; border-radius:6px; white-space:nowrap; }
   .tl-tile.stale .tl-box { display:none; }
   .tl-tile figcaption { position:absolute; left:0; right:0; top:0; display:flex; justify-content:space-between; align-items:center; gap:8px;
-                        padding:10px 12px 22px; background:linear-gradient(rgba(0,0,0,.6), transparent); font-size:12.5px; font-weight:650; }
-  .tl-tname { display:inline-flex; align-items:center; gap:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+                        padding:10px; font-size:13px; font-weight:700; }
+  .tl-tname { display:inline-flex; align-items:center; gap:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
+              background:#fff; color:var(--ink); border-radius:18px; padding:5px 12px 5px 10px; box-shadow:0 1px 6px rgba(0,0,0,.18); }
   .tl-tname i { width:8px; height:8px; border-radius:50%; background:var(--c); flex:none; }
-  .tl-age { color:#dfe4ea; font-weight:550; white-space:nowrap; font-variant-numeric:tabular-nums; }
-  .tl-seen { position:absolute; left:10px; bottom:10px; display:none; align-items:center; gap:6px; padding:5px 11px 5px 8px; border-radius:16px;
-             background:var(--k); color:#0b0d10; font-size:12.5px; font-weight:750; }
+  .tl-age { color:var(--ink2); background:rgba(255,255,255,.9); border-radius:18px; padding:5px 10px; font-size:12px; font-weight:600;
+            white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .tl-seen { position:absolute; left:10px; bottom:10px; display:none; align-items:center; gap:6px; padding:5px 12px 5px 9px; border-radius:18px;
+             background:var(--k); color:#fff; font-size:13px; font-weight:700; box-shadow:0 1px 6px rgba(0,0,0,.18); }
   .tl-tile.hot .tl-seen { display:inline-flex; }
   .tl-seen svg { width:16px; height:16px; }
 
   /* time slider */
-  .tl-panel { position:absolute; z-index:6; left:50%; transform:translateX(-50%); width:min(1180px, calc(100% - 28px));
-              bottom:calc(var(--nav-h) + 30px + env(safe-area-inset-bottom)); padding:10px 14px 12px; }
+  .tl-panel { position:absolute; z-index:6; left:50%; transform:translateX(-50%); width:min(1180px, calc(100% - 32px));
+              bottom:calc(var(--nav-h) + 30px + env(safe-area-inset-bottom)); padding:10px 14px 12px; background:var(--soft); border-radius:var(--radius); }
   .tl-bar { display:flex; align-items:center; gap:6px; margin-bottom:8px; }
-  .tl-btn { border:0; background:rgba(255,255,255,.08); color:#eef1f5; height:32px; min-width:32px; border-radius:16px; display:inline-flex; align-items:center;
-            justify-content:center; gap:6px; padding:0 10px; font-size:12.5px; font-weight:600; }
-  .tl-btn:hover { background:rgba(255,255,255,.15); }
-  .tl-btn.play { width:40px; height:40px; border-radius:50%; background:#fff; color:#0b0d10; padding:0; }
+  .tl-btn { border:0; background:#fff; color:var(--ink); height:32px; min-width:32px; border-radius:16px; display:inline-flex; align-items:center;
+            justify-content:center; gap:6px; padding:0 10px; font-size:13px; font-weight:600; }
+  .tl-btn:hover { background:var(--soft2); }
+  .tl-btn.play { width:40px; height:40px; border-radius:50%; background:var(--ink); color:#fff; padding:0; }
   .tl-btn svg { width:14px; height:14px; }
   .tl-btn.play svg { width:16px; height:16px; }
-  .tl-span { margin-left:6px; font-size:12.5px; color:var(--dim); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .tl-seg { margin-left:auto; display:flex; background:rgba(255,255,255,.07); border-radius:16px; padding:3px; }
-  .tl-seg button { border:0; background:none; color:var(--dim); font-size:12px; font-weight:650; padding:5px 11px; border-radius:13px; white-space:nowrap; }
-  .tl-seg button.on { background:rgba(255,255,255,.92); color:#0b0d10; }
+  .tl-span { margin-left:6px; font-size:13px; color:var(--ink2); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tl-seg { margin-left:auto; display:flex; gap:4px; }
+  .tl-seg button { border:0; background:#fff; color:var(--ink); font-size:13px; font-weight:600; padding:6px 12px; border-radius:16px; white-space:nowrap; }
+  .tl-seg button.on { background:var(--ink); color:#fff; }
   .tl-seg .short { display:none; }
   .tl-track { display:grid; grid-template-columns:124px 1fr; outline:none; }
-  .tl-labels div { height:var(--h); display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:600; color:var(--dim); white-space:nowrap; overflow:hidden; padding-right:8px; }
+  .tl-labels div { height:var(--h); display:flex; align-items:center; gap:7px; font-size:12px; font-weight:600; color:var(--ink2); white-space:nowrap; overflow:hidden; padding-right:8px; }
   .tl-labels div i { width:7px; height:7px; border-radius:50%; flex:none; }
-  .tl-plot { position:relative; touch-action:none; cursor:ew-resize; border-radius:10px; overflow:hidden; }
+  .tl-plot { position:relative; touch-action:none; cursor:ew-resize; border-radius:10px; overflow:hidden; background:#fff; }
   .tl-plot canvas { position:absolute; inset:0; width:100%; height:100%; }
   .tl-icons { position:absolute; inset:0; }
   .tl-ico { position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%; border:1.5px solid var(--k); color:var(--k);
-            background:rgba(12,14,18,.9); display:flex; align-items:center; justify-content:center; padding:0; cursor:pointer;
-            transition:transform .15s; box-shadow:0 2px 8px rgba(0,0,0,.4); }
+            background:#fff; display:flex; align-items:center; justify-content:center; padding:0; cursor:pointer;
+            transition:transform .15s; box-shadow:0 1px 4px rgba(0,0,0,.18); }
   .tl-ico:hover, .tl-ico.near { transform:scale(1.22); z-index:2; }
-  .tl-ico.near { background:var(--k); color:#0b0d10; }
+  .tl-ico.near { background:var(--k); color:#fff; }
   .tl-ico svg { width:15px; height:15px; }
   .tl-ico b { position:absolute; top:-6px; right:-8px; min-width:15px; height:15px; padding:0 3px; border-radius:8px; font-size:9.5px; line-height:15px;
-              background:#fff; color:#0b0d10; font-weight:800; text-align:center; }
-  .tl-ico.target::before { content:""; position:absolute; inset:-5px; border-radius:50%; border:1.5px solid #ff6b2c; }
+              background:var(--ink); color:#fff; font-weight:800; text-align:center; }
+  .tl-ico.target::before { content:""; position:absolute; inset:-5px; border-radius:50%; border:1.5px solid var(--blaze); }
   .tl-head { position:absolute; top:0; bottom:0; width:0; pointer-events:none; }
-  .tl-head::before { content:""; position:absolute; top:0; bottom:0; left:-1px; width:2px; background:#fff; box-shadow:0 0 12px rgba(255,255,255,.6); }
-  .tl-head::after { content:""; position:absolute; top:-1px; left:-7px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.5); }
-  .tl-hover { position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,.35); pointer-events:none; display:none; }
-  .tl-hover span { position:absolute; top:2px; left:6px; font-size:10.5px; font-weight:650; color:#fff; white-space:nowrap; background:rgba(0,0,0,.6); padding:1px 6px; border-radius:6px; }
-  .tl-legend { display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:8px; padding-left:124px; font-size:11px; color:var(--dim); }
+  .tl-head::before { content:""; position:absolute; top:0; bottom:0; left:-1px; width:2px; background:var(--ink); }
+  .tl-head::after { content:""; position:absolute; top:-1px; left:-7px; width:14px; height:14px; border-radius:50%; background:var(--ink); box-shadow:0 0 0 2px #fff; }
+  .tl-hover { position:absolute; top:0; bottom:0; width:1px; background:rgba(0,0,0,.25); pointer-events:none; display:none; }
+  .tl-hover span { position:absolute; top:2px; left:6px; font-size:10.5px; font-weight:650; color:#fff; white-space:nowrap; background:var(--ink); padding:1px 6px; border-radius:6px; }
+  .tl-legend { display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:8px; padding-left:124px; font-size:12px; color:var(--ink2); }
   .tl-legend span { display:inline-flex; align-items:center; gap:5px; }
   .tl-legend svg { width:13px; height:13px; }
-  .tl-legend .note { margin-left:auto; color:#79828e; }
-  .tl-card { position:fixed; z-index:40; width:230px; pointer-events:none; overflow:hidden; border-radius:14px; display:none; }
+  .tl-legend .note { margin-left:auto; }
+  .tl-card { position:fixed; z-index:40; width:230px; pointer-events:none; overflow:hidden; border-radius:14px; display:none;
+             background:#fff; box-shadow:0 8px 30px rgba(0,0,0,.22); }
   .tl-card img { width:100%; aspect-ratio:4/3; object-fit:cover; background:#000; }
-  .tl-card div { padding:9px 11px 10px; font-size:12px; color:var(--dim); line-height:1.4; }
-  .tl-card div b { color:#fff; font-size:13.5px; display:block; }
-  .tl-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--dim); font-size:14px; z-index:8; }
+  .tl-card div { padding:9px 11px 10px; font-size:12px; color:var(--ink2); line-height:1.4; }
+  .tl-card div b { color:var(--ink); font-size:13.5px; display:block; }
+  .tl-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--ink2); font-size:14px; z-index:8; }
 
   @media (max-width: 760px) {
-    .tl-hud { width:auto; right:14px; padding:12px 14px; }
-    .tl-time { font-size:32px; margin-bottom:6px; }
-    .tl-metrics { grid-template-columns:repeat(4, auto); gap:8px 12px; margin-top:10px; padding-top:10px; }
+    .tl-hud { width:auto; right:16px; }
+    .tl-skyhead { padding:10px 14px 12px; }
+    .tl-time { font-size:30px; margin-bottom:6px; }
+    .tl-moon { width:34px; height:34px; top:10px; right:12px; }
+    #tl-hudbody { padding:10px 14px; }
+    .tl-metrics { grid-template-columns:repeat(4, auto); gap:8px 12px; }
     .tl-m svg { display:none; }
     .tl-m b { font-size:14px; }
-    .tl-grid { left:14px; top:206px; gap:8px; }
-    .tl-tile { border-radius:12px; }
-    .tl-tile figcaption { padding:7px 8px 16px; font-size:11px; }
+    .tl-grid { left:16px; gap:8px; }
+    .tl-tile figcaption { padding:7px; font-size:11.5px; }
+    .tl-tname { padding:4px 9px 4px 8px; }
     .tl-age { display:none; }
-    .tl-moon { display:none; }
     .tl-track { grid-template-columns:64px 1fr; }
     .tl-legend { padding-left:0; }
     .tl-legend .note { display:none; }
     .tl-span, #tl-speed, .tl-src { display:none; }
-    .tl-seg button { padding:5px 8px; }
+    .tl-seg button { padding:5px 9px; }
     .tl-seg .long { display:none; } .tl-seg .short { display:inline; }
-    .tl-panel { padding:10px 10px 10px; }
+    .tl-panel { padding:10px; }
   }
 
   /* ---- engine room: day-by-day calendar of what came in */
@@ -1355,11 +1360,11 @@ async function mapClick(e) {
 // Animal icons sit on one lane per camera.
 
 const TL_KINDS = {
-  buck:   { label: 'Buck',   color: '#f2b544', rank: 5 },
-  doe:    { label: 'Doe',    color: '#e8a08e', rank: 4 },
-  fawn:   { label: 'Fawn',   color: '#ead2a2', rank: 3 },
-  other:  { label: 'Other animal', color: '#86c9b2', rank: 2 },
-  animal: { label: 'Animal, not labeled yet', color: '#cfd8e3', rank: 1 },
+  buck:   { label: 'Buck',   color: '#d97706', rank: 5 },
+  doe:    { label: 'Doe',    color: '#d6567a', rank: 4 },
+  fawn:   { label: 'Fawn',   color: '#a07b3b', rank: 3 },
+  other:  { label: 'Other animal', color: '#2b8a6e', rank: 2 },
+  animal: { label: 'Animal, not labeled yet', color: '#8a929c', rank: 1 },
 };
 const TL_SVG = {
   doe: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.4 9.6C6 9.6 3.4 8.2 2.4 6.3c2.4-.6 5.2.3 6.8 2.1zM15.6 9.6c2.4 0 5-1.4 6-3.3-2.4-.6-5.2.3-6.8 2.1z"/><path d="M12 21.5c-1.6 0-2.5-1.3-2.9-3L8.2 13c-.3-1.9.9-3.8 2.6-4.1h2.4c1.7.3 2.9 2.2 2.6 4.1l-.9 5.5c-.4 1.7-1.3 3-2.9 3z"/></svg>`,
@@ -1373,7 +1378,7 @@ const TL_SVG = {
   prev: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg>`,
   next: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5 10.5 8 6 12.5"/></svg>`,
 };
-const TL_CAM_COLORS = ['#7cb8ff', '#ffb86b', '#b99cff', '#6fe0bd', '#ff8fa3', '#e6df7a', '#9fd2ff', '#ffa3e0'];
+const TL_CAM_COLORS = ['#1f6feb', '#e8590c', '#7c4dff', '#0f9d76', '#d6336c', '#a28400', '#0b8fb3', '#b0479a'];
 const TL_LIGHT = { day: '#9ec5f4', shooting: '#f0a35e', night: '#5a6fb0' };
 const TL_RANGES = [['Day', 1, '1D'], ['3 days', 3, '3D'], ['Week', 7, '1W'], ['Month', 30, '1M']];
 const TL_SPEEDS = [[1800, '½ h/s'], [3600, '1 h/s'], [3 * 3600, '3 h/s'], [12 * 3600, '12 h/s']];
@@ -1493,17 +1498,18 @@ async function showTimeline() {
   data.byPhoto = {};
   for (const a of data.animals) (data.byPhoto[a.photo] ??= []).push(a);
   Object.assign(TL, { data, playing: false, speed: 3600, dirty: true, raf: 0, lastFrame: 0, cloudX: 0, cloudY: 0, shown: {} });
-  $('#main').innerHTML = `<div id="tl">
-    <div class="tl-sky" id="tl-sky"></div><canvas class="tl-fx" id="tl-stars"></canvas><div class="tl-fx tl-glow"></div>
-    <div class="tl-fx tl-clouds"></div><canvas class="tl-fx" id="tl-wind"></canvas>
-    <div class="tl-moon" id="tl-moon"></div>
-    <div class="tl-hud tl-glass" id="tl-hud"></div>
+  $('#main').innerHTML = `<h1 class="title" id="tl-title">Timeline</h1><div id="tl">
+    <div class="tl-hud" id="tl-hud"><div class="tl-skyhead">
+      <div class="tl-sky" id="tl-sky"></div><canvas class="tl-fx" id="tl-stars"></canvas><div class="tl-fx tl-glow"></div>
+      <div class="tl-fx tl-clouds"></div><canvas class="tl-fx" id="tl-wind"></canvas>
+      <div class="tl-moon" id="tl-moon"></div><div id="tl-hudsky"></div></div>
+      <div id="tl-hudbody"></div></div>
     <div class="tl-grid" id="tl-grid">${data.cameras.map((c, i) => `<figure class="tl-tile" data-cam="${i}" style="--c:${c.color}">
         <div class="tl-photo"><img alt=""><div class="tl-boxes"></div></div>
         <figcaption><span class="tl-tname"><i></i>${esc(c.name || c.camera_id)}</span><span class="tl-age"></span></figcaption>
         <div class="tl-seen"></div></figure>`).join('')}</div>
-    <div class="tl-panel tl-glass" id="tl-panel"></div>
-    <div class="tl-card tl-glass" id="tl-card"></div>
+    <div class="tl-panel" id="tl-panel"></div>
+    <div class="tl-card" id="tl-card"></div>
   </div>`;
   tlLayout();
   if (!data.start) { $('#tl').insertAdjacentHTML('beforeend', '<div class="tl-empty">No photos yet. Sync from Reveal first.</div>'); return; }
@@ -1517,6 +1523,9 @@ async function showTimeline() {
     if (src) { $('#lightbox img').src = src; $('#lightbox').style.display = 'flex'; }
   });
   TL.onResize = () => { tlLayout(); tlSizeCanvas(); tlStars(); $$('#tl-grid .tl-tile').forEach(tlFitBoxes); };
+  // On phones the tiles sit under the conditions card, whose height changes with what it shows.
+  TL.hudSize = new ResizeObserver(() => { tlLayout(); $$('#tl-grid .tl-tile').forEach(tlFitBoxes); });
+  TL.hudSize.observe($('#tl-hud'));
   TL.onKey = tlKey;
   addEventListener('resize', TL.onResize);
   addEventListener('keydown', TL.onKey);
@@ -1530,17 +1539,19 @@ function tlDestroy() {
   cancelAnimationFrame(TL.raf);
   if (TL.onResize) removeEventListener('resize', TL.onResize);
   if (TL.onKey) removeEventListener('keydown', TL.onKey);
+  TL.hudSize?.disconnect();
   Object.assign(TL, { onResize: null, onKey: null, raf: 0 });
 }
 
 function tlLayout() {
   const tl = $('#tl');
   if (!tl) return;
-  tl.style.top = `${$('header').getBoundingClientRect().bottom}px`;
-  const panel = $('#tl-panel'), grid = $('#tl-grid');
+  tl.style.top = `${$('#tl-title').getBoundingClientRect().bottom + 12}px`;
+  const panel = $('#tl-panel'), grid = $('#tl-grid'), hud = $('#tl-hud');
   if (!panel || !grid) return;
   const box = tl.getBoundingClientRect(), pr = panel.getBoundingClientRect();
-  grid.style.bottom = `${box.bottom - pr.top + 14}px`;
+  grid.style.bottom = `${box.bottom - pr.top + 12}px`;
+  grid.style.top = innerWidth <= 760 ? `${hud.offsetHeight + 10}px` : '0';
   // Lay the tiles out in the most square grid that keeps each photo near 16:10.
   const n = TL.data.cameras.length || 1, W = grid.clientWidth, H = grid.clientHeight;
   let best = 1, bestArea = 0;
@@ -1758,9 +1769,9 @@ function tlDrawTrack() {
   const step = span > 20 * DAY ? 7 : span > 9 * DAY ? 2 : 1;
   for (let m = firstMid - DAY, k = 0; m < v1 + DAY; m += DAY, k++) {
     const x = X(m);
-    g.fillStyle = 'rgba(255,255,255,.07)'; g.fillRect(Math.round(x), yLight, 1, H - yLight);
+    g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(Math.round(x), yLight, 1, H - yLight);
     if (k % step === 0 && x > -40 && x < W) {
-      g.fillStyle = '#c9d0d9';
+      g.fillStyle = '#4b5159';
       g.fillText(tlDate(m + HOUR), x + 5, yDates + 8);
     }
   }
@@ -1788,14 +1799,14 @@ function tlDrawTrack() {
     const lo = Math.min(...ws.map(w => w.temp)), hi = Math.max(...ws.map(w => w.temp)), pad = 5;
     const Y = t => yTemp + pad + (1 - (t - lo) / Math.max(1, hi - lo)) * (TL_ROW.temp - pad * 2);
     const grad = g.createLinearGradient(0, yTemp, 0, yTemp + TL_ROW.temp);
-    grad.addColorStop(0, 'rgba(255,190,120,.28)'); grad.addColorStop(1, 'rgba(255,190,120,0)');
+    grad.addColorStop(0, 'rgba(232,89,12,.16)'); grad.addColorStop(1, 'rgba(232,89,12,0)');
     g.beginPath();
     let gap = false;
     ws.forEach((w, i) => {
       const x = X(w.t), yy = Y(w.temp);
       if (i === 0 || w.t - ws[i - 1].t > 4 * HOUR) { g.moveTo(x, yy); gap = gap || i > 0; } else g.lineTo(x, yy);
     });
-    g.strokeStyle = 'rgba(255,196,130,.9)'; g.lineWidth = 1.5; g.lineJoin = 'round'; g.stroke();
+    g.strokeStyle = '#e8590c'; g.lineWidth = 1.5; g.lineJoin = 'round'; g.stroke();
     if (!gap) { g.lineTo(X(ws.at(-1).t), yTemp + TL_ROW.temp); g.lineTo(X(ws[0].t), yTemp + TL_ROW.temp); g.closePath(); g.fillStyle = grad; g.fill(); }
     g.fillStyle = '#8b939e'; g.font = '500 9.5px -apple-system, system-ui, sans-serif';
     g.fillText(`${Math.round(hi)}°`, W - 26, yTemp + 7); g.fillText(`${Math.round(lo)}°`, W - 26, yTemp + TL_ROW.temp - 6);
@@ -1806,9 +1817,9 @@ function tlDrawTrack() {
   // lanes: one per camera, with a hairline for every photo the camera took
   TL.data.cameras.forEach((cam, i) => {
     const ly = yLanes + i * TL_ROW.lane;
-    g.fillStyle = i % 2 ? 'rgba(255,255,255,.025)' : 'rgba(255,255,255,.045)';
+    g.fillStyle = i % 2 ? 'rgba(0,0,0,.015)' : 'rgba(0,0,0,.035)';
     g.fillRect(0, ly, W, TL_ROW.lane);
-    g.fillStyle = cam.color; g.globalAlpha = .38;
+    g.fillStyle = cam.color; g.globalAlpha = .45;
     const ps = cam.photos, a = tlBisect(ps, v0, p => p[0]), b = tlBisect(ps, v1, p => p[0]);
     let lastX = -9;
     for (let j = a; j < b; j++) {
@@ -1918,24 +1929,25 @@ function tlHud(t, w, lt, moon, where) {
   const clock = tlClock(t), color = TL_LIGHT[lt?.kind] || '#999';
   const lightName = { day: 'Daylight', shooting: 'Shooting light', night: 'Night' }[lt?.kind] || 'Light unknown';
   const trend = { R: ['Rising', 'M3 11 8 5l5 6'], S: ['Steady', 'M3 8h10'], F: ['Falling', 'M3 5l5 6 5-6'] }[w?.trend];
-  const wind = w?.wind_deg != null ? `<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15" fill="none" stroke="rgba(255,255,255,.18)"/>
+  const wind = w?.wind_deg != null ? `<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15" fill="#fff"/>
       <text x="17" y="6.4" text-anchor="middle" font-size="5.5" font-weight="700" fill="#8f98a3">N</text>
-      <g transform="rotate(${w.wind_deg} 17 17)"><path d="M17 6.5v19M12.6 21l4.4 4.6 4.4-4.6" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g></svg>` : '';
+      <g transform="rotate(${w.wind_deg} 17 17)"><path d="M17 6.5v19M12.6 21l4.4 4.6 4.4-4.6" fill="none" stroke="#15171a" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g></svg>` : '';
   const r = 13, k = moon.illum, rx = r * Math.abs(1 - 2 * k);
-  const moonSvg = `<svg width="30" height="30" viewBox="-15 -15 30 30"><circle r="${r}" fill="#2a3140"/>
-      <path d="M0 ${-r}A${r} ${r} 0 0 ${moon.waxing ? 1 : 0} 0 ${r}A${rx} ${r} 0 0 ${(k > .5) === moon.waxing ? 1 : 0} 0 ${-r}Z" fill="#f1ead6"/></svg>`;
+  const moonSvg = `<svg width="30" height="30" viewBox="-15 -15 30 30"><circle r="${r}" fill="#d5d8dd"/>
+      <path d="M0 ${-r}A${r} ${r} 0 0 ${moon.waxing ? 1 : 0} 0 ${r}A${rx} ${r} 0 0 ${(k > .5) === moon.waxing ? 1 : 0} 0 ${-r}Z" fill="#e6b83a"/></svg>`;
   const sky = w?.sky ? (lt?.kind === 'night' ? w.sky.replace(/partly sunny/i, 'Partly cloudy').replace(/sunny/i, 'clear').replace(/^clear$/i, 'Clear') : w.sky) : null;
   const agoMin = w ? Math.round(Math.abs(w.t - t) / 60e3) : null;
-  $('#tl-hud').innerHTML = `
+  $('#tl-hudsky').innerHTML = `
     <div class="tl-date">${tlDate(t, { weekday: 'long', month: 'long', day: 'numeric' })}</div>
     <div class="tl-time">${clock.hm}<small>${clock.ap}</small></div>
-    <div class="tl-light" style="color:${color}"><i style="background:${color}"></i>${lightName}${lt ? `<span>· ${lt.label}</span>` : ''}</div>
+    <div class="tl-light"><i style="background:${color}"></i>${lightName}${lt ? `<span>· ${lt.label}</span>` : ''}</div>`;
+  $('#tl-hudbody').innerHTML = `
     <div class="tl-metrics">
-      <div class="tl-m"><svg width="22" height="30" viewBox="0 0 22 30"><path d="M8 4.5a3 3 0 0 1 6 0v12.2a6 6 0 1 1-6 0z" fill="none" stroke="#ffc482" stroke-width="1.6"/><circle cx="11" cy="22" r="3.2" fill="#ffc482"/></svg>
+      <div class="tl-m"><svg width="22" height="30" viewBox="0 0 22 30"><path d="M8 4.5a3 3 0 0 1 6 0v12.2a6 6 0 1 1-6 0z" fill="none" stroke="#e8590c" stroke-width="1.6"/><circle cx="11" cy="22" r="3.2" fill="#e8590c"/></svg>
         <div title="${w?.lo != null ? `12-hour range ${w.lo}° to ${w.hi}°` : ''}"><b>${w?.temp != null ? `${Math.round(w.temp)}°F` : '—'}</b><span>${w?.dep ? `${w.dep > 0 ? '+' : '−'}${Math.abs(w.dep)}° vs yesterday` : w?.lo != null ? `${w.lo}° to ${w.hi}° over 12 h` : 'No reading'}</span></div></div>
       <div class="tl-m">${wind}<div><b>${w?.wind_dir ? `${w.wind_dir} ${Math.round(w.wind)}` : '—'}<small style="font-size:11px;font-weight:500;color:var(--dim)"> mph</small></b>
         <span>${w?.gust != null ? `Gusts ${Math.round(w.gust)} mph` : 'No wind reading'}</span></div></div>
-      <div class="tl-m"><svg width="22" height="22" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="rgba(255,255,255,.2)"/>${trend ? `<path d="${trend[1]}" fill="none" stroke="#9fd0ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>` : ''}</svg>
+      <div class="tl-m"><svg width="22" height="22" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7.5" fill="#fff"/>${trend ? `<path d="${trend[1]}" fill="none" stroke="#1f6feb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>` : ''}</svg>
         <div><b>${w?.pressure != null ? w.pressure.toFixed(2) : '—'}<small style="font-size:11px;font-weight:500;color:var(--dim)"> inHg</small></b><span>${trend ? trend[0] : 'Pressure'}</span></div></div>
       <div class="tl-m">${moonSvg}<div><b>${Math.round(moon.illum * 100)}%</b><span>${moon.name}</span></div></div>
     </div>
@@ -1979,7 +1991,9 @@ function tlWind(dt) {
   const sp = (0.00002 + w.speed * 0.0000075) * dt;  // screen fractions per frame
   TL.cloudX += dx * (.004 + w.speed * .0016) * dt; TL.cloudY += dy * (.004 + w.speed * .0016) * dt;
   $('.tl-clouds').style.backgroundPosition = `${TL.cloudX.toFixed(1)}px ${TL.cloudY.toFixed(1)}px`;
-  const n = w.rain || w.snow ? 150 : Math.min(150, Math.round(w.speed * 9));
+  // Streak counts were made for a full-screen sky; the sky card is far smaller, so thin them out.
+  const fit = Math.sqrt(Math.min(1, W * H / ((TL.dpr || 1) ** 2 * 1e6)));
+  const n = Math.round((w.rain || w.snow ? 150 : Math.min(150, w.speed * 9)) * fit);
   const dpr = TL.dpr || 1, len = (w.rain ? 18 : 10 + w.speed * 2.2) * dpr;
   g.lineCap = 'round';
   for (let i = 0; i < n; i++) {

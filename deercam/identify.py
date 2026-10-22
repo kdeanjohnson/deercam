@@ -136,22 +136,29 @@ def _shortlist(query, gallery: dict[int, list]) -> list[tuple[int, float, list]]
 
 
 def _match_request(q, gallery) -> tuple[list[ImagePart], str, dict[str, int]]:
-    # No LLM-written rack notes here: the per-photo estimates are noisy at 1024x768 and the model
-    # anchors on them instead of looking at the images. The owner's notes are different: a person
-    # verified them, so they go next to that candidate's references.
+    # Images only, no written notes. The AI's own per-photo rack estimates are noisy at 1024x768 and
+    # the model anchors on them. The owner's notes did harm both ways: used as evidence, Grok "saw"
+    # the noted feature in every crop, does included; used only to rule out, it rejected the buck's
+    # own photos whenever the feature was out of view (2026-10-21: Harry's 14 found in 1 of 6 tries
+    # of his own burst with his note, 4 of 6 without).
     candidates = _shortlist(q, gallery)
     images = [ImagePart("NEW PHOTO:", settings.data_dir / q["crop_path"])]
     label_to_buck = {}
     for label, (buck_id, _, refs) in zip(LABELS, candidates):
         label_to_buck[label] = buck_id
-        notes = refs[0]["notes"]
         for n, ref in enumerate(refs[:settings.refs_per_buck], 1):
-            caption = f"Candidate {label}, reference photo {n}:"
-            if n == 1 and notes:
-                caption = f"Candidate {label} - owner's notes on this buck: {notes}\n{caption}"
-            images.append(ImagePart(caption, settings.data_dir / ref["crop_path"]))
+            images.append(ImagePart(f"Candidate {label}, reference photo {n}:", settings.data_dir / ref["crop_path"]))
     prompt = f"Is the buck in the NEW PHOTO the same individual as candidate {', '.join(label_to_buck)}, or none of them?"
     return images, prompt, label_to_buck
+
+
+def _picked(decision: MatchDecision, label_to_buck: dict[str, int]) -> int | None:
+    """The buck the model chose, unless its own comparison with him lists conflicting features: the
+    prompt says a clear difference rules a match out, but the model sometimes picks him anyway."""
+    label = decision.match.strip().upper()
+    if any(c.label.strip().upper() == label and c.conflicting_features for c in decision.comparisons):
+        return None
+    return label_to_buck.get(label)
 
 
 def bursts(conn) -> list[list[int]]:
@@ -270,7 +277,7 @@ def identify(recheck: bool = False, limit: int | None = None, workers: int = 6,
                 except Exception as e:
                     log.warning("match for detection %s failed: %s", unit[0]["id"], e)
                     continue
-                buck_id = decision and label_to_buck.get(decision.match.strip().upper())
+                buck_id = decision and _picked(decision, label_to_buck)
                 if buck_id and decision.confidence >= settings.auto_accept_confidence:
                     _set(conn, ids, buck_id, "auto", decision.confidence, decision.reasoning)
                     counts["auto"] += len(ids)
@@ -323,7 +330,7 @@ def merge_generic_into(buck_id: int, workers: int = 6) -> int:
             except Exception as e:
                 log.warning("auto-group merge check failed: %s", e)
                 continue
-            if (label_to_buck.get(decision.match.strip().upper()) == buck_id
+            if (_picked(decision, label_to_buck) == buck_id
                     and decision.confidence >= settings.auto_accept_confidence):
                 merged += merge_bucks(conn, g, buck_id, f"auto-group merged: {decision.reasoning}")
     log.info("merged %d auto-group crops into buck %s", merged, buck_id)

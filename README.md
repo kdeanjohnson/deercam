@@ -27,7 +27,7 @@ Needs Python 3.10 or newer.
 ```bash
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 pip install -r requirements.txt
-python -m deercam serve     # http://localhost:8600, opens a first-run setup page
+python -m deercam serve     # http://localhost:8600
 ```
 
 **Mac:** the regular PyTorch build uses the Apple GPU (MPS) automatically.
@@ -41,7 +41,7 @@ python -m deercam serve
 
 Add `--reload` to `serve` while editing code, so the server restarts when you save a file.
 
-The setup page asks for the Reveal login, the AI provider and key, the season start and how far back to import. Everything there can also go in `.env` (see `.env.example`). Values saved in the UI live in `data/settings.json` and take precedence over `.env`.
+The first start prints a link to create the admin account (also `python -m deercam admin-link`). After that, the setup page asks for the Reveal login, the AI provider and key, the season start and how far back to import. Everything there can also go in `.env` (see `.env.example`). Values saved in the UI live in the ranch's `settings.json` and take precedence over `.env`.
 
 ## Usage
 
@@ -55,6 +55,21 @@ The first time, every buck lands in Review. Name a few there and the rest get ma
 
 ## Ranches
 
-A ranch is one place with cameras, e.g. your home place or a club lease in another state. Each ranch has its own Reveal login, photos, bucks, hit list, map and season settings, and bucks are only matched within a ranch. Add one under Settings → Ranch; once there are two, a picker appears in the header. On the command line, `python -m deercam ranches` lists them and `--ranch <id>` picks one (default: the first).
+A ranch is one place with cameras, e.g. your home place or a club lease in another state. Each ranch has its own Reveal login, photos, bucks, hit list, map and season settings, and bucks are only matched within a ranch. The admin adds ranches under Settings → Ranch. Once someone is in two or more, a picker appears in the header. On the command line, `python -m deercam ranches` lists them and `--ranch <id>` picks one (default: the first).
 
 All state lives in `DATA_DIR` (default `./data`): one folder per ranch in `ranches/<id>/` (`deercam.db`, `photos/`, `crops/`, `settings.json`, `camera_locations.json`, and a daily database snapshot in `backups/`), plus the shared model weights in `models/`. Data from before ranches is moved into the first ranch automatically. None of it is committed.
+
+## Accounts
+
+Everyone signs in. There's no email: people join through invite links.
+
+- **Admin:** runs the server. Created from the link printed on the first start, or by `python -m deercam admin-link`. The admin is an owner of every ranch and is the only one who can add ranches or change the AI provider, model and key (the admin pays for it).
+- **Roles in a ranch:**
+  - *viewer*: looks at photos, bucks and the map.
+  - *member*: can also review, name and tag bucks, and check for new photos.
+  - *owner*: can also manage the Reveal login, settings, camera pins and people.
+- **Inviting:** an owner makes an invite link under Settings → People and texts it. The person opening it picks a name, username and password, or joins with the account they already have. A link works once, for 7 days.
+- **Forgotten passwords:** the admin makes a new-password link (People, or `python -m deercam admin-link --user <username>`). Using it signs that person out everywhere else.
+- **Security:** passwords are stored as argon2 hashes; sessions and links only as SHA-256 hashes. Five wrong passwords lock that username for 15 minutes. Every route declares who may use it, and a route that doesn't is refused.
+- **Storage:** accounts live in `DATA_DIR/accounts.db`. `python -m deercam users` lists them.
+- **Links in the terminal:** set `PUBLIC_URL` (default `http://localhost:8600`) so the links the command line prints point to where people open DeerCam.

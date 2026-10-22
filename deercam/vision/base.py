@@ -135,15 +135,13 @@ MATCH_SYSTEM = (
     "kicker present on one, absent on the other with the same side visible) rules a match out. Pose and "
     "lighting differ between photos; account for points hidden by angle. Judge from the images themselves, "
     "since body size and coat change little between bucks and the rack is what identifies them. Several "
-    "different bucks use the same feeders, so similar-looking typical racks are common. Pick a candidate "
+    "different bucks use the same feeders, so similar-looking typical racks are common. The crops are "
+    "scaled to different sizes, so judge rack size only relative to the same deer's own ears, head and "
+    "body (tine height vs. ear length, spread vs. the ear tips, beam length vs. the head), never by how "
+    "big it looks in the picture; a young buck with a small rack is not the same deer as a mature one with "
+    "a big rack even if both are 8 points. Pick a candidate "
     "only when specific features line up; if unsure, answer 'none' with low confidence. If the NEW PHOTO "
-    "shows no antlers, or too little of them to compare, answer 'none'.\n\n"
-    "Some candidates come with the owner's notes on a defining feature. Use a note ONLY to rule that "
-    "candidate out: if the NEW PHOTO clearly shows the opposite of the note (e.g. the note says the right "
-    "brow tine is missing and the new photo plainly shows one), it is not that buck. Never count a note as "
-    "evidence FOR a match. At this resolution it is easy to imagine a small described feature such as a "
-    "split tine or kicker in any rack, so whether a candidate matches must come only from comparing the "
-    "NEW PHOTO with that candidate's reference photos, exactly as you would without the note."
+    "shows no antlers, or too little of them to compare, answer 'none'."
 )
 
 

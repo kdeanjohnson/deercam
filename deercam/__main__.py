@@ -9,6 +9,8 @@
   serve     start the review UI on http://localhost:8600
   export-demo  write a read-only static copy of the UI and data (e.g. for GitHub Pages)
   ranches   list the ranches (each is one place with cameras, with its own photos and bucks)
+  users     list the accounts and their ranches
+  admin-link  print a link to create the admin account, or (with --user) a new-password link
 
 Commands work on one ranch: --ranch <id>, else the first one.
 """
@@ -41,6 +43,9 @@ def main():
     p_demo.add_argument("out", help="output folder (replaced)")
     p_demo.add_argument("--no-map", action="store_true", help="leave camera locations out")
     sub.add_parser("ranches")
+    sub.add_parser("users")
+    p_link = sub.add_parser("admin-link")
+    p_link.add_argument("--user", help="username: a link to set a new password instead")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -60,11 +65,37 @@ def main():
         for r in ranches.all_ranches():
             print(f"{r['id']:24} {r['name']}")
         return
+    if args.cmd in ("users", "admin-link"):
+        account_command(args, parser)
+        return
     rid = args.ranch or ranches.default_id()
     if not ranches.exists(rid):
         parser.error(f"no ranch {rid!r}; see `python -m deercam ranches`")
     with ranches.use(rid):
         command(args)
+
+
+def account_command(args, parser):
+    from . import accounts
+    from .config import PUBLIC_URL
+    accounts.init()
+    if args.cmd == "users":
+        for u in accounts.all_users():
+            roles = ", ".join(f"{rid} ({role})" for rid, role in u["ranches"].items())
+            print(f"{u['username']:20} {u['name']:24} {'admin  ' if u['admin'] else ''}{roles or '-'}")
+        return
+    if args.user:
+        user = accounts.find_user(args.user)
+        if user is None:
+            parser.error(f"no account {args.user!r}; see `python -m deercam users`")
+        token = accounts.create_invite("reset", user_id=user["id"])
+        print(f"New-password link for {user['name']} (works once, for {accounts.INVITE_DAYS['reset']} days):")
+    elif any(u["admin"] for u in accounts.all_users()):
+        parser.error("there's already an admin; use --user <username> for a new-password link")
+    else:
+        token = accounts.create_invite("admin")
+        print(f"Open this to create the admin account (works once, for {accounts.INVITE_DAYS['admin']} days):")
+    print(f"  {PUBLIC_URL}/#join/{token}")
 
 
 def command(args):

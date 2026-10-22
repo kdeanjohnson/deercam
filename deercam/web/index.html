@@ -44,6 +44,15 @@
   body.demo #job { color:var(--accent); }
   body.demo [data-place], body.demo [data-unplace], body.demo #rematch, body.demo #rv-ideas, body.demo #rv-returning,
   body.demo #map-search, body.demo #map-go { display:none; }
+  body.signed-out .hdr-actions, body.signed-out #tabs, body.signed-out #job { display:none; }
+  /* What a role can't do is hidden; the server refuses it anyway */
+  body.role-viewer #sync, body.role-viewer [data-go="review"], body.role-viewer .tagrow, body.role-viewer .season-notes,
+  body.role-viewer .ptile .acts, body.role-viewer .edit-h, body.role-viewer #buck-edit, body.role-viewer #status-edit,
+  body.role-viewer [data-act="group-returning"], body.role-viewer .nudge { display:none; }
+  body:not(.role-owner) [data-place], body:not(.role-owner) [data-unplace] { display:none; }
+  .settings .person > label:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .settings details > summary { cursor:pointer; color:var(--ink2); font-size:13px; }
+  .settings details[open] { display:flex; flex-direction:column; gap:10px; }
   #tabs { position:fixed; z-index:30; left:50%; transform:translateX(-50%); bottom:calc(18px + env(safe-area-inset-bottom));
           background:rgba(21,23,26,.94); border-radius:32px; display:flex; gap:2px; padding:6px; box-shadow:0 8px 30px rgba(0,0,0,.25); }
   #tabs button { border:0; background:none; color:#c9ccd1; font-size:14px; font-weight:600; padding:10px 16px; border-radius:26px; white-space:nowrap; }
@@ -498,7 +507,13 @@ const api = (path, opts) => {
     return fetch(demoFile(path)).then(r => { if (!r.ok) throw new Error(`not in the demo: ${path}`); return r.json(); });
   }
   return fetch(path, opts).then(async r => {
-    if (!r.ok) { const e = new Error(r.statusText); try { e.detail = (await r.json()).detail; } catch {} throw e; }
+    if (!r.ok) {
+      const e = new Error(r.statusText); e.status = r.status;
+      try { e.detail = (await r.json()).detail; } catch {}
+      if (r.status === 401 && !/^\/api\/(login|join|account)/.test(path)) showSignIn('Your session ended. Sign in again.');
+      if (r.status === 403) toast(esc(e.detail || 'Not allowed'));
+      throw e;
+    }
     return r.json();
   });
 };
@@ -557,6 +572,91 @@ function toast(html, ms = 4000) {
   t.className = 'toast'; t.innerHTML = html;
   document.body.append(t);
   setTimeout(() => t.remove(), ms);
+}
+
+// ------------------------------------------------------------------ signing in, invite links
+
+let me = null;  // /api/me: {user, role (in the current ranch), ranches}; user is null when signed out
+const ROLES = ['viewer', 'member', 'owner'];
+const can = level => !!me?.user && (me.user.admin || (level !== 'admin' && ROLES.indexOf(me.role) >= ROLES.indexOf(level)));
+const signedOut = on => document.body.classList.toggle('signed-out', on);
+const reloadTo = hash => { history.replaceState(null, '', hash); location.reload(); };
+
+function showSignIn(msg = '') {
+  signedOut(true);
+  $('#main').innerHTML = `<h1 class="title">Sign in</h1><div class="settings"><section id="s-login">
+    <div class="row"><label>Username</label><input id="li-user" autocomplete="username" autocapitalize="none"></div>
+    <div class="row"><label>Password</label><input id="li-pass" type="password" autocomplete="current-password"></div>
+    <div class="row"><label></label><button class="act primary" id="li-go">Sign in</button><span id="li-msg" class="${msg ? 'bad' : 'meta'}">${esc(msg)}</span></div>
+    <div class="meta">New here? Open the invite link you were sent. Forgot your password? Ask the admin for a new-password link.</div>
+  </section></div>`;
+  $('#li-user').focus();
+}
+
+async function signIn() {
+  const username = $('#li-user').value.trim(), password = $('#li-pass').value;
+  if (!username || !password) return (username ? $('#li-pass') : $('#li-user')).focus();
+  try { await post('/api/login', { username, password }); location.reload(); }  // keeps the hash, e.g. an invite link
+  catch (err) { $('#li-msg').className = 'bad'; $('#li-msg').textContent = err.detail || 'Sign-in failed'; }
+}
+
+const ROLE_CAN = { viewer: 'look at the photos, bucks and map', member: 'review photos and name and tag bucks',
+                   owner: 'run the ranch: cameras, settings and inviting people' };
+let joinToken = null;
+async function showJoin(token) {
+  joinToken = token;
+  signedOut(true);
+  let info;
+  try { info = await api(`/api/join/${encodeURIComponent(token)}`); }
+  catch (err) {
+    $('#main').innerHTML = `<h1 class="title">This link doesn’t work</h1><div class="settings"><section>
+      <div class="meta">${esc(err.detail || 'It may have been typed wrong.')}</div>
+      <div class="row"><button class="act" data-go="home">Go to DeerCam</button></div></section></div>`;
+    signedOut(false);
+    return;
+  }
+  const pw = `<div class="row"><label>Password</label><input id="jn-pass" type="password" autocomplete="new-password" placeholder="at least 8 characters"></div>
+    <div class="row"><label>Password again</label><input id="jn-pass2" type="password" autocomplete="new-password"></div>`;
+  const account = `<div class="row"><label>Your name</label><input id="jn-name" autocomplete="name" placeholder="as others will see it"></div>
+    <div class="row"><label>Username</label><input id="jn-user" autocomplete="username" autocapitalize="none" placeholder="for signing in"></div>${pw}`;
+  let title, intro, form = account, button = 'Create account';
+  if (info.kind === 'admin') {
+    title = 'Create the admin account';
+    intro = 'You run this DeerCam: you’re an owner of every ranch, and the one who adds ranches and sets up the AI.';
+  } else if (info.kind === 'reset') {
+    title = 'Set a new password';
+    intro = `For ${esc(info.name)} (username ${esc(info.username)}). This signs you out on your other devices.`;
+    form = pw; button = 'Save password';
+  } else {
+    title = `Join ${esc(info.ranch)}`;
+    intro = `${info.invited_by ? `${esc(info.invited_by)} invited you` : 'You’re invited'} as a ${esc(info.role)}: you can ${ROLE_CAN[info.role]}.`;
+    if (info.signed_in_as) { form = ''; button = `Join as ${esc(info.signed_in_as)}`; }
+    else {
+      form += '<div class="meta">Already have a DeerCam account? <button class="link" id="jn-signin">Sign in</button> and this link will add the ranch to it.</div>';
+      button = 'Create account and join';
+    }
+  }
+  $('#main').innerHTML = `<h1 class="title">${title}</h1><div class="settings"><section id="s-join">
+    <div class="meta">${intro}</div>${form}
+    <div class="row"><label></label><button class="act primary" id="jn-go">${button}</button><span id="jn-msg" class="meta"></span></div>
+  </section></div>`;
+  ($('#jn-name') || $('#jn-pass') || $('#jn-go')).focus();
+}
+
+async function joinGo() {
+  const val = sel => $(sel) ? $(sel).value : null, msg = $('#jn-msg');
+  if ($('#jn-pass') && val('#jn-pass') !== val('#jn-pass2')) { msg.className = 'bad'; msg.textContent = 'The two passwords don’t match'; return; }
+  try {
+    await post(`/api/join/${encodeURIComponent(joinToken)}`, { name: val('#jn-name'), username: val('#jn-user')?.trim() ?? null, password: val('#jn-pass') });
+    reloadTo('#home');
+  } catch (err) { msg.className = 'bad'; msg.textContent = err.detail || 'That didn’t work'; }
+}
+
+function showNoRanch() {
+  signedOut(true);
+  $('#main').innerHTML = `<h1 class="title">Hi ${esc(me.user.name)}</h1><div class="settings"><section>
+    <div class="meta">You’re signed in, but not in a ranch yet. Ask a ranch owner for an invite link and open it on this device.</div>
+    <div class="row"><button class="act" id="acc-out">Sign out</button></div></section></div>`;
 }
 
 // ------------------------------------------------------------------ seasons, counts, header
@@ -721,7 +821,7 @@ async function showBuck(id) {
         <h3>${b.seasons.length > 1 ? `${esc(s.label)} photos` : 'Photos'} <span class="meta">${s.sightings}</span></h3>
         <div class="form season-notes" data-season="${s.season}" style="margin-bottom:10px"><div class="row">
           <input value="${esc(s.notes)}" placeholder="Rack features this season, e.g. right brow tine missing"
-                 title="Used when matching this season's photos to him. Racks change every year, so each season has its own.">
+                 title="Your notes on his rack this season. Racks change every year, so each season has its own.">
           <button class="btn small" data-act="save-season">Save</button><span class="meta"></span></div></div>
         <div class="pgrid">${sightings.filter(d => d.season === s.season).map(d => `
           <div class="ptile" data-id="${d.id}" title="${esc(`${d.camera} · ${when(d.when)}${d.match_reason && d.match_status === 'auto' ? `\n${d.match_reason}` : ''}`)}">
@@ -730,14 +830,14 @@ async function showBuck(id) {
             <div class="acts">${d.match_status === 'auto' ? `<button class="yes" data-act="accept" data-buck="${id}">✓ Him</button>` : ''}
               <button data-act="unassign">Not him</button></div>
           </div>`).join('')}</div>`).join('')}
-      <h3>About him</h3>
+      <h3 class="edit-h">About him</h3>
       <div class="form" id="buck-edit">
         <div class="row"><input value="${esc(b.name)}" data-name placeholder="Name" title="Name"></div>
         <div class="row"><input value="${esc(b.notes)}" data-notes placeholder="Any year: body marks, habits, where he beds"
                title="Carries over between seasons (rack features go with each season above)"></div>
         <div class="row"><button class="btn small primary" data-act="save-buck">Save</button><span class="meta" id="buck-saved"></span></div>
       </div>
-      ${b.generic ? '' : `<h3>Status</h3>
+      ${b.generic ? '' : `<h3 class="edit-h">Status</h3>
       <div class="form" id="status-edit"><div class="row">
         <select data-status>${['alive', 'harvested', 'dead'].map(s => `<option value="${s}" ${b.status === s ? 'selected' : ''}>${{ alive: 'Alive', harvested: 'Harvested', dead: 'Found dead' }[s]}</option>`).join('')}</select>
         <input type="date" data-date value="${esc(b.status_date || '')}" title="Photos after this date won't be matched to him"></div>
@@ -870,7 +970,8 @@ async function renderReview() {
     return;
   }
   const d = rv.items[rv.i];
-  rv.pick = d.buck_id || null; rv.newName = '';
+  // The AI's pick is only a guess here (sure matches never reach Review), so nothing is preselected.
+  rv.pick = null; rv.newName = '';
   const sort = localStorage.getItem('reviewSort') || 'similar';
   main.innerHTML = `<div class="review" data-det="${d.id}">
     <div class="rv-photo"><img id="rv-img" src="${d.crop}" alt="" title="Tap to switch between the close-up and the full photo">
@@ -889,7 +990,7 @@ async function renderReview() {
       </div>
       <details id="rv-notes-wrap" style="margin-top:6px"><summary>Add rack features (optional)</summary>
         <textarea id="rv-notes" rows="2" placeholder="e.g. right brow tine missing; kicker off left G2"
-                  title="Saved with the buck for this season and used when matching new photos to him"></textarea>
+                  title="Saved with the buck for this season"></textarea>
         <div class="meta" id="rv-old-notes"></div></details>
       <div class="form" style="margin-top:12px"><div class="row"><button class="btn blue" id="rv-save" style="flex:1">Save</button></div></div>
       <div class="rv-links">
@@ -897,7 +998,7 @@ async function renderReview() {
         <button class="link" id="rv-skip">Skip</button>
         <button class="link" id="rv-full">Full photo</button>
       </div>
-      ${d.match_reason && d.buck_id ? `<details><summary>Why the AI suggested ${esc(d.buck_name)}</summary><div class="meta">${esc(d.match_reason)}</div></details>` : ''}
+      ${d.match_reason && d.buck_id ? `<details><summary>Why the AI guessed ${esc(d.buck_name)}</summary><div class="meta">${esc(d.match_reason)}</div></details>` : ''}
       <details><summary>Details</summary><div class="meta">${[weatherLine(d), `${d.size_pct}% of frame`, d.quality ? `${d.quality} photo` : null,
         d.rack?.distinctive_features?.length ? `features: ${d.rack.distinctive_features.join('; ')}` : null].filter(Boolean).map(esc).join(' · ')}</div></details>
       <h3 style="display:flex; align-items:center; gap:10px">Queue
@@ -925,7 +1026,7 @@ async function renderReview() {
 }
 
 function cand(b, d, isPast = false) {
-  const sub = b.id === d.buck_id && d.match_confidence != null ? `<small class="sug">Suggested ${Math.round(d.match_confidence * 100)}%</small>`
+  const sub = b.id === d.buck_id && d.match_confidence != null ? `<small class="sug">AI guess ${Math.round(d.match_confidence * 100)}%</small>`
     : isPast ? `<small>${esc(seasonLabel(b.last_season))}</small>` : `<small>${b.generic ? 'auto-group' : `${b.visits} visit${b.visits === 1 ? '' : 's'}`}</small>`;
   return `<button class="cand ${isPast ? 'past' : ''}" data-pick="${b.id}" title="${esc(b.season_notes || b.notes || '')}">
     ${b.thumb ? `<img src="${b.thumb}" alt="">` : '<div class="plus"></div>'}<b>${esc(b.name)}${star(b)}</b>${sub}</button>`;
@@ -1905,12 +2006,18 @@ async function showSettings(firstRun = false) {
   cfg = c;
   const p = cfg.providers;
   const [sm, sd] = cfg.season_start.split('-').map(Number);
+  let n = 0;
+  const num = () => `${++n}. `;  // owners who aren't the admin don't get the AI section
+  if (!can('owner')) {
+    $('#main').innerHTML = `<h1 class="title">Settings</h1><div class="settings">${accountSection()}${ranchSection()}</div>`;
+    return;
+  }
   $('#main').innerHTML = `${firstRun ? `<h1 class="title">Welcome to DeerCam</h1><div class="pad meta" style="margin:-4px 0 16px; max-width:720px">Sign in to Reveal so DeerCam can read
       the cameras shared with you, pick the AI that looks at the deer, check the season settings, then choose how far back to import.</div>` : '<h1 class="title">Settings</h1>'}
     <div class="settings">
-    ${firstRun || DEMO ? '' : ranchSection()}
+    ${firstRun || DEMO ? '' : accountSection() + ranchSection() + '<section id="s-people"><h3>People</h3><div class="meta">Loading…</div></section>'}
     <section id="s-reveal">
-      <h3>1. Tactacam Reveal account</h3>
+      <h3>${num()}Tactacam Reveal account</h3>
       <div class="meta">The account the cameras are shared with. DeerCam only reads photos; it never changes anything on the account.</div>
       <div class="row"><label>Email</label><input id="rv-email" type="email" value="${esc(cfg.reveal_email)}" autocomplete="username"></div>
       <div class="row"><label>Password</label><input id="rv-pass" type="password" autocomplete="current-password"
@@ -1920,8 +2027,8 @@ async function showSettings(firstRun = false) {
         <span id="rv-msg" class="${cfg.reveal_signed_in ? 'ok' : 'meta'}">${cfg.reveal_signed_in ? `Signed in as ${esc(cfg.reveal_email)}` : 'Not signed in'}</span></div>
       <div class="cams" id="rv-cams"></div>
     </section>
-    <section id="s-ai">
-      <h3>2. AI for analyzing deer</h3>
+    ${can('admin') ? `<section id="s-ai">
+      <h3>${num()}AI for analyzing deer</h3>
       <div class="meta">Looks at each animal crop (buck or doe, rack description) and compares bucks. The detector and similarity search run locally on your GPU; only crops go to the AI.</div>
       <div class="row"><label>Provider</label><select id="ai-provider">${Object.entries(p).map(([k, v]) =>
         `<option value="${k}" ${k === cfg.vision_provider ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></div>
@@ -1932,9 +2039,9 @@ async function showSettings(firstRun = false) {
       <datalist id="ai-models"></datalist>
       <div class="row"><label></label><button class="act" id="ai-test" title="One real request with a photo; costs a cent or two">Test</button>
         <button class="act primary" id="ai-save">Save</button><span id="ai-msg" class="meta"></span></div>
-    </section>
+    </section>` : ''}
     <section id="s-season">
-      <h3>3. Seasons and syncing</h3>
+      <h3>${num()}Seasons and syncing</h3>
       <div class="meta">A season is an antler year: bucks drop their racks in late winter and grow new ones, so matching only compares photos within a season.
         Past seasons are archived: still browsable from the season menu, out of the way otherwise.</div>
       <div class="row"><label>Season starts</label>
@@ -1951,29 +2058,80 @@ async function showSettings(firstRun = false) {
       <div class="row"><label></label><button class="act primary" id="ss-save">Save</button><span id="ss-msg" class="meta"></span></div>
     </section>
     <section id="s-import">
-      <h3>${firstRun ? '4. Import photos' : 'Import older photos'}</h3>
+      <h3>${firstRun ? `${num()}Import photos` : 'Import older photos'}</h3>
       <div class="meta">Downloads photos back to this date, finds animals, and has the AI look at each deer. A season's worth can take a while and costs a few dollars of AI time.</div>
       <div class="row"><label>Import since</label><input id="im-since" type="date" value="${esc(cfg.current_season_start)}" style="flex:0 0 170px">
         <button class="act primary" id="im-go">${firstRun ? 'Finish and import' : 'Import'}</button><span id="im-msg" class="meta"></span></div>
     </section>
     ${firstRun ? '' : `<div class="meta" style="text-align:center">${st.photos} photos · ${st.animals} animals · ${st.buck_detections} buck crops · ${st.bucks} named bucks · ${st.groups} auto-groups</div>`}
   </div>`;
-  fillProvider();
+  if ($('#ai-provider')) fillProvider();
   if (cfg.reveal_signed_in) loadCameras();
+  if (!firstRun && !DEMO) loadPeople();
+}
+
+function accountSection() {
+  return `<section id="s-account">
+      <h3>Your account</h3>
+      <div class="meta">Signed in as ${esc(me.user.username)}${me.user.admin ? ' · admin' : ''}${me.role ? ` · ${esc(me.role)} of this ranch` : ''}</div>
+      <div class="row"><label>Name</label><input id="acc-name" value="${esc(me.user.name)}" autocomplete="name"><button class="act" id="acc-save">Save</button></div>
+      <details><summary>Change password</summary>
+        <div class="row"><label>Current password</label><input id="acc-old" type="password" autocomplete="current-password"></div>
+        <div class="row"><label>New password</label><input id="acc-new" type="password" autocomplete="new-password" placeholder="at least 8 characters"></div>
+        <div class="row"><label></label><button class="act" id="acc-pass">Change password</button></div>
+      </details>
+      <div class="row"><label></label><button class="act" id="acc-out">Sign out</button><span id="acc-msg" class="meta"></span></div>
+    </section>`;
 }
 
 function ranchSection() {
   const cur = ranchList.find(r => r.current) || {};
   const others = ranchList.filter(r => !r.current);
+  if (!can('owner') && !others.length) return '';
   return `<section id="s-ranch">
       <h3>Ranch</h3>
       <div class="meta">Each ranch is one place with cameras, with its own Reveal login, photos, bucks and map. Bucks are only matched within a ranch.</div>
-      <div class="row"><label>Name</label><input id="rn-name" value="${esc(cur.name)}"><button class="act" id="rn-save">Rename</button></div>
+      ${can('owner') ? `<div class="row"><label>Name</label><input id="rn-name" value="${esc(cur.name)}"><button class="act" id="rn-save">Rename</button></div>` : ''}
       ${others.length ? `<div class="row"><label>Other ranches</label><span style="display:flex; gap:6px; flex-wrap:wrap">${others.map(r =>
         `<button class="act" data-ranch="${esc(r.id)}">Switch to ${esc(r.name)}</button>`).join('')}</span></div>` : ''}
-      <div class="row"><label>Add a ranch</label><input id="rn-new" placeholder="e.g. Club lease, Kansas"><button class="act primary" id="rn-add">Add</button></div>
+      ${can('admin') ? `<div class="row"><label>Add a ranch</label><input id="rn-new" placeholder="e.g. Club lease, Kansas"><button class="act primary" id="rn-add">Add</button></div>` : ''}
       <div class="row"><label></label><span id="rn-msg" class="meta"></span></div>
     </section>`;
+}
+
+const sinceText = iso => {
+  const m = Math.round((Date.now() - Date.parse(iso)) / 6e4);
+  return m < 60 ? 'in the last hour' : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`;
+};
+
+async function loadPeople() {
+  const box = $('#s-people');
+  if (!box) return;
+  const { members, invites, me: myId } = await api('/api/members');
+  const roleSelect = m => `<select data-member="${m.id}" style="flex:0 0 auto" ${m.id === myId ? 'disabled title="Ask another owner to change your role"' : ''}>${ROLES.map(r =>
+    `<option value="${r}" ${m.role === r ? 'selected' : ''}>${r[0].toUpperCase() + r.slice(1)}</option>`).join('')}</select>`;
+  box.innerHTML = `<h3>People</h3>
+    <div class="meta">Viewers look. Members also review photos and name and tag bucks. Owners also handle the Reveal login, settings, camera pins and people.</div>
+    ${members.map(m => `<div class="row person"><label title="${esc(m.username)}">${esc(m.name)}</label>${roleSelect(m)}
+      ${m.id !== myId ? `<button class="act" data-remove="${m.id}">Remove</button>` : ''}
+      ${can('admin') ? `<button class="act" data-reset="${m.id}" title="For a forgotten password">New-password link</button>` : ''}
+      <span class="meta">${m.id === myId ? 'you' : m.last_seen ? `seen ${sinceText(m.last_seen)}` : 'hasn’t signed in yet'}</span></div>`).join('')
+      || '<div class="meta">Nobody has joined yet.</div>'}
+    <div class="row"><label>Invite someone</label><input id="pp-note" placeholder="Who it's for, e.g. Dad">
+      <select id="pp-role" style="flex:0 0 auto">${ROLES.map(r => `<option value="${r}" ${r === 'member' ? 'selected' : ''}>as ${r}</option>`).join('')}</select>
+      <button class="act primary" id="pp-invite">Make link</button></div>
+    <div id="pp-link"></div>
+    ${invites.length ? `<div class="meta">Links not used yet</div>${invites.map(i => `<div class="row"><label>${esc(i.note || 'Unnamed')}</label>
+      <span class="meta" style="flex:1">${esc(i.role)} · until ${esc(new Date(i.expires).toLocaleDateString())}</span>
+      <button class="act" data-revoke="${i.id}">Cancel link</button></div>`).join('')}` : ''}
+    <div class="row"><label></label><span id="pp-msg" class="meta"></span></div>`;
+}
+
+function showLink(token, note) {
+  const url = `${location.origin}${location.pathname}#join/${token}`;
+  $('#pp-link').innerHTML = `<div class="row"><input id="pp-url" readonly value="${esc(url)}"><button class="act" id="pp-copy">Copy</button></div>
+    <div class="meta">${esc(note)}</div>`;
+  $('#pp-url').select();
 }
 
 function fillProvider() {
@@ -2008,6 +2166,48 @@ async function loadCameras(cameras) {
 
 async function settingsClick(e) {
   const t = e.target;
+  if (t.id === 'li-go') return signIn();
+  if (t.id === 'jn-go') return joinGo();
+  if (t.id === 'jn-signin') return showSignIn();
+  if (t.id === 'acc-out') { await post('/api/logout'); return reloadTo('#home'); }
+  if (t.id === 'acc-save' || t.id === 'acc-pass') {
+    const body = t.id === 'acc-save' ? { name: $('#acc-name').value } : { password: $('#acc-old').value, new_password: $('#acc-new').value };
+    try {
+      await post('/api/account', body);
+      $('#acc-msg').className = 'ok'; $('#acc-msg').textContent = t.id === 'acc-save' ? 'Saved' : 'Password changed; other devices are signed out';
+      me = await api('/api/me');
+      $('#acc-old').value = $('#acc-new').value = '';
+    } catch (err) { $('#acc-msg').className = 'bad'; $('#acc-msg').textContent = err.detail || 'Not saved'; }
+    return;
+  }
+  if (t.id === 'pp-invite') {
+    const note = $('#pp-note').value.trim(), role = $('#pp-role').value;
+    try {
+      const r = await post('/api/invites', { role, note });
+      await loadPeople();
+      showLink(r.token, `Text this to ${note || 'them'}. It lets one person join as a ${role} and works for ${r.days} days.`);
+    } catch (err) { $('#pp-msg').className = 'bad'; $('#pp-msg').textContent = err.detail || 'No link made'; }
+    return;
+  }
+  if (t.id === 'pp-copy') {
+    try { await navigator.clipboard.writeText($('#pp-url').value); t.textContent = 'Copied'; }
+    catch { $('#pp-url').select(); t.textContent = 'Press Ctrl+C'; }
+    return;
+  }
+  if (t.dataset.revoke) { await post(`/api/invites/${t.dataset.revoke}/revoke`); return loadPeople(); }
+  if (t.dataset.remove) {
+    if (!t.classList.contains('primary')) { t.classList.add('primary'); t.textContent = 'Tap again to remove'; return; }
+    try { await post(`/api/members/${t.dataset.remove}`, { role: null }); } catch {}
+    return loadPeople();
+  }
+  if (t.dataset.reset) {
+    const name = t.closest('.person').querySelector('label').textContent;
+    try {
+      const r = await post(`/api/members/${t.dataset.reset}/reset`);
+      showLink(r.token, `Send this to ${name}. It sets a new password, works once and lasts ${r.days} days.`);
+    } catch {}
+    return;
+  }
   if (t.dataset.ranch) return switchRanch(t.dataset.ranch);
   if (t.id === 'rn-save' || t.id === 'rn-add') {
     const input = $(t.id === 'rn-save' ? '#rn-name' : '#rn-new'), name = input.value.trim();
@@ -2082,6 +2282,12 @@ async function settingsClick(e) {
 
 document.addEventListener('change', async e => {
   if (e.target.id === 'ai-provider') fillProvider();
+  if (e.target.dataset.member) {
+    try {
+      await post(`/api/members/${e.target.dataset.member}`, { role: e.target.value });
+      $('#pp-msg').className = 'ok'; $('#pp-msg').textContent = 'Role changed';
+    } catch { loadPeople(); }
+  }
   if (e.target.id === 'map-buck') { mapBuck = e.target.value; showMap(); }
   if (e.target.id === 'feed-cam') { feedCam = e.target.value; showFeed(); }
   if (e.target.id === 'rv-sort') { localStorage.setItem('reviewSort', e.target.value); rv.i = 0; showReview(); }
@@ -2095,7 +2301,10 @@ document.addEventListener('change', async e => {
 
 async function render() {
   const [v, a] = (location.hash.slice(1) || 'home').split('/');
+  if (v === 'join' && a) return showJoin(a);
+  if (!DEMO && !me?.user) return location.reload();  // e.g. back from a link page while signed out
   view = ['home', 'feed', 'timeline', 'bucks', 'buck', 'review', 'map', 'engine', 'settings'].includes(v) ? v : 'home';
+  if (view === 'review' && !DEMO && !can('member')) view = 'home';
   arg = a ?? null;
   const tab = { buck: 'bucks', feed: 'home' }[view] || view;
   $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.go === tab));
@@ -2196,6 +2405,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') $('#lightbox').style.display = 'none';
   if (e.key === 'Enter' && e.target.closest('#buck-edit')) $('[data-act="save-buck"]').click();
   if (e.key === 'Enter' && e.target.id === 'rv-name') saveReview();
+  if (e.key === 'Enter' && e.target.closest('#s-login')) signIn();
+  if (e.key === 'Enter' && e.target.closest('#s-join')) joinGo();
 });
 
 $('#season').addEventListener('change', () => render());
@@ -2253,9 +2464,17 @@ async function watchJob() {
     $('#job').textContent = `Read-only demo with real trail-camera data from ${DEMO.exported}. Browse freely; changes aren’t saved.`;
     if (!DEMO.map) $('[data-go="map"]').style.display = $('[data-go="timeline"]').style.display = 'none';
   }
+  if (!DEMO) {
+    me = await api('/api/me');
+    const link = /^#join\/(.+)$/.exec(location.hash);
+    if (link) return showJoin(link[1]);
+    if (!me.user) return showSignIn();
+    if (!me.ranches.length) return showNoRanch();
+    document.body.classList.add(`role-${me.role}`);  // hides what this role can't do
+  }
   await Promise.all([loadRanches(), loadSeasons()]);
   const [s, st] = DEMO ? [{}, {}] : await Promise.all([api('/api/settings'), api('/api/stats?season=all')]);
-  if (!DEMO && !s.setup_done && st.photos === 0) {
+  if (!DEMO && !s.setup_done && st.photos === 0 && can('owner')) {
     $$('#tabs button').forEach(b => b.classList.remove('on'));
     await showSettings(true);
   } else {

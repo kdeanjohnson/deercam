@@ -11,4 +11,5 @@ pydantic>=2
 openai>=1.92
 anthropic
 fastapi
+argon2-cffi
 uvicorn

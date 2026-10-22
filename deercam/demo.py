@@ -13,7 +13,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from . import ranches
+from . import accounts, ranches
 from .config import settings
 
 
@@ -38,7 +38,7 @@ def _relative_media(obj):
 def export(out: Path, include_map: bool = True) -> int:
     from .web.app import app
 
-    client = TestClient(app, cookies={"ranch": ranches.current_id()})
+    client = TestClient(app, cookies={"ranch": ranches.current_id(), "session": accounts.service_session()})
     if out.exists():
         # onexc: git marks its object files read-only, which stops rmtree on Windows
         shutil.rmtree(out, onexc=lambda fn, path, _: (os.chmod(path, stat.S_IWRITE), fn(path)))

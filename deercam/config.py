@@ -19,6 +19,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ROOT = Path(os.environ.get("DATA_DIR") or "data").resolve()
+# Where people open DeerCam, for the links the command line prints (the web page builds its own)
+PUBLIC_URL = (os.environ.get("PUBLIC_URL") or "http://localhost:8600").rstrip("/")
 
 
 def _env(name: str, default: str | None = None) -> str | None:

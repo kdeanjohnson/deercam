@@ -74,7 +74,7 @@ At about 360 photos a day per ranch, even the large detector needs only a few mi
 ## Build order
 
 1. **Per-ranch context.** Move today's data into ranch #1. The app still runs on the PC.
-2. **Accounts:** users, invite links, sessions, roles and the ranch switcher.
+2. **Accounts:** users, invite links, sessions, roles and the ranch switcher. *(Done 2026-10-21. Resets come from the admin only, since an owner resetting a password could take over an account that's also in other ranches.)*
 3. **Reveal connections** per ranch, with encrypted tokens and camera dedupe.
 4. **Worker:** the job queue, CPU mode and per-ranch AI usage with caps.
 5. **Go live:** Docker, the server, domain and HTTPS, and backups. Invite the dad, then the club.

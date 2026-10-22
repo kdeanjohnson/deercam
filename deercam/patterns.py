@@ -113,8 +113,9 @@ def visits(sightings: list[dict]) -> list[dict]:
     return result
 
 
+# Review-queue photos may carry the AI's guess in buck_id; it's only a guess, so they count as nobody yet.
 UNNAMED_SQL = SIGHTINGS_SQL.replace("d.buck_id IS NOT NULL AND d.match_status IN ('confirmed', 'auto')",
-                                    "d.match_status='review'")
+                                    "d.match_status='review'").replace("SELECT d.id, d.buck_id,", "SELECT d.id, NULL AS buck_id,")
 
 
 def load_unnamed(conn, season: int | None = None) -> list[dict]:

@@ -388,10 +388,10 @@
              box-shadow:0 1px 8px rgba(0,0,0,.45); }
   .tlm-name { position:absolute; left:15px; top:-13px; white-space:nowrap; background:#fff; color:var(--ink); border-radius:14px; padding:4px 10px;
               font-size:12px; font-weight:700; box-shadow:0 1px 6px rgba(0,0,0,.3); }
-  .tlm-card { position:absolute; left:0; bottom:20px; transform:translateX(-50%) translateY(6px); width:150px; border-radius:12px; overflow:hidden;
+  .tlm-card { position:absolute; left:var(--cx, -75px); top:var(--cy, -134px); transform:scale(.94); width:150px; border-radius:12px; overflow:hidden;
               background:#000; box-shadow:0 8px 24px rgba(0,0,0,.45); outline:3px solid var(--k); outline-offset:-3px; cursor:zoom-in;
-              opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; }
-  .tlm-pin.fresh .tlm-card { opacity:1; pointer-events:auto; transform:translateX(-50%); }
+              opacity:0; pointer-events:none; transition:opacity .3s, transform .3s, left .35s, top .35s; }
+  .tlm-pin.fresh .tlm-card { opacity:1; pointer-events:auto; transform:none; }
   .tlm-pin.fresh .tlm-name { display:none; }
   #tl-map .tlm-card img { display:block; width:150px; height:112px; max-width:none; object-fit:cover; }
   .tlm-card .cap { position:absolute; left:0; right:0; top:0; display:flex; justify-content:space-between; gap:6px; padding:6px; font-size:11px; font-weight:700; }
@@ -404,6 +404,58 @@
   .tlm-note { position:absolute; z-index:5; right:16px; bottom:calc(var(--panel-h, 200px) + 18px); display:none; background:#fff; color:var(--ink2);
               font-size:12px; padding:6px 12px; border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.2); }
   #tl.mode-map .tlm-note:not(:empty) { display:block; }
+
+  /* map mode, top left: the moment in one strip (the sky's color behind the clock), and who's being followed */
+  #tl.mode-map .tl-hud { display:none; }
+  .tlm-top { position:absolute; z-index:6; top:12px; left:16px; max-width:calc(100% - 92px); display:none; flex-direction:column; align-items:flex-start; gap:8px; }
+  #tl.mode-map .tlm-top { display:flex; }
+  .tlm-strip { display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px; padding:6px 16px 6px 6px; background:#fff; border-radius:var(--radius);
+               box-shadow:0 8px 28px rgba(0,0,0,.28); }
+  .tlm-clock { color:#fff; padding:5px 12px 6px; border-radius:11px; text-shadow:0 1px 8px rgba(0,0,0,.35); transition:background .5s linear; }
+  .tlm-clock span { display:block; font-size:10.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; opacity:.92; }
+  .tlm-clock b { font-size:24px; font-weight:800; letter-spacing:-.02em; line-height:1.05; font-variant-numeric:tabular-nums; }
+  .tlm-clock small { font-size:12px; font-weight:650; margin-left:3px; }
+  .tlm-s { display:flex; align-items:center; gap:7px; font-size:13px; white-space:nowrap; }
+  .tlm-s b { font-weight:700; font-variant-numeric:tabular-nums; }
+  .tlm-s span { color:var(--ink2); font-size:12px; }
+  .tlm-s i { width:9px; height:9px; border-radius:50%; flex:none; }
+  .tlm-follow { display:none; align-items:center; gap:8px; background:#fff; border-radius:14px; padding:6px 12px; font-size:12.5px; color:var(--ink2);
+                box-shadow:0 2px 12px rgba(0,0,0,.25); }
+  .tlm-follow:not(:empty) { display:inline-flex; }
+  .tlm-follow b { color:#b45309; }
+  .tl-follow { margin-left:auto; display:inline-flex; align-items:center; gap:6px; color:var(--ink2); }
+  .tl-follow select { font:inherit; font-size:12.5px; padding:4px 8px; border-radius:12px; border:0; background:#fff; color:var(--ink); }
+  .tl-follow.on select { background:#d97706; color:#fff; }
+
+  /* one camera's photo at the moment, opened from its pin or the timeline */
+  .tlm-side { position:absolute; z-index:7; top:12px; right:60px; width:330px; max-height:calc(100% - var(--panel-h, 200px) - 24px); overflow:auto;
+              display:none; flex-direction:column; gap:10px; padding:12px; background:#fff; border-radius:var(--radius); box-shadow:0 8px 28px rgba(0,0,0,.28); }
+  #tl.mode-map .tlm-side.on { display:flex; }
+  .tlm-side-head { display:flex; align-items:center; gap:8px; min-width:0; }
+  .tlm-side-head .tl-tname { background:var(--soft); box-shadow:none; }
+  .tlm-side-head .tl-age { display:inline; margin-left:auto; padding:0; background:none; overflow:hidden; text-overflow:ellipsis; }
+  .tlm-x { border:0; background:var(--soft); width:30px; height:30px; border-radius:50%; font-size:18px; line-height:1; flex:none; color:var(--ink); }
+  .tlm-side .tl-tile { aspect-ratio:4/3; flex:none; cursor:zoom-in; }
+  .tlm-side-what { display:flex; flex-wrap:wrap; gap:6px; }
+  .tlm-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px 3px 7px; border-radius:14px; background:var(--k); color:#fff; font-size:12.5px; font-weight:700; }
+  .tlm-chip svg { width:14px; height:14px; }
+  .tlm-side-acts { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .tlm-side-acts .tl-btn { background:var(--soft); }
+  .tlm-side-acts .tl-btn:disabled { opacity:.4; }
+  .tlm-side-acts .btn { margin-left:auto; }
+
+  /* downwind of each camera: where scent from that spot drifts */
+  .tlm-scent { position:absolute; left:0; top:0; width:0; height:0; pointer-events:none; transition:transform .6s; }
+  .tlm-scent svg { position:absolute; overflow:visible; }
+  .tlm-at { position:absolute; left:0; top:16px; transform:translateX(-50%); display:none; white-space:nowrap; background:#d97706; color:#fff;
+            font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:12px; box-shadow:0 1px 6px rgba(0,0,0,.35); }
+  .tlm-at.on { display:block; }
+  .tlm-arrow { width:16px; height:16px; margin:-8px 0 0 -8px; color:#d97706; filter:drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+  .tlm-arrow svg { width:16px; height:16px; display:block; }
+  .tlm-pin .tlm-dot, .tlm-pin .tlm-name { cursor:pointer; }
+  .tlm-lead { position:absolute; left:0; top:-1px; height:2px; transform-origin:0 50%; background:rgba(255,255,255,.85); box-shadow:0 0 3px rgba(0,0,0,.5);
+              opacity:0; transition:opacity .3s; pointer-events:none; }
+  .tlm-pin.fresh .tlm-lead { opacity:1; }
 
   @media (max-width: 760px) {
     .tl-hud { width:auto; right:16px; }
@@ -424,6 +476,11 @@
     .tl-span, #tl-speed, .tl-src { display:none; }
     .tl-seg button { padding:5px 9px; }
     .tl-seg .long { display:none; } .tl-seg .short { display:inline; }
+    .tlm-top { left:12px; max-width:calc(100% - 70px); }
+    .tlm-strip { gap:4px 12px; padding-right:12px; }
+    .tlm-clock b { font-size:19px; }
+    .tlm-s span { display:none; }
+    .tlm-side { left:12px; right:12px; width:auto; top:12px; }
     .tl-panel { padding:10px; }
   }
 
@@ -1553,6 +1610,16 @@ async function showTimeline() {
   $('#main').innerHTML = `<h1 class="title tl-titlebar" id="tl-title">Timeline
     <div class="tl-seg tl-mode" id="tl-mode"><button data-mode="cams">Cameras</button><button data-mode="map">Map</button></div></h1><div id="tl">
     <div id="tl-map"></div><div class="tlm-note" id="tlm-note"></div>
+    <div class="tlm-top" id="tlm-top"><div class="tlm-strip" id="tlm-strip"></div><div class="tlm-follow" id="tlm-follow"></div></div>
+    <aside class="tlm-side" id="tlm-side">
+      <div class="tlm-side-head"><span class="tl-tname"><i></i><b id="tlm-side-name"></b></span><span class="tl-age" id="tlm-side-age"></span>
+        <button class="tlm-x" id="tlm-side-x" title="Close (Esc)">×</button></div>
+      <figure class="tl-tile"><div class="tl-photo"><img alt=""><div class="tl-boxes"></div></div></figure>
+      <div class="tlm-side-what" id="tlm-side-what"></div>
+      <div class="tlm-side-acts"><button class="tl-btn" id="tlm-prevp" title="This camera's photo before">‹ Earlier</button>
+        <button class="tl-btn" id="tlm-nextp" title="This camera's next photo">Later ›</button>
+        <button class="btn blue small" id="tlm-tag" style="display:none">Who is this?</button></div>
+    </aside>
     <div class="tl-hud" id="tl-hud"><div class="tl-skyhead">
       <div class="tl-sky" id="tl-sky"></div><canvas class="tl-fx" id="tl-stars"></canvas><div class="tl-fx tl-glow"></div>
       <div class="tl-fx tl-clouds"></div><canvas class="tl-fx" id="tl-wind"></canvas>
@@ -1577,7 +1644,18 @@ async function showTimeline() {
     tlOpen(tile && TL.shown[tile.dataset.cam]);
   });
   $('#tl-mode').onclick = e => { const b = e.target.closest('button'); if (b) tlSetMode(b.dataset.mode); };
-  TL.onResize = () => { tlLayout(); tlSizeCanvas(); tlStars(); $$('#tl-grid .tl-tile').forEach(tlFitBoxes); };
+  $('#tlm-side').onclick = e => {
+    const t = e.target.closest('button, .tl-tile');
+    if (!t) return;
+    if (t.id === 'tlm-side-x') return tlSelect(null);
+    if (t.classList.contains('tl-tile')) return tlOpen(TL.sideSrc);
+    if (t.id === 'tlm-tag') return go('review', t.dataset.det);
+    const ps = TL.data.cameras[TL.sel].photos, i = TL.sideIdx + (t.id === 'tlm-nextp' ? 1 : t.id === 'tlm-prevp' ? -1 : 0);
+    if (ps[i] && i !== TL.sideIdx) { tlPlay(false); tlSeek(ps[i][0]); }
+  };
+  TL.topSize = new ResizeObserver(() => tlPlaceCards());
+  TL.topSize.observe($('#tlm-top'));
+  TL.onResize = () => { tlLayout(); tlSizeCanvas(); tlStars(); $$('#tl-grid .tl-tile, #tlm-side .tl-tile').forEach(tlFitBoxes); tlMapMetrics(); tlPlaceCards(); };
   // On phones the tiles sit under the conditions card, whose height changes with what it shows.
   TL.hudSize = new ResizeObserver(() => { tlLayout(); $$('#tl-grid .tl-tile').forEach(tlFitBoxes); });
   TL.hudSize.observe($('#tl-hud'));
@@ -1588,7 +1666,7 @@ async function showTimeline() {
   tlSizeCanvas();
   tlStars();
   TL.raf = requestAnimationFrame(tlFrame);
-  tlSetMode(localStorage.getItem('tlMode') || 'cams');
+  tlSetMode(localStorage.getItem('tlMode') || 'map');
 }
 
 // A camera's photo full size, with "Who is this?" for an unnamed deer in it.
@@ -1617,7 +1695,8 @@ function tlSetMode(mode) {
 function tlDestroy() {
   cancelAnimationFrame(TL.raf);
   TL.map?.remove();
-  Object.assign(TL, { map: null, pins: null, amb: null });
+  TL.topSize?.disconnect();
+  Object.assign(TL, { map: null, pins: null, amb: null, sel: null, sideSrc: null, pathKey: null, pathLayer: null, legs: [], follow: '' });
   if (TL.onResize) removeEventListener('resize', TL.onResize);
   if (TL.onKey) removeEventListener('keydown', TL.onKey);
   TL.hudSize?.disconnect();
@@ -1694,7 +1773,7 @@ function tlScene() {
   }
   TL.wind = w ? { deg: w.wind_deg, speed: w.wind || 0, rain: /rain|shower|drizzle|storm|thunder/i.test(w.sky || ''), snow: /snow|flurr|sleet/i.test(w.sky || ''), night: sun.alt < -4 } : null;
   tlHud(t, w, lt, moon, where);
-  if (TL.mode === 'map') { tlMapScene(sun, cover, dark, warm); tlMapCams(t); } else tlCams(t);
+  if (TL.mode === 'map') { tlStrip(t, w, lt, moon, skyAt(sun.alt, cover)); tlMapScene(sun, cover, dark, warm); tlMapCams(t); } else tlCams(t);
 }
 
 // ---- map mode
@@ -1723,31 +1802,207 @@ async function tlMapInit() {
     if (cv.width !== Math.round(size.x * dpr)) { cv.width = Math.round(size.x * dpr); cv.height = Math.round(size.y * dpr); }
   };
   m.on('move zoom resize viewreset', TL.ambFit);
+  m.on('zoomend moveend resize', () => tlPlaceCards());
+  m.createPane('tlpath').style.zIndex = 460;  // the followed buck's path: above the light of the moment, under the pins
   const placed = TL.data.cameras.filter(c => c.lat != null), unplaced = TL.data.cameras.filter(c => c.lat == null);
-  // Frame the cameras in the open space between the conditions card and the timeline.
-  const hud = $('#tl-hud'), panel = $('#tl-panel'), phone = innerWidth <= 760, panelH = $('#tl').getBoundingClientRect().bottom - panel.getBoundingClientRect().top;
-  $('#tl').style.setProperty('--panel-h', `${panelH}px`);
-  const where = tlWhere();
-  const H = box.clientHeight, top = phone ? hud.offsetHeight + 130 : 140, bottom = panelH + 16;
+  // Frame the cameras in the open space between the strip at the top and the timeline.
+  const phone = innerWidth <= 760, panelH = tlMapMetrics(), where = tlWhere();
+  const H = box.clientHeight, top = $('#tlm-top').offsetHeight + 12 + 70, bottom = panelH + 50;
   const squeeze = Math.min(1, H * .75 / (top + bottom));  // small screens: keep some map between the cards
   if (placed.length) m.fitBounds(placed.map(c => [c.lat, c.lon]), {
-    paddingTopLeft: [phone ? 40 : hud.offsetWidth + 90, top * squeeze], paddingBottomRight: [phone ? 40 : 90, bottom * squeeze], maxZoom: 17 });
+    paddingTopLeft: [phone ? 40 : 170, top * squeeze], paddingBottomRight: [phone ? 40 : 170, bottom * squeeze], maxZoom: 17 });
   else m.setView([where.lat, where.lon], 12);
   TL.pins = {};
   TL.data.cameras.forEach((c, ci) => {
     if (c.lat == null) return;
-    const html = `<div class="tlm-pin" style="--c:${c.color}"><div class="tlm-halo"></div><div class="tlm-ring"></div><div class="tlm-dot"></div>
+    const html = `<div class="tlm-pin" style="--c:${c.color}"><div class="tlm-scent"></div><div class="tlm-halo"></div><div class="tlm-ring"></div><div class="tlm-lead"></div><div class="tlm-dot"></div><div class="tlm-at"></div>
       <div class="tlm-name">${esc(c.name || c.camera_id)}</div>
       <div class="tlm-card" data-cam="${ci}"><img alt=""><div class="cap"><span>${esc(c.name || c.camera_id)}</span><span class="tlm-age"></span></div>
         <div class="tlm-seen"></div></div></div>`;
     const marker = L.marker([c.lat, c.lon], { icon: L.divIcon({ className: 'tlm-icon', html, iconSize: null }), keyboard: false }).addTo(m);
     const el = marker.getElement().querySelector('.tlm-pin');
-    el.querySelector('.tlm-card').addEventListener('click', () => tlOpen(TL.pins[ci]?.src));
+    el.addEventListener('click', e => { if (e.target.closest('.tlm-dot, .tlm-name, .tlm-card')) tlSelect(ci); });
     TL.pins[ci] = { marker, el, src: null, last: null };
   });
   $('#tlm-note').textContent = !placed.length ? 'No cameras are on the map yet. Place them on the Map page.'
     : unplaced.length ? `${unplaced.map(c => c.name || c.camera_id).join(', ')} ${unplaced.length === 1 ? 'isn’t' : 'aren’t'} on the map yet` : '';
   TL.ambFit();
+  TL.pathKey = null;
+  tlPath();
+  tlPlaceCards();
+  TL.dirty = true;
+}
+
+// Timeline panel height, for the map's padding and the side panel's room.
+function tlMapMetrics() {
+  const tl = $('#tl'), panel = $('#tl-panel');
+  if (!tl || !panel) return 0;
+  const h = tl.getBoundingClientRect().bottom - panel.getBoundingClientRect().top;
+  tl.style.setProperty('--panel-h', `${h}px`);
+  return h;
+}
+
+// Where each camera's photo card goes: above its pin when there's room, otherwise whichever side
+// overlaps the other cards, pins, the strip, the side panel and the timeline least. Every placed camera
+// gets a spot, shown or not, so cards don't jump around as photos come and go.
+function tlPlaceCards() {
+  if (!TL.map || !TL.pins || TL.mode !== 'map') return;
+  const box = $('#tl-map').getBoundingClientRect(), W = 150, H = 112;
+  if (!box.width) return;
+  const rel = sel => {
+    const el = $(sel), r = el && el.getBoundingClientRect();
+    return r && r.width ? { x: r.left - box.left - 6, y: r.top - box.top - 6, w: r.width + 12, h: r.height + 12 } : null;
+  };
+  const ui = ['#tlm-strip', '#tlm-follow', '#tlm-side', '#tl-panel', '#tlm-note', '#tl-map .leaflet-control-zoom'].map(rel).filter(Boolean);
+  const pins = Object.values(TL.pins).map(p => ({ p, pt: TL.map.latLngToContainerPoint(p.marker.getLatLng()), nameW: p.el.querySelector('.tlm-name').offsetWidth || 90 }));
+  // [card left, card top] relative to the pin, and how much less we like it than straight above
+  const near = [[-W / 2, -H - 20, 0], [8, -H - 8, 3], [-W - 8, -H - 8, 3], [18, -H / 2, 5], [-W - 18, -H / 2, 5],
+                [-W / 2, 20, 7], [8, 8, 9], [-W - 8, 8, 9]];
+  // the same directions further out, joined to the pin by a thin line, when the close spots are taken
+  const spots = [...near, ...near.map(([x, y, k]) => [x + Math.sign(x + W / 2) * 70, y + Math.sign(y + H / 2) * 50, k + 12])];
+  const inter = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  const frame = { x: 0, y: 0, w: box.width, h: box.height };
+  const rect = (q, s) => ({ x: q.pt.x + s[0], y: q.pt.y + s[1], w: W, h: H });
+  const chosen = new Map();
+  const cost = (q, s) => {
+    const r = rect(q, s);
+    let k = (W * H - inter(r, frame)) * 2 + s[2] * 300;
+    for (const u of ui) k += inter(r, u) * 1.5;
+    for (const o of pins) {
+      if (o === q) continue;
+      k += inter(r, { x: o.pt.x - 14, y: o.pt.y - 14, w: 28, h: 28 }) * 12;
+      k += inter(r, { x: o.pt.x + 12, y: o.pt.y - 14, w: o.nameW, h: 28 }) * 2;  // its name, shown while it has no fresh photo
+      if (chosen.has(o)) k += inter(r, rect(o, chosen.get(o))) * 3;
+    }
+    return k;
+  };
+  pins.sort((a, b) => a.pt.y - b.pt.y);
+  for (let pass = 0; pass < 3; pass++) {
+    for (const q of pins) {
+      chosen.delete(q);
+      let best = spots[0], bk = Infinity;
+      for (const s of spots) { const k = cost(q, s); if (k < bk) { bk = k; best = s; } }
+      chosen.set(q, best);
+    }
+  }
+  for (const q of pins) {
+    const s = chosen.get(q);
+    q.p.el.style.setProperty('--cx', `${s[0]}px`);
+    q.p.el.style.setProperty('--cy', `${s[1]}px`);
+    // leader line from the pin to the card's nearest edge
+    const ex = Math.max(s[0], Math.min(0, s[0] + W)), ey = Math.max(s[1], Math.min(0, s[1] + H)), len = Math.hypot(ex, ey);
+    const lead = q.p.el.querySelector('.tlm-lead');
+    lead.style.width = `${Math.max(0, len - 9)}px`;
+    lead.style.transform = `rotate(${Math.atan2(ey, ex)}rad) translateX(9px)`;
+  }
+}
+
+function tlSelect(ci) {
+  TL.sel = ci;
+  TL.sideSrc = undefined;
+  $('#tlm-side').classList.toggle('on', ci != null);
+  TL.dirty = true;
+  requestAnimationFrame(tlPlaceCards);
+}
+
+// The side panel: the selected camera's photo at the moment, with what's in it.
+function tlSide(t) {
+  const ci = TL.sel, c = TL.data.cameras[ci], ps = c.photos, i = tlBisect(ps, t + 1, x => x[0]) - 1, p = ps[i];
+  const side = $('#tlm-side'), tile = side.querySelector('.tl-tile'), age = p ? (t - p[0]) / 60e3 : Infinity;
+  side.style.setProperty('--c', c.color);
+  $('#tlm-side-name').textContent = c.name || c.camera_id;
+  $('#tlm-side-age').textContent = !p ? 'No photos yet' : `${tlStamp(p[0])}${age < 60 ? ` · ${age < 1 ? 'just now' : `${Math.round(age)} min ago`}` : ''}`;
+  $('#tlm-prevp').disabled = i <= 0;
+  $('#tlm-nextp').disabled = i >= ps.length - 1;
+  TL.sideIdx = i;
+  const src = p ? p[2] : null;
+  if (src === TL.sideSrc) return;
+  TL.sideSrc = src;
+  const img = tile.querySelector('img'), anims = src ? TL.data.byPhoto[src] || [] : [];
+  if (src) { img.classList.remove('in'); img.onload = () => { img.classList.add('in'); tlFitBoxes(tile); }; img.src = src; } else img.removeAttribute('src');
+  tile.querySelector('.tl-boxes').innerHTML = src ? tlBoxes(src) : '';
+  $('#tlm-side-what').innerHTML = anims.length ? anims.map(a => {
+    const k = TL_KINDS[a.kind];
+    return `<span class="tlm-chip" style="--k:${k.color}">${TL_SVG[a.kind]}${esc(a.buck || k.label.replace(', not labeled yet', ''))}</span>`;
+  }).join('') : src ? '<span class="meta">No animals found in this photo</span>' : '';
+  const deer = anims.filter(a => !a.buck && a.kind !== 'other').sort((a, b) => TL_KINDS[b.kind].rank - TL_KINDS[a.kind].rank)[0];
+  const tag = $('#tlm-tag');
+  tag.style.display = deer && !document.body.classList.contains('role-viewer') ? '' : 'none';
+  tag.dataset.det = deer?.id ?? '';
+}
+
+const CARDINAL = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+const cardinal = d => CARDINAL[Math.round((((d % 360) + 360) % 360) / 45) % 8];
+
+// The strip at the top of the map: the clock on a chip of the sky's color, then light, temperature,
+// wind (and which way scent drifts), pressure and moon.
+function tlStrip(t, w, lt, moon, sky) {
+  const el = $('#tlm-strip');
+  if (!el) return;
+  const clock = tlClock(t), color = TL_LIGHT[lt?.kind] || '#999';
+  const lightName = { day: 'Daylight', shooting: 'Shooting light', night: 'Night' }[lt?.kind] || 'Light unknown';
+  const trend = { R: '↑', S: '→', F: '↓' }[w?.trend] || '';
+  const r = 8, k = moon.illum, rx = r * Math.abs(1 - 2 * k);
+  const calm = !w || w.wind_deg == null || (w.wind || 0) < 1;
+  el.innerHTML = `
+    <div class="tlm-clock" style="background:linear-gradient(160deg, rgb(${sky.top}), rgb(${sky.low}))"><span>${tlDate(t)}</span><b>${clock.hm}<small>${clock.ap}</small></b></div>
+    <div class="tlm-s"><i style="background:${color}"></i><b>${lightName}</b>${lt ? `<span>${lt.label}</span>` : ''}</div>
+    <div class="tlm-s"><b>${w?.temp != null ? `${Math.round(w.temp)}°F` : '—'}</b>${w?.dep ? `<span>${w.dep > 0 ? '+' : '−'}${Math.abs(w.dep)}° vs yesterday</span>` : ''}</div>
+    <div class="tlm-s">${calm ? '<b>Calm</b>' : `<svg width="18" height="18" viewBox="0 0 18 18"><g transform="rotate(${w.wind_deg} 9 9)"><path d="M9 2v14M5.5 12.5 9 16l3.5-3.5" fill="none" stroke="#15171a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
+      <b>${w.wind_dir || cardinal(w.wind_deg)} ${Math.round(w.wind)} mph</b><span>scent drifts ${cardinal(w.wind_deg + 180)}</span>`}</div>
+    ${w?.pressure != null ? `<div class="tlm-s"><b>${w.pressure.toFixed(2)}</b><span>inHg ${trend}</span></div>` : ''}
+    <div class="tlm-s"><svg width="18" height="18" viewBox="-9 -9 18 18"><circle r="${r}" fill="#d5d8dd"/><path d="M0 ${-r}A${r} ${r} 0 0 ${moon.waxing ? 1 : 0} 0 ${r}A${rx} ${r} 0 0 ${(k > .5) === moon.waxing ? 1 : 0} 0 ${-r}Z" fill="#e6b83a"/></svg>
+      <b>${Math.round(k * 100)}%</b></div>`;
+}
+
+// A followed buck's moves in the slider's range: one curve per trip between cameras (bending to its
+// right, so trips each way stay apart), solid once he's made it by the slider's time, dashed after.
+function tlPath() {
+  if (!TL.map) return;
+  const key = `${TL.follow}|${Math.round(TL.v0 / 6e4)}|${Math.round(TL.v1 / 6e4)}`;
+  if (key === TL.pathKey) return;
+  TL.pathKey = key;
+  TL.pathLayer?.remove();
+  TL.pathLayer = null; TL.legs = [];
+  const note = $('#tlm-follow');
+  if (!TL.follow) { note.innerHTML = ''; return; }
+  const cams = TL.data.cameras;
+  const visits = [];
+  for (const a of TL.data.animals) {
+    if (a.buck !== TL.follow || a.cam == null || a.t < TL.v0 || a.t > TL.v1) continue;
+    const v = visits.at(-1);
+    if (v && v.cam === a.cam && a.t - v.t1 < 2 * HOUR) { v.t1 = a.t; v.n++; } else visits.push({ cam: a.cam, t0: a.t, t1: a.t, n: 1 });
+  }
+  const layer = TL.pathLayer = L.layerGroup().addTo(TL.map), pairs = {};
+  for (let i = 1; i < visits.length; i++) {
+    const a = visits[i - 1], b = visits[i], A = cams[a.cam], B = cams[b.cam];
+    if (a.cam === b.cam || A.lat == null || B.lat == null) continue;
+    const pair = `${a.cam}>${b.cam}`, nth = pairs[pair] = (pairs[pair] || 0) + 1;
+    const cos = Math.cos(rad(A.lat)), dx = (B.lon - A.lon) * cos, dy = B.lat - A.lat, bend = .16 + .1 * (nth - 1);
+    const cx = (A.lon + B.lon) / 2 + dy * bend / cos, cy = (A.lat + B.lat) / 2 - dx * bend;
+    const pts = [];
+    for (let j = 0; j <= 24; j++) {
+      const u = j / 24, v = 1 - u;
+      pts.push([v * v * A.lat + 2 * u * v * cy + u * u * B.lat, v * v * A.lon + 2 * u * v * cx + u * u * B.lon]);
+    }
+    const line = L.polyline(pts, { pane: 'tlpath', color: '#d97706', weight: 3.5, opacity: .9, lineCap: 'round' })
+      .bindTooltip(`${esc(A.name || '')} → ${esc(B.name || '')}<br>${tlStamp(a.t1)} → ${tlStamp(b.t0)}`, { sticky: true }).addTo(layer);
+    const ang = deg(Math.atan2(dx, dy));
+    const arrow = L.marker(pts[12], { pane: 'tlpath', interactive: false, keyboard: false,
+      icon: L.divIcon({ className: '', iconSize: null, html: `<div class="tlm-arrow" style="transform:rotate(${ang}deg)"><svg viewBox="0 0 16 16"><path d="M8 1.5 14 14 8 10.5 2 14z" fill="currentColor" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg></div>` }) }).addTo(layer);
+    TL.legs.push({ line, arrow, t: b.t0, done: null });
+  }
+  const n = visits.length, where = new Set(visits.map(v => v.cam)).size;
+  note.innerHTML = n ? `<b>${esc(TL.follow)}</b> ${n} visit${n === 1 ? '' : 's'} at ${where} camera${where === 1 ? '' : 's'}, ${TL.legs.length} move${TL.legs.length === 1 ? '' : 's'} in this range`
+    : `<b>${esc(TL.follow)}</b> not seen in this range`;
+}
+
+function tlFollow(name) {
+  TL.follow = name;
+  TL.followAt = TL.data.animals.filter(a => a.buck === name && a.cam != null);
+  $('#tl-follow-wrap')?.classList.toggle('on', !!name);
+  TL.pathKey = null;
+  tlDrawTrack();
   TL.dirty = true;
 }
 
@@ -1769,6 +2024,7 @@ function tlMapScene(sun, cover, dark, warm) {
 function tlMapCams(t) {
   if (!TL.pins) return;
   const as = TL.data.animals, a0 = tlBisect(as, t - 3 * HOUR, a => a.t), a1 = tlBisect(as, t + 1, a => a.t);
+  const scent = tlScent(), fa = TL.follow ? TL.followAt : [], at = fa[tlBisect(fa, t + 1, a => a.t) - 1];
   TL.data.cameras.forEach((c, ci) => {
     const pin = TL.pins[ci];
     if (!pin) return;
@@ -1798,8 +2054,41 @@ function tlMapCams(t) {
       }
     }
     pin.marker.setZIndexOffset(best ? 1000 : age <= 45 ? 500 : 0);
+    const sc = el.querySelector('.tlm-scent');
+    if (sc.dataset.k !== scent.key) { sc.dataset.k = scent.key; sc.innerHTML = scent.svg; }
+    if (scent.svg) sc.style.transform = `rotate(${scent.to}deg)`;
+    const atEl = el.querySelector('.tlm-at');
+    atEl.classList.toggle('on', !!at && at.cam === ci);
+    if (at && at.cam === ci) {
+      const h = (t - at.t) / HOUR;
+      atEl.textContent = `${TL.follow} · ${h < 1 ? `${Math.max(1, Math.round(h * 60))} min` : h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} days`} ago`;
+    }
   });
+  for (const leg of TL.legs || []) {
+    const done = leg.t <= t;
+    if (done === leg.done) continue;
+    leg.done = done;
+    leg.line.setStyle({ opacity: done ? .95 : .4, dashArray: done ? null : '2 8' });
+    leg.arrow.setOpacity(done ? 1 : .45);
+  }
+  if (TL.sel != null) tlSide(t);
 }
+
+// The downwind wedge drawn under every pin, longer in stronger wind; none when calm.
+function tlScent() {
+  const w = TL.wind;
+  if (!w || w.deg == null || (w.speed || 0) < 1) return { key: 'none', svg: '', to: 0 };
+  const len = Math.round(Math.min(160, 50 + 14 * w.speed) / 10) * 10, a = rad(24), x = (len * Math.sin(a)).toFixed(1), y = (-len * Math.cos(a)).toFixed(1);
+  return { key: String(len), to: w.deg + 180, svg: `<svg width="${2 * len}" height="${2 * len}" viewBox="${-len} ${-len} ${2 * len} ${2 * len}" style="left:${-len}px; top:${-len}px">
+    <defs><radialGradient id="tlsc${len}" cx="0" cy="0" r="${len}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
+    <path d="M0 0L${-x} ${y}A${len} ${len} 0 0 1 ${x} ${y}Z" fill="url(#tlsc${len})"/></svg>` };
+}
+
+// A box around each animal found in a photo, labeled with the buck's name or what it is.
+const tlBoxes = src => (TL.data.byPhoto[src] || []).filter(a => a.box?.every(v => v != null)).map(a => {
+  const [x1, y1, x2, y2] = a.box, k = TL_KINDS[a.kind];
+  return `<div class="tl-box" style="left:${x1 * 100}%;top:${y1 * 100}%;width:${(x2 - x1) * 100}%;height:${(y2 - y1) * 100}%;--k:${k.color}"><span>${esc(a.buck || k.label.replace(', not labeled yet', ''))}</span></div>`;
+}).join('');
 
 // The photo fills its tile (object-fit: cover, so edges are cropped); size the box layer to the whole
 // image as drawn, so animal boxes in 0..1 photo coordinates land on the animal.
@@ -1822,11 +2111,7 @@ function tlCams(t) {
     if (p && TL.shown[ci] !== p[2]) {
       TL.shown[ci] = p[2];
       img.classList.remove('in'); img.onload = () => { img.classList.add('in'); tlFitBoxes(tile); }; img.src = p[2];
-      const anims = TL.data.byPhoto[p[2]] || [];
-      tile.querySelector('.tl-boxes').innerHTML = anims.filter(a => a.box?.every(v => v != null)).map(a => {
-        const [x1, y1, x2, y2] = a.box, k = TL_KINDS[a.kind];
-        return `<div class="tl-box" style="left:${x1 * 100}%;top:${y1 * 100}%;width:${(x2 - x1) * 100}%;height:${(y2 - y1) * 100}%;--k:${k.color}"><span>${esc(a.buck || k.label.replace(', not labeled yet', ''))}</span></div>`;
-      }).join('');
+      tile.querySelector('.tl-boxes').innerHTML = tlBoxes(p[2]);
     }
     if (!p) { TL.shown[ci] = null; img.removeAttribute('src'); tile.querySelector('.tl-boxes').innerHTML = ''; }
     tile.classList.toggle('stale', age > 45);
@@ -1855,6 +2140,10 @@ function tlPanel() {
   const rows = [['', TL_ROW.dates], ['Light', TL_ROW.light], ['Temp', TL_ROW.temp], ...cams.map(c => [c, TL_ROW.lane])];
   TL.trackH = rows.reduce((s, r) => s + r[1], 0) + 6;
   const kinds = Object.entries(TL_KINDS);
+  // named bucks seen in the timeline's data, hit-list first
+  const named = {};
+  for (const a of TL.data.animals) if (a.buck) named[a.buck] = named[a.buck] || a.tag === 'target';
+  const followable = Object.entries(named).map(([name, target]) => ({ name, target })).sort((a, b) => b.target - a.target || a.name.localeCompare(b.name));
   $('#tl-panel').innerHTML = `
     <div class="tl-bar">
       <button class="tl-btn play" id="tl-play" title="Play (space)">${TL_SVG.play}</button>
@@ -1871,7 +2160,10 @@ function tlPanel() {
         <div class="tl-hover" id="tl-hover"><span></span></div><div class="tl-head" id="tl-head"></div></div>
     </div>
     <div class="tl-legend">${kinds.map(([k, v]) => `<span style="color:${v.color}">${TL_SVG[k]}<em style="color:var(--dim);font-style:normal">${v.label}</em></span>`).join('')}
-      <span class="note" id="tl-note"></span></div>`;
+      <span class="note" id="tl-note"></span>
+      ${followable.length ? `<label class="tl-follow${TL.follow ? ' on' : ''}" id="tl-follow-wrap">Follow <select id="tl-follow"><option value="">no one</option>
+        ${followable.map(b => `<option value="${esc(b.name)}" ${b.name === TL.follow ? 'selected' : ''}>${esc(b.name)}${b.target ? ' ★' : ''}</option>`).join('')}</select></label>` : ''}</div>`;
+  $('#tl-follow')?.addEventListener('change', e => tlFollow(e.target.value));
   $('#tl-play').onclick = () => tlPlay(!TL.playing);
   $('#tl-prev').onclick = () => tlJump(-1);
   $('#tl-next').onclick = () => tlJump(1);
@@ -1891,7 +2183,7 @@ function tlPanel() {
   let dragging = false;
   plot.addEventListener('pointerdown', e => {
     const ico = e.target.closest('.tl-ico');
-    if (ico) { tlSeek(Number(ico.dataset.t)); return; }
+    if (ico) { tlSeek(Number(ico.dataset.t)); if (TL.mode === 'map') tlSelect(TL.groups[Number(ico.dataset.g)].cam); return; }
     dragging = true; plot.setPointerCapture(e.pointerId); tlPlay(false);
     tlSeek(xToT(e.offsetX));
   });
@@ -2017,11 +2309,12 @@ function tlDrawTrack() {
   $('#tl-span').textContent = `${tlDate(v0, { month: 'short', day: 'numeric' })} – ${tlDate(v1, { month: 'short', day: 'numeric', year: 'numeric' })}`;
   tlIcons(X, yLanes);
   tlHead();
+  tlPath();
 }
 
 function tlIcons(X, yLanes) {
   const box = $('#tl-icons'), W = box.clientWidth;
-  const all = TL.data.animals.filter(a => a.t >= TL.v0 && a.t <= TL.v1 && a.cam != null);
+  const all = TL.data.animals.filter(a => a.t >= TL.v0 && a.t <= TL.v1 && a.cam != null && (!TL.follow || a.buck === TL.follow));
   const groups = [];
   const open = {};
   for (const a of all) {
@@ -2072,7 +2365,7 @@ function tlSeek(t) {
   TL.hashT = setTimeout(() => history.replaceState(null, '', `#timeline/${Math.round(TL.t)}`), 400);
 }
 function tlJump(dir) {
-  const as = TL.data.animals;
+  const as = TL.follow ? TL.followAt : TL.data.animals;  // following a buck: jump between his sightings
   if (!as.length) return;
   const gap = 20 * 60e3;  // skip the rest of the same visit
   const a = dir > 0 ? as.find(x => x.t > TL.t + gap) : [...as].reverse().find(x => x.t < TL.t - gap);
@@ -2092,6 +2385,7 @@ function tlKey(e) {
   }
   else if (e.key === ']') tlJump(1);
   else if (e.key === '[') tlJump(-1);
+  else if (e.key === 'Escape' && TL.sel != null) tlSelect(null);
 }
 
 // ---- the scene at TL.t

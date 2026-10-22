@@ -784,11 +784,30 @@ class Assign(BaseModel):
 @app.post("/api/detections/{det_id}/assign")
 @needs("member")
 def assign(det_id: int, body: Assign):
+    return _assign([det_id], body)
+
+
+class AssignMany(Assign):
+    ids: list[int]
+
+
+@app.post("/api/detections/assign")
+@needs("member")
+def assign_many(body: AssignMany):
+    """Several photos are the same buck (picked together from the Review grid)."""
+    return _assign(body.ids, body)
+
+
+def _assign(ids: list[int], body: Assign) -> dict:
+    ids = sorted(set(ids))
+    if not ids:
+        raise HTTPException(400, "no photos picked")
     notes = (body.notes or "").strip() or None
+    marks = ",".join("?" * len(ids))
     with db.session() as conn:
-        det = conn.execute("""SELECT season(p.taken_utc) AS season FROM detections d JOIN photos p USING(photo_id)
-                              WHERE d.id=?""", (det_id,)).fetchone()
-        if det is None:
+        dets = conn.execute(f"""SELECT d.id, season(p.taken_utc) AS season FROM detections d JOIN photos p USING(photo_id)
+                                WHERE d.id IN ({marks})""", ids).fetchall()
+        if len(dets) != len(ids):
             raise HTTPException(404, "no such detection")
         buck_id, created = body.buck_id, False
         if body.new_name:
@@ -804,22 +823,24 @@ def assign(det_id: int, body: Assign):
         buck = conn.execute("SELECT name, generic FROM bucks WHERE id=?", (buck_id,)).fetchone()
         if buck is None:
             raise HTTPException(404, "no such buck")
-        # First confirmed photo of a named buck in this season (e.g. a returning buck tied to his
-        # history): look for the rest of his photos this season, as when naming a new buck.
-        first_this_season = not buck["generic"] and not conn.execute(
+        # First confirmed photo of a named buck in a season (e.g. a returning buck tied to his
+        # history): look for the rest of his photos that season, as when naming a new buck.
+        seasons = {d["season"] for d in dets}
+        first_this_season = not buck["generic"] and any(not conn.execute(
             """SELECT 1 FROM detections d JOIN photos p USING(photo_id)
                WHERE d.buck_id=? AND d.match_status='confirmed' AND season(p.taken_utc)=?""",
-            (buck_id, det["season"])).fetchone()
+            (buck_id, s)).fetchone() for s in seasons)
         if notes:
-            add_notes(conn, buck_id, det["season"], notes)
-        conn.execute("UPDATE detections SET buck_id=?, match_status='confirmed', match_reason=NULL WHERE id=?",
-                     (buck_id, det_id))
+            for s in seasons:
+                add_notes(conn, buck_id, s, notes)
+        conn.executemany("UPDATE detections SET buck_id=?, match_status='confirmed', match_reason=NULL WHERE id=?",
+                         [(buck_id, i) for i in ids])
         propagate_bursts(conn)
         _drop_empty_groups(conn)
     searching = created or first_this_season
     if searching:
         jobs.submit(f"looking for more photos of {buck['name']}", after_naming, buck_id)
-    return {"buck_id": buck_id, "searching": searching}
+    return {"buck_id": buck_id, "searching": searching, "assigned": len(ids)}
 
 
 class NameRequest(BaseModel):
@@ -869,8 +890,19 @@ def returning(det_id: int):
 @needs("member")
 def reject(det_id: int):
     """Not a usable buck photo (doe misclassified, antlers not visible enough, etc.)."""
+    return reject_many(Picked(ids=[det_id]))
+
+
+class Picked(BaseModel):
+    ids: list[int]
+
+
+@app.post("/api/detections/reject")
+@needs("member")
+def reject_many(body: Picked):
     with db.session() as conn:
-        conn.execute("UPDATE detections SET buck_id=NULL, match_status='rejected' WHERE id=?", (det_id,))
+        conn.executemany("UPDATE detections SET buck_id=NULL, match_status='rejected' WHERE id=?",
+                         [(i,) for i in body.ids])
         _drop_empty_groups(conn)
         return {"ok": True}
 

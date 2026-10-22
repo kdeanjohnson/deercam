@@ -198,6 +198,29 @@
   .strip { display:flex; gap:6px; overflow-x:auto; padding:4px 0 8px; }
   .strip img { width:56px; height:56px; border-radius:10px; object-fit:cover; cursor:pointer; flex:none; opacity:.65; border:2px solid transparent; }
   .strip img.cur { opacity:1; border-color:var(--accent); }
+  .rg-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-right:16px; }
+  .rg-head .title { flex:1; }
+  .rg-head select { font-size:13px; padding:6px 10px; }
+  .rg { display:grid; grid-template-columns:repeat(auto-fill, minmax(108px, 1fr)); gap:6px; padding:0 16px; }
+  .rg.picking { padding-bottom:300px; }
+  .rgt { position:relative; aspect-ratio:1; border-radius:12px; overflow:hidden; background:#111; cursor:pointer; user-select:none; }
+  .rgt img { width:100%; height:100%; object-fit:cover; display:block; }
+  .rgt .cap { position:absolute; left:0; right:0; bottom:0; padding:16px 7px 5px; font-size:11px; color:#fff; white-space:nowrap;
+              overflow:hidden; text-overflow:ellipsis; background:linear-gradient(transparent, rgba(0,0,0,.7)); }
+  .rgt .tick { position:absolute; top:7px; left:7px; width:24px; height:24px; border-radius:50%; border:2px solid #fff;
+               background:rgba(0,0,0,.25); color:transparent; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; }
+  .rgt .open { position:absolute; top:5px; right:5px; width:30px; height:30px; border:0; border-radius:9px; background:rgba(0,0,0,.45);
+               color:#fff; font-size:15px; padding:0; }
+  .rgt.sel { outline:3px solid var(--accent); outline-offset:-3px; }
+  .rgt.sel .tick { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .rg-bar { display:none; position:fixed; z-index:25; left:8px; right:8px; bottom:calc(86px + env(safe-area-inset-bottom)); max-width:760px;
+            margin:0 auto; background:#fff; border-radius:var(--radius); box-shadow:0 8px 30px rgba(0,0,0,.25); padding:12px 14px;
+            max-height:48vh; overflow:auto; flex-direction:column; gap:6px; }
+  .rg-bar.on { display:flex; }
+  .rg-top { display:flex; align-items:center; gap:16px; } .rg-top b { flex:1; font-size:15px; }
+  .rg-bar .cand { flex-basis:76px; } .rg-bar .cand img, .rg-bar .cand .plus { width:76px; height:76px; }
+  @media (min-width: 700px) { .rg { grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:8px; } }
+  @media (max-width: 699px) { .rg-head .title { flex-basis:100%; margin-bottom:0; } .rg-head select { margin-left:16px; } .rg-head { margin-bottom:10px; } }
   .ideas { display:flex; gap:6px; flex-wrap:wrap; }
   .toast { position:fixed; z-index:40; left:50%; transform:translateX(-50%); bottom:calc(var(--nav-h) + 34px + env(safe-area-inset-bottom));
            background:var(--ink); color:#fff; border-radius:12px; padding:10px 16px; font-size:14px; box-shadow:0 6px 20px rgba(0,0,0,.25); max-width:90vw; }
@@ -944,9 +967,12 @@ document.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') s
 
 // ------------------------------------------------------------------ review
 
-// One photo at a time: pick who it is from this season's bucks (most similar first), a buck from an
-// earlier season, or a new name.
+// #review is a grid of every photo waiting: tap the ones you recognize, then say who they are.
+// #review/<id> is one photo at a time: pick who it is from this season's bucks (most similar first),
+// a buck from an earlier season, or a new name, with name ideas and the earlier-season check.
 const rv = { items: [], i: 0, pick: null, cands: [], newName: '' };
+const rg = { items: [], sel: new Set(), pick: null, newName: '' };
+let rvMode = 'grid';
 
 async function loadReview(focusId) {
   const sort = localStorage.getItem('reviewSort') || 'similar';
@@ -958,9 +984,102 @@ async function loadReview(focusId) {
 }
 
 async function showReview() {
+  if (arg == null) return showReviewGrid();
+  rvMode = 'one';
   await loadReview(arg);
   arg = null;
   renderReview();
+}
+
+async function showReviewGrid() {
+  rvMode = 'grid';
+  const sort = localStorage.getItem('reviewSort') || 'similar';
+  const [items, list] = await Promise.all([api(`/api/review?sort=${sort}&season=${season()}`), api(`/api/bucks?season=${season()}`)]);
+  bucks = list;
+  rg.items = items;
+  rg.sel = new Set([...rg.sel].filter(id => items.some(d => d.id === id)));
+  if (!items.length) {
+    $('#main').innerHTML = `<h1 class="title">Review</h1><div class="empty">Nothing to review. New buck photos show up here after each check.</div>`;
+    return;
+  }
+  $('#main').innerHTML = `<div class="rvgrid">
+    <div class="rg-head"><h1 class="title">Review <span class="meta">${items.length}</span></h1>
+      <select id="rv-sort">${[['similar', 'Look-alikes together'], ['size', 'Biggest first'], ['newest', 'Newest first']].map(([k, l]) =>
+        `<option value="${k}" ${sort === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <button class="btn small" id="rematch" title="Re-match the queue against your named bucks">Re-run matching</button></div>
+    <div class="pad meta" style="margin-top:-6px">Tap the photos you recognize, then pick who they are. ⤢ opens one by itself, with name ideas and the full photo.</div>
+    <div class="rg">${items.map(d => `<div class="rgt ${rg.sel.has(d.id) ? 'sel' : ''}" data-sel="${d.id}">
+      <img src="${d.crop}" loading="lazy" alt=""><span class="tick">✓</span>
+      <button class="open" data-open="${d.id}" title="Open by itself">⤢</button>
+      <div class="cap">${esc(d.camera)} · ${esc(when(d.when))}</div></div>`).join('')}</div>
+    <div class="rg-bar" id="rg-bar"></div></div>`;
+  renderBar();
+}
+
+function renderBar() {
+  const n = rg.sel.size, bar = $('#rg-bar');
+  bar.classList.toggle('on', n > 0);
+  $('.rg').classList.toggle('picking', n > 0);
+  if (!n) { bar.innerHTML = ''; return; }
+  const present = bucks.filter(b => !b.absent && b.status === 'alive'), past = bucks.filter(b => b.absent);
+  bar.innerHTML = `<div class="rg-top"><b>${n} selected</b><button class="link" id="rg-reject">Not a buck / can't tell</button>
+      <button class="link" id="rg-clear">Clear</button></div>
+    <div class="cands">${present.map(b => cand(b, {})).join('')}${past.map(b => cand(b, {}, true)).join('')}
+      <button class="cand" data-new><div class="plus">+</div><b>New buck</b><small>&nbsp;</small></button></div>
+    <div class="form" id="rg-new" style="display:${rg.pick === 'new' ? '' : 'none'}"><div class="row">
+      <input id="rg-name" placeholder="New buck's name" autocomplete="off" value="${esc(rg.newName)}"></div></div>
+    <button class="btn blue" id="rg-save"></button>`;
+  refreshBar();
+}
+
+function refreshBar() {
+  $$('#rg-bar .cand').forEach(c => c.classList.toggle('sel', rg.pick === 'new' ? c.dataset.new !== undefined : Number(c.dataset.pick) === rg.pick));
+  const b = bucks.find(x => x.id === rg.pick), n = rg.sel.size, save = $('#rg-save');
+  save.textContent = rg.pick === 'new' ? (rg.newName ? `Save ${n} as new buck “${rg.newName}”` : 'Type his name')
+    : b ? `${n === 1 ? 'That’s' : `All ${n} are`} ${b.name}` : 'Pick who they are';
+  save.disabled = !rg.pick || (rg.pick === 'new' && !rg.newName);
+}
+
+async function gridClick(e) {
+  const t = e.target.closest('button, [data-sel]');
+  if (!t) return;
+  if (t.dataset.open) return go('review', t.dataset.open);
+  if (t.dataset.sel) {
+    const id = Number(t.dataset.sel);
+    if (rg.sel.has(id)) rg.sel.delete(id); else rg.sel.add(id);
+    t.classList.toggle('sel', rg.sel.has(id));
+    return renderBar();
+  }
+  if (t.dataset.pick) { rg.pick = Number(t.dataset.pick); return refreshBar(); }
+  if (t.dataset.new !== undefined) { rg.pick = 'new'; $('#rg-new').style.display = ''; refreshBar(); return $('#rg-name').focus(); }
+  if (t.id === 'rg-clear') { rg.sel.clear(); $$('.rgt.sel').forEach(x => x.classList.remove('sel')); return renderBar(); }
+  if (t.id === 'rematch') { try { await post('/api/identify'); } catch { /* already running */ } return watchJob(); }
+  if (t.id === 'rg-reject') {
+    const ids = [...rg.sel];
+    try { await post('/api/detections/reject', { ids }); } catch { return; }
+    toast(`${ids.length} marked as not usable`);
+    return afterGrid();
+  }
+  if (t.id === 'rg-save') return saveGrid();
+}
+
+async function saveGrid() {
+  const ids = [...rg.sel], b = bucks.find(x => x.id === rg.pick);
+  if (!rg.pick || (rg.pick === 'new' && !rg.newName)) return;
+  const who = rg.pick === 'new' ? rg.newName : b?.name;
+  $('#rg-save').disabled = true;
+  let res;
+  try { res = await post('/api/detections/assign', rg.pick === 'new' ? { ids, new_name: rg.newName } : { ids, buck_id: rg.pick }); }
+  catch { $('#rg-save').disabled = false; toast('Save failed; try again.'); return; }
+  toast(`${ids.length} saved as ${esc(who)}${res.searching ? '. Looking for his other photos…' : ''}`);
+  if (res.searching) watchJob();
+  afterGrid();
+}
+
+async function afterGrid() {
+  rg.sel.clear(); rg.pick = null; rg.newName = '';
+  await showReviewGrid();
+  refreshCounts();
 }
 
 async function renderReview() {
@@ -977,6 +1096,7 @@ async function renderReview() {
     <div class="rv-photo"><img id="rv-img" src="${d.crop}" alt="" title="Tap to switch between the close-up and the full photo">
       <div class="rv-top"><span>${rv.i + 1} of ${rv.items.length}</span><span>${esc(d.camera)}</span></div></div>
     <div class="pad rv-panel">
+      <button class="link" data-go="review" style="padding:0; margin-bottom:6px">‹ All photos to review</button>
       <div class="rv-head"><b>${esc(rackLine(d.rack))}</b>
         <div class="meta">${esc(d.camera)} · ${esc(when(d.when))}${d.age_class ? ` · ~${esc(d.age_class)}${/^\d/.test(d.age_class) ? ' yrs' : ''}` : ''}</div></div>
       ${d.summary ? `<div class="meta" style="margin-top:8px; font-style:italic">“${esc(d.summary)}”</div>` : ''}
@@ -1128,6 +1248,7 @@ async function askReturning(detId, out) {
 
 document.addEventListener('input', e => {
   if (e.target.id === 'rv-name') { if (e.target.value.trim()) rv.pick = 'new'; refreshPick(); }
+  if (e.target.id === 'rg-name') { rg.newName = e.target.value.trim(); rg.pick = 'new'; refreshBar(); }
 });
 
 // ------------------------------------------------------------------ map
@@ -2334,6 +2455,7 @@ document.addEventListener('click', async e => {
   if (e.target.closest('.settings')) return settingsClick(e);
   if (e.target.closest('.mapside button')) return mapClick(e);
   if (e.target.closest('.review')) return reviewClick(e);
+  if (e.target.closest('.rvgrid')) return gridClick(e);
   if (e.target.id === 'job' && e.target.classList.contains('bad')) return go('settings');
   const feedBtn = e.target.closest('[data-feed]');
   if (feedBtn) { feedOnly = feedBtn.dataset.feed; return showFeed(); }
@@ -2405,6 +2527,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') $('#lightbox').style.display = 'none';
   if (e.key === 'Enter' && e.target.closest('#buck-edit')) $('[data-act="save-buck"]').click();
   if (e.key === 'Enter' && e.target.id === 'rv-name') saveReview();
+  if (e.key === 'Enter' && e.target.id === 'rg-name') saveGrid();
   if (e.key === 'Enter' && e.target.closest('#s-login')) signIn();
   if (e.key === 'Enter' && e.target.closest('#s-join')) joinGo();
 });
@@ -2452,7 +2575,8 @@ async function watchJob() {
   await loadSeasons();
   const typing = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
   if (view === 'settings' || typing) return refreshCounts();
-  if (view === 'review') { const id = rv.items[rv.i]?.id; await loadReview(id); renderReview(); refreshCounts(); }
+  if (view === 'review' && rvMode === 'grid') { await showReviewGrid(); refreshCounts(); }
+  else if (view === 'review') { const id = rv.items[rv.i]?.id; await loadReview(id); renderReview(); refreshCounts(); }
   else render();
 }
 

@@ -252,6 +252,7 @@
 
   #lightbox { position:fixed; inset:0; background:rgba(0,0,0,.94); display:none; align-items:center; justify-content:center; z-index:50; cursor:zoom-out; }
   #lightbox img { max-width:100vw; max-height:100vh; }
+  #lightbox .lb-tag { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(24px + env(safe-area-inset-bottom)); }
   #tip { position:fixed; pointer-events:none; background:var(--ink); color:#fff; border-radius:8px; padding:6px 9px; font-size:12px; display:none; z-index:60; max-width:260px; }
 
   /* ---- timeline: every camera's photo at one moment, the sky and weather then, and a time slider */
@@ -514,7 +515,7 @@
   <button data-go="review">Review<span class="count" id="rcount"></span></button>
   <button data-go="map">Map</button>
 </nav>
-<div id="lightbox"><img alt=""></div>
+<div id="lightbox"><img alt=""><button class="btn blue lb-tag" style="display:none"></button></div>
 <div id="tip"></div>
 
 <script>
@@ -986,7 +987,11 @@ async function loadReview(focusId) {
   const [items, list] = await Promise.all([api(`/api/review?sort=${sort}&season=${season()}`), api(`/api/bucks?season=${season()}`)]);
   bucks = list;
   rv.items = items;
-  const at = focusId != null ? items.findIndex(d => d.id === Number(focusId)) : -1;
+  let at = focusId != null ? items.findIndex(d => d.id === Number(focusId)) : -1;
+  if (focusId != null && at < 0) {
+    const one = await api(`/api/detections/${focusId}`).catch(() => null);
+    if (one) { rv.items = [one, ...items]; at = 0; }
+  }
   rv.i = at >= 0 ? at : Math.min(rv.i, Math.max(0, items.length - 1));
 }
 
@@ -1101,11 +1106,11 @@ async function renderReview() {
   const sort = localStorage.getItem('reviewSort') || 'similar';
   main.innerHTML = `<div class="review" data-det="${d.id}">
     <div class="rv-photo"><img id="rv-img" src="${d.crop}" alt="" title="Tap to switch between the close-up and the full photo">
-      <div class="rv-top"><span>${rv.i + 1} of ${rv.items.length}</span><span>${esc(d.camera)}</span></div></div>
+      <div class="rv-top"><span>${d.match_status === 'review' ? `${rv.i + 1} of ${rv.items.length}` : 'Not in the review queue'}</span><span>${esc(d.camera)}</span></div></div>
     <div class="pad rv-panel">
       <button class="link" data-go="review" style="padding:0; margin-bottom:6px">‹ All photos to review</button>
       <div class="rv-head"><b>${esc(rackLine(d.rack))}</b>
-        <div class="meta">${esc(d.camera)} · ${esc(when(d.when))}${d.age_class ? ` · ~${esc(d.age_class)}${/^\d/.test(d.age_class) ? ' yrs' : ''}` : ''}</div></div>
+        <div class="meta">${esc(d.camera)} · ${esc(when(d.when))}${d.age_class && d.age_class !== 'unknown' ? ` · ~${esc(d.age_class)}${/^\d/.test(d.age_class) ? ' yrs' : ''}` : ''}</div></div>
       ${d.summary ? `<div class="meta" style="margin-top:8px; font-style:italic">“${esc(d.summary)}”</div>` : ''}
       ${d.antlers === 'unclear' ? '<div class="hint">Antlers were unclear on a second look; this may not be usable.</div>' : ''}
       <div class="q">Who is this?</div>
@@ -1522,7 +1527,15 @@ async function showTimeline() {
   tlClouds();
   $('#tl-grid').addEventListener('click', e => {
     const tile = e.target.closest('.tl-tile'), src = tile && TL.shown[tile.dataset.cam];
-    if (src) { $('#lightbox img').src = src; $('#lightbox').style.display = 'flex'; }
+    if (!src) return;
+    // The deer most likely to be a buck that has no name yet (the AI may not have been able to tell)
+    const deer = (TL.data.byPhoto[src] || []).filter(a => !a.buck && a.kind !== 'other')
+      .sort((a, b) => TL_KINDS[b.kind].rank - TL_KINDS[a.kind].rank)[0];
+    const tag = $('#lightbox .lb-tag');
+    tag.style.display = deer && !document.body.classList.contains('role-viewer') ? '' : 'none';
+    tag.textContent = 'Who is this? Tag him ›';
+    tag.dataset.det = deer?.id ?? '';
+    $('#lightbox img').src = src; $('#lightbox').style.display = 'flex';
   });
   TL.onResize = () => { tlLayout(); tlSizeCanvas(); tlStars(); $$('#tl-grid .tl-tile').forEach(tlFitBoxes); };
   // On phones the tiles sit under the conditions card, whose height changes with what it shows.
@@ -2470,7 +2483,9 @@ const go = (v, id) => {
 addEventListener('hashchange', () => { render(); scrollTo(0, 0); });
 
 document.addEventListener('click', async e => {
-  if (e.target.closest('#lightbox')) { $('#lightbox').style.display = 'none'; return; }
+  const lbTag = e.target.closest('#lightbox .lb-tag');
+  if (lbTag) { $('#lightbox').style.display = 'none'; return go('review', lbTag.dataset.det); }
+  if (e.target.closest('#lightbox')) { $('#lightbox').style.display = 'none'; $('#lightbox .lb-tag').style.display = 'none'; return; }
   const img = e.target.closest('img[data-full]');
   if (img) { $('#lightbox img').src = img.dataset.full; $('#lightbox').style.display = 'flex'; return; }
   const nav = e.target.closest('[data-go]');
@@ -2548,7 +2563,7 @@ document.addEventListener('click', async e => {
 });
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') $('#lightbox').style.display = 'none';
+  if (e.key === 'Escape') { $('#lightbox').style.display = 'none'; $('#lightbox .lb-tag').style.display = 'none'; }
   if (e.key === 'Enter' && e.target.closest('#buck-edit')) $('[data-act="save-buck"]').click();
   if (e.key === 'Enter' && e.target.id === 'rv-name') saveReview();
   if (e.key === 'Enter' && e.target.id === 'rg-name') saveGrid();

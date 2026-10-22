@@ -20,7 +20,8 @@ from pydantic import BaseModel
 from .. import accounts, connections, db, patterns, pipeline, place, ranches
 from ..analyze import local_time
 from ..config import PUBLIC_URL, settings
-from ..identify import QUERY_COLS, Galleries, add_notes, after_naming, identify, merge_bucks, propagate_bursts, suggest_returning
+from ..identify import (QUERY_COLS, Galleries, add_notes, after_naming, embed_bucks, identify, merge_bucks, propagate_bursts,
+                        suggest_returning)
 from ..reveal import SignInError
 from ..vision import PROVIDERS, AntlerCheck, ImagePart, NameIdeas, SetupError, get_provider, list_models
 from ..vision.base import NAME_SYSTEM, VERIFY_PROMPT, VERIFY_SYSTEM
@@ -834,11 +835,17 @@ def _assign(ids: list[int], body: Assign) -> dict:
         if notes:
             for s in seasons:
                 add_notes(conn, buck_id, s, notes)
-        conn.executemany("UPDATE detections SET buck_id=?, match_status='confirmed', match_reason=NULL WHERE id=?",
+        # A deer the AI called a doe or couldn't sex (head down, half out of frame) that the user says
+        # is a buck: he is one now, so matching can learn from the photo.
+        unembedded = conn.execute(f"SELECT COUNT(*) FROM detections WHERE id IN ({marks}) AND embedding IS NULL",
+                                  ids).fetchone()[0]
+        conn.executemany("UPDATE detections SET buck_id=?, match_status='confirmed', match_reason=NULL, sex='buck' WHERE id=?",
                          [(buck_id, i) for i in ids])
         propagate_bursts(conn)
         _drop_empty_groups(conn)
     searching = created or first_this_season
+    if unembedded and not searching:  # the search embeds them itself
+        jobs.submit(f"learning {buck['name']}'s new photo", embed_bucks)
     if searching:
         jobs.submit(f"looking for more photos of {buck['name']}", after_naming, buck_id)
     return {"buck_id": buck_id, "searching": searching, "assigned": len(ids)}
@@ -1134,6 +1141,18 @@ def set_location(camera_id: str, body: Location):
         db.save_pins(conn)
     place.refresh_region_soon()
     return {"ok": True}
+
+
+@app.get("/api/detections/{det_id}")
+@needs("viewer")
+def detection(det_id: int):
+    """One animal, for the Review page opened from elsewhere (e.g. a deer on the Timeline the AI
+    couldn't call a buck, which never reaches the review queue)."""
+    with db.session() as conn:
+        r = conn.execute(DETECTION_SQL + "WHERE d.id=?", (det_id,)).fetchone()
+    if r is None:
+        raise HTTPException(404, "no such detection")
+    return _row(r)
 
 
 @app.get("/api/review")

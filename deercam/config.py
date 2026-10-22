@@ -34,7 +34,6 @@ def _flag(name: str, default: str) -> bool:
 
 # Values the UI may write to settings.json. Secrets (password, API keys) are never sent back to the browser.
 EDITABLE = {
-    "reveal_email", "reveal_password", "excluded_cameras",
     "vision_provider", "vision_model", "vision_fast_model", "custom_base_url",
     "xai_api_key", "anthropic_api_key", "openai_api_key", "gemini_api_key", "custom_api_key",
     "region", "region_auto", "region_auto_key", "region_center", "season_start", "sync_interval_hours", "shooting_minutes", "setup_done",
@@ -43,15 +42,14 @@ EDITABLE = {
 
 @dataclass
 class Settings:
-    # Reveal / Tactacam account (Cognito user pool used by account.revealcellcam.com)
+    # Reveal / Tactacam (Cognito user pool used by account.revealcellcam.com). A ranch's Reveal accounts are
+    # in its reveal.json (connections.py); REVEAL_EMAIL / REVEAL_PASSWORD from .env only set up the first ranch.
     reveal_email: str | None = field(default_factory=lambda: _env("REVEAL_EMAIL"))
     reveal_password: str | None = field(default_factory=lambda: _env("REVEAL_PASSWORD"))
     reveal_api: str = field(default_factory=lambda: _env("REVEAL_API", "https://api.reveal.ishareit.net/v1"))
     cognito_region: str = "us-east-1"
     cognito_pool_id: str = "us-east-1_VdSxemNpw"
     cognito_client_id: str = "6r9tpojvgvkci5trla0ip14mon"
-    # sharedCameraIds to leave out of syncing; new cameras someone shares are included by default
-    excluded_cameras: list[str] = field(default_factory=list)
 
     data_dir: Path = ROOT  # the ranch's folder
     # Only the first ranch may use REVEAL_EMAIL / REVEAL_PASSWORD from .env; other ranches bring their own login.

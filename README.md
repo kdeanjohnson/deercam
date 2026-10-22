@@ -6,7 +6,7 @@ Identifies individual bucks on Tactacam Reveal cell cams, and shows when and whe
 
 ## What it does
 
-- **Sync**: signs in to Reveal (the same Cognito login as account.revealcellcam.com) and downloads photos from cameras shared with you, plus their metadata (camera, time, weather, moon).
+- **Sync**: signs in to Reveal (the same Cognito login as account.revealcellcam.com) and downloads photos from each connected account's cameras, shared with it or its own, plus their metadata (camera, time, weather, moon). A ranch can connect several accounts; a camera on two of them is downloaded once.
 - **Detect**: MegaDetector v6 runs locally on the GPU, finds animals and crops them. Empty triggers drop out here.
 - **Analyze**: a vision LLM labels each crop buck/doe/fawn and describes the rack (points per side, frame, spread, mass, brows, distinctive features). A skeptical second pass re-checks every buck call. Providers are switchable: Grok (default), Claude, OpenAI, Gemini, or any OpenAI-compatible server.
 - **Identify**: buck crops are embedded locally (DINOv2) to shortlist look-alikes. The LLM then compares the new crop side by side with confirmed photos of each candidate. Photos from one burst are kept together. Confident matches are assigned automatically and the rest go to Review.
@@ -71,5 +71,6 @@ Everyone signs in. There's no email: people join through invite links.
 - **Inviting:** an owner makes an invite link under Settings → People and texts it. The person opening it picks a name, username and password, or joins with the account they already have. A link works once, for 7 days.
 - **Forgotten passwords:** the admin makes a new-password link (People, or `python -m deercam admin-link --user <username>`). Using it signs that person out everywhere else.
 - **Security:** passwords are stored as argon2 hashes; sessions and links only as SHA-256 hashes. Five wrong passwords lock that username for 15 minutes. Every route declares who may use it, and a route that doesn't is refused.
+- **Reveal logins:** an owner connects Reveal accounts under Settings → Reveal accounts. The password is used once to sign in and isn't kept; only Reveal's sign-in tokens are, encrypted, in the ranch's `reveal.json`. If Reveal ends a session, the account shows "Sign in again". The key is `DEERCAM_SECRET_KEY` from the environment, else `DATA_DIR/.secret_key` (made on first use). On a server, use the environment variable, so backups of `DATA_DIR` don't hold the key.
 - **Storage:** accounts live in `DATA_DIR/accounts.db`. `python -m deercam users` lists them.
 - **Links in the terminal:** set `PUBLIC_URL` (default `http://localhost:8600`) so the links the command line prints point to where people open DeerCam.

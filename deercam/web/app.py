@@ -17,11 +17,11 @@ from fastapi.responses import FileResponse
 from PIL import Image
 from pydantic import BaseModel
 
-from .. import accounts, db, patterns, pipeline, place, ranches
+from .. import accounts, connections, db, patterns, pipeline, place, ranches
 from ..analyze import local_time
 from ..config import PUBLIC_URL, settings
 from ..identify import QUERY_COLS, Galleries, add_notes, after_naming, identify, merge_bucks, propagate_bursts, suggest_returning
-from ..reveal import RevealClient, SignInError, token_file
+from ..reveal import SignInError
 from ..vision import PROVIDERS, AntlerCheck, ImagePart, NameIdeas, SetupError, get_provider, list_models
 from ..vision.base import NAME_SYSTEM, VERIFY_PROMPT, VERIFY_SYSTEM
 
@@ -178,7 +178,7 @@ def _scheduler():
                 except Exception:
                     log.exception("daily database backup failed for %s", r["id"])
                 hours = settings.sync_interval_hours
-                if (hours and settings.reveal_email and not jobs.status()["running"]  # signed-in ranches only
+                if (hours and connections.connected() and not jobs.status()["running"]
                         and time.time() - jobs.last_import.get(r["id"], 0) >= hours * 3600):
                     jobs.submit("checking for new photos", _import)
 
@@ -475,12 +475,7 @@ def get_settings(request: Request):
     }
     if not _is(request, "owner"):
         return season
-    tokens = json.loads(token_file().read_text()) if token_file().exists() else {}
-    signed_in = bool(tokens.get("refresh_token")) and bool(settings.reveal_email) and \
-        tokens.get("email", settings.reveal_email).lower() == settings.reveal_email.lower()
     return season | {
-        "reveal_email": settings.reveal_email, "reveal_signed_in": signed_in,
-        "reveal_password": _key_source("reveal_password"), "excluded_cameras": settings.excluded_cameras,
         "vision_provider": settings.vision_provider, "vision_model": settings.vision_model,
         "vision_fast_model": settings.vision_fast_model, "custom_base_url": settings.custom_base_url,
         "providers": {name: {"label": p["label"], "model": p["model"], "fast": p["fast"],
@@ -491,8 +486,6 @@ def get_settings(request: Request):
 
 
 class SettingsUpdate(BaseModel):
-    reveal_email: str | None = None
-    excluded_cameras: list[str] | None = None
     vision_provider: str | None = None
     vision_model: str | None = None
     vision_fast_model: str | None = None
@@ -533,47 +526,55 @@ def save_settings(body: SettingsUpdate, request: Request):
     return get_settings(request)
 
 
+# ---------------------------------------------------------------- Reveal accounts (connections.py)
+
+
+@app.get("/api/reveal")
+@needs("owner")
+def reveal_accounts():
+    """The ranch's Reveal accounts and their cameras. Never the tokens."""
+    return {"connections": connections.listing()}
+
+
 class RevealLogin(BaseModel):
     email: str
-    password: str | None = None  # blank: the saved one
-    remember: bool = True
+    password: str
 
 
-def _cameras(client: RevealClient) -> list[dict]:
-    return [{"id": c["sharedCameraId"], "name": c.get("cameraName") or c.get("name") or c["sharedCameraId"],
-             "included": c["sharedCameraId"] not in settings.excluded_cameras} for c in client.shared_cameras()]
-
-
-@app.post("/api/setup/reveal")
+@app.post("/api/reveal/connections")
 @needs("owner")
-def reveal_login(body: RevealLogin):
-    """Sign in to Reveal and list the cameras shared with this account. The password is kept only
-    when remember is set, so syncing can sign in again when the session runs out."""
-    email = body.email.strip()
-    password = body.password or settings.reveal_password
-    if not password:
-        raise HTTPException(400, "password required")
+def connect_reveal(body: RevealLogin, request: Request):
+    """Sign in to Reveal with an account whose cameras feed this ranch (or sign an account in again).
+    The password is used for this sign-in only and is not kept."""
+    if not body.email.strip() or not body.password:
+        raise HTTPException(400, "Enter the Reveal email and password")
     try:
-        client = RevealClient(email, password)
-        cameras = _cameras(client)
+        connections.add(body.email, body.password, by=request.state.user["name"])
     except SignInError as e:
         raise HTTPException(401, str(e))
     except Exception as e:
         raise HTTPException(502, f"Signed in, but listing cameras failed: {e}")
-    changes = {"reveal_email": email}
-    if body.password:
-        changes["reveal_password"] = body.password if body.remember else None
-    settings.save(changes)
-    return {"cameras": cameras}
+    return reveal_accounts()
 
 
-@app.get("/api/setup/cameras")
+@app.post("/api/reveal/connections/{cid}/remove")
 @needs("owner")
-def reveal_cameras():
-    try:
-        return {"cameras": _cameras(RevealClient())}
-    except SignInError as e:
-        raise HTTPException(401, str(e))
+def disconnect_reveal(cid: str):
+    """Stop syncing from this account. Photos already downloaded stay."""
+    connections.remove(cid)
+    return reveal_accounts()
+
+
+class CameraSwitch(BaseModel):
+    camera_id: str
+    included: bool
+
+
+@app.post("/api/reveal/cameras")
+@needs("owner")
+def switch_camera(body: CameraSwitch):
+    connections.set_included(body.camera_id, body.included)
+    return reveal_accounts()
 
 
 class AiProbe(BaseModel):

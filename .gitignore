@@ -5,6 +5,8 @@ __pycache__/
 *.db
 *.pt
 .reveal_tokens.json
+.secret_key
+reveal.json
 site/
 .venv/
 .DS_Store

@@ -247,6 +247,8 @@
   .settings .act.primary { background:var(--ink); color:#fff; }
   .settings .act:disabled { opacity:.5; }
   .cams label { display:flex; gap:8px; align-items:center; padding:3px 0; }
+  .cams label.dup { opacity:.6; }
+  .rv-acct { background:#fff; border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
 
   #lightbox { position:fixed; inset:0; background:rgba(0,0,0,.94); display:none; align-items:center; justify-content:center; z-index:50; cursor:zoom-out; }
   #lightbox img { max-width:100vw; max-height:100vh; }
@@ -2147,20 +2149,18 @@ async function showSettings(firstRun = false) {
     $('#main').innerHTML = `<h1 class="title">Settings</h1><div class="settings">${accountSection()}${ranchSection()}</div>`;
     return;
   }
-  $('#main').innerHTML = `${firstRun ? `<h1 class="title">Welcome to DeerCam</h1><div class="pad meta" style="margin:-4px 0 16px; max-width:720px">Sign in to Reveal so DeerCam can read
-      the cameras shared with you, pick the AI that looks at the deer, check the season settings, then choose how far back to import.</div>` : '<h1 class="title">Settings</h1>'}
+  $('#main').innerHTML = `${firstRun ? `<h1 class="title">Welcome to DeerCam</h1><div class="pad meta" style="margin:-4px 0 16px; max-width:720px">Connect the Reveal account your cameras come from, pick the AI that looks at the deer, check the season settings, then choose how far back to import.</div>` : '<h1 class="title">Settings</h1>'}
     <div class="settings">
     ${firstRun || DEMO ? '' : accountSection() + ranchSection() + '<section id="s-people"><h3>People</h3><div class="meta">Loading…</div></section>'}
     <section id="s-reveal">
-      <h3>${num()}Tactacam Reveal account</h3>
-      <div class="meta">The account the cameras are shared with. DeerCam only reads photos; it never changes anything on the account.</div>
-      <div class="row"><label>Email</label><input id="rv-email" type="email" value="${esc(cfg.reveal_email)}" autocomplete="username"></div>
-      <div class="row"><label>Password</label><input id="rv-pass" type="password" autocomplete="current-password"
-        placeholder="${cfg.reveal_password ? `Saved (${cfg.reveal_password === 'environment' ? 'from .env' : 'in settings'}); leave blank to use it` : ''}"></div>
-      <div class="row"><label></label><label style="display:flex; gap:8px; align-items:center"><input type="checkbox" id="rv-remember" checked> Remember password, so syncing can sign in again by itself</label></div>
-      <div class="row"><label></label><button class="act primary" id="rv-signin">Sign in</button>
-        <span id="rv-msg" class="${cfg.reveal_signed_in ? 'ok' : 'meta'}">${cfg.reveal_signed_in ? `Signed in as ${esc(cfg.reveal_email)}` : 'Not signed in'}</span></div>
-      <div class="cams" id="rv-cams"></div>
+      <h3>${num()}Reveal accounts</h3>
+      <div class="meta">The Tactacam Reveal accounts whose cameras feed this ranch: one the cameras are shared with, or the cameras' owner.
+        Add more for a lease where several people have cameras; a camera on two accounts is only downloaded once.
+        DeerCam only reads photos and never changes anything on an account. The password is used to sign in and isn't kept.</div>
+      <div id="rv-list"><div class="meta">Loading…</div></div>
+      <div class="row"><label id="rv-label">Add an account</label><input id="rv-email" type="email" placeholder="Reveal email" autocomplete="off"></div>
+      <div class="row"><label>Password</label><input id="rv-pass" type="password" autocomplete="off"></div>
+      <div class="row"><label></label><button class="act primary" id="rv-signin">Sign in</button><span id="rv-msg" class="meta"></span></div>
     </section>
     ${can('admin') ? `<section id="s-ai">
       <h3>${num()}AI for analyzing deer</h3>
@@ -2201,7 +2201,7 @@ async function showSettings(firstRun = false) {
     ${firstRun ? '' : `<div class="meta" style="text-align:center">${st.photos} photos · ${st.animals} animals · ${st.buck_detections} buck crops · ${st.bucks} named bucks · ${st.groups} auto-groups</div>`}
   </div>`;
   if ($('#ai-provider')) fillProvider();
-  if (cfg.reveal_signed_in) loadCameras();
+  loadReveal();
   if (!firstRun && !DEMO) loadPeople();
 }
 
@@ -2287,16 +2287,21 @@ function aiProbe() {
            model: $('#ai-model').value || null };
 }
 
-async function loadCameras(cameras) {
-  const box = $('#rv-cams');
-  try {
-    cameras = cameras || (await api('/api/setup/cameras')).cameras;
-  } catch (e) {
-    box.innerHTML = `<span class="bad">${esc(e.detail || 'Could not list cameras')}</span>`;
-    return;
-  }
-  box.innerHTML = `<div class="meta">Cameras shared with you (uncheck to skip one)</div>` + cameras.map(c =>
-    `<label><input type="checkbox" data-cam="${esc(c.id)}" ${c.included ? 'checked' : ''}> ${esc(c.name)}</label>`).join('');
+// Each Reveal account with its cameras (uncheck one to skip it), and whether Reveal still has it signed in.
+async function loadReveal(data) {
+  const box = $('#rv-list');
+  if (!box) return;
+  const { connections } = data || await api('/api/reveal');
+  box.innerHTML = connections.map(c => `<div class="rv-acct">
+      <div class="row"><b style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis">${esc(c.email)}</b>
+        ${c.status === 'ok' ? '<span class="ok">Connected</span>' : `<button class="act primary" data-resign="${esc(c.email)}">Sign in again</button>`}
+        <button class="act" data-unlink="${esc(c.id)}">Remove</button></div>
+      ${c.status !== 'ok' ? `<div class="bad" style="font-size:13px">${esc(c.error || 'Reveal signed this account out')}</div>` : ''}
+      <div class="cams">${c.cameras.map(k => `<label class="${k.duplicate ? 'dup' : ''}"><input type="checkbox" data-cam="${esc(k.camera_id)}" ${k.included ? 'checked' : ''} ${k.duplicate ? 'disabled' : ''}>
+        ${esc(k.name || k.camera_id)} <span class="meta">${k.duplicate ? 'also on an account above' : k.own ? 'own camera' : k.owner ? `shared by ${esc(k.owner)}` : ''}</span></label>`).join('')
+        || '<div class="meta">No cameras yet; they show up after the next check for photos.</div>'}</div>
+    </div>`).join('') || '<div class="meta">No Reveal account connected yet.</div>';
+  $('#rv-label').textContent = connections.length ? 'Add another' : 'Add an account';
 }
 
 async function settingsClick(e) {
@@ -2357,17 +2362,23 @@ async function settingsClick(e) {
   }
   if (t.id === 'rv-signin') {
     const email = $('#rv-email').value.trim(), password = $('#rv-pass').value;
-    if (!email || (!password && !cfg.reveal_password)) { $('#rv-msg').className = 'bad'; $('#rv-msg').textContent = 'Enter the email and password.'; return; }
+    if (!email || !password) { $('#rv-msg').className = 'bad'; $('#rv-msg').textContent = 'Enter the email and password.'; return; }
     t.disabled = true; $('#rv-msg').className = 'meta'; $('#rv-msg').textContent = 'Signing in…';
     try {
-      const res = await post('/api/setup/reveal', { email, password: password || null, remember: $('#rv-remember').checked });
-      $('#rv-pass').value = '';
-      $('#rv-msg').className = 'ok'; $('#rv-msg').textContent = `Signed in as ${email}; found ${res.cameras.length} cameras`;
-      loadCameras(res.cameras);
+      const res = await post('/api/reveal/connections', { email, password });
+      $('#rv-pass').value = $('#rv-email').value = '';
+      const n = res.connections.find(c => c.email.toLowerCase() === email.toLowerCase())?.cameras.length ?? 0;
+      $('#rv-msg').className = 'ok'; $('#rv-msg').textContent = `Connected ${email}; found ${n} camera${n === 1 ? '' : 's'}`;
+      loadReveal(res);
     } catch (err) {
       $('#rv-msg').className = 'bad'; $('#rv-msg').textContent = err.detail || 'Sign-in failed';
     }
     t.disabled = false;
+  }
+  if (t.dataset.resign) { $('#rv-email').value = t.dataset.resign; $('#rv-pass').focus(); return; }
+  if (t.dataset.unlink) {
+    if (!t.classList.contains('primary')) { t.classList.add('primary'); t.textContent = 'Tap again: stop syncing it'; return; }
+    return loadReveal(await post(`/api/reveal/connections/${t.dataset.unlink}/remove`));
   }
   if (t.id === 'ai-list') {
     t.disabled = true; $('#ai-msg').className = 'meta'; $('#ai-msg').textContent = 'Loading models…';
@@ -2426,9 +2437,8 @@ document.addEventListener('change', async e => {
   if (e.target.id === 'map-buck') { mapBuck = e.target.value; showMap(); }
   if (e.target.id === 'feed-cam') { feedCam = e.target.value; showFeed(); }
   if (e.target.id === 'rv-sort') { localStorage.setItem('reviewSort', e.target.value); rv.i = 0; showReview(); }
-  if (e.target.dataset.cam !== undefined) {
-    const excluded = $$('#rv-cams input[data-cam]').filter(c => !c.checked).map(c => c.dataset.cam);
-    cfg = await post('/api/settings', { excluded_cameras: excluded });
+  if (e.target.dataset.cam !== undefined && e.target.closest('#rv-list')) {
+    loadReveal(await post('/api/reveal/cameras', { camera_id: e.target.dataset.cam, included: e.target.checked }));
   }
 });
 

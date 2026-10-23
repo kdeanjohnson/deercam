@@ -28,6 +28,7 @@ from PIL import Image
 
 from . import db
 from .config import pool, settings
+from .usage import BudgetError
 from .vision import ImagePart, MatchDecision, get_provider
 from .vision.base import MATCH_SYSTEM, RETURNING_SYSTEM
 
@@ -267,6 +268,7 @@ def identify(recheck: bool = False, limit: int | None = None, workers: int = 6,
             images, prompt, label_to_buck = _match_request(unit[0], gallery)
             return provider.structured(MATCH_SYSTEM, images, prompt, MatchDecision), label_to_buck
 
+        out_of_budget = None
         with pool(workers) as executor:
             futures = {executor.submit(work, u, g): u for u, g in units}
             for fut in as_completed(futures):
@@ -274,6 +276,9 @@ def identify(recheck: bool = False, limit: int | None = None, workers: int = 6,
                 ids = [q["id"] for q in unit]
                 try:
                     decision, label_to_buck = fut.result()
+                except BudgetError as e:  # left unmatched, for when there's budget again
+                    out_of_budget = e
+                    continue
                 except Exception as e:
                     log.warning("match for detection %s failed: %s", unit[0]["id"], e)
                     continue
@@ -295,6 +300,8 @@ def identify(recheck: bool = False, limit: int | None = None, workers: int = 6,
                     counts["review"] += len(ids)
                 conn.commit()
     log.info("identify: %s", counts)
+    if out_of_budget:
+        raise out_of_budget
     return counts
 
 

@@ -5,13 +5,13 @@ Identifies individual bucks on Tactacam Reveal cell cams, and shows when and whe
 ## What it does
 
 - **Sync**: signs in to Reveal (the same Cognito login as account.revealcellcam.com) and downloads photos from each connected account's cameras, shared with it or its own, plus their metadata (camera, time, weather, moon). A ranch can connect several accounts; a camera on two of them is downloaded once.
-- **Detect**: MegaDetector v6 runs locally on the GPU, finds animals and crops them. Empty triggers drop out here.
-- **Analyze**: a vision LLM labels each crop buck/doe/fawn and describes the rack (points per side, frame, spread, mass, brows, distinctive features). A skeptical second pass re-checks every buck call. Providers are switchable: Grok (default), Claude, OpenAI, Gemini, or any OpenAI-compatible server.
-- **Identify**: buck crops are embedded locally (DINOv2) to shortlist look-alikes. The LLM then compares the new crop side by side with confirmed photos of each candidate. Photos from one burst are kept together. Confident matches are assigned automatically and the rest go to Review.
+- **Detect**: MegaDetector v6 runs locally, on the GPU if there is one and otherwise the CPU (a second or a few per photo). It finds animals and crops them. Empty triggers drop out here.
+- **Analyze**: a vision LLM takes a first look at each crop with a cheaper model (Grok 4.3 by default): buck/doe/fawn and the rack (points per side, frame, spread, mass, brows, distinctive features). A skeptical second pass with the better model (Grok 4.7) re-checks every buck call. Providers are switchable: Grok (default), Claude, OpenAI, Gemini, or any OpenAI-compatible server.
+- **Identify**: buck crops are embedded locally (DINOv2) to shortlist look-alikes. The better model then compares the new crop side by side with confirmed photos of each candidate. Photos from one burst are kept together. Confident matches are assigned automatically and the rest go to Review.
 - **Seasons**: matching stays within an antler year, because racks regrow. A buck returning from last season is only ever a suggestion for you to confirm.
 - **Patterns**: sightings are grouped into visits (one buck at one camera, with photos less than 30 minutes apart). Daylight and shooting light are worked out from sunrise and sunset at each camera. A buck page has an hour-of-day chart plus daylight visits by camera, wind, temperature, moon and pressure.
 - **Hit list**: tag bucks Hit list, Watch or Let walk.
-- **Timeline**: a satellite map with a time slider. Drag through the days and the map's light follows the real sun over the cameras (daylight, shooting light, night, moonlight), with Reveal's weather for that moment: temperature, wind with drifting streaks, sky and clouds, pressure trend. Each camera shows its latest photo, and buck/doe/fawn icons sit on one lane per camera. Space plays, arrow keys step, `[` and `]` jump between animals, and the address bar links to the moment shown.
+- **Timeline**: a satellite map with a time slider. Drag through the days and the map's light follows the real sun over the cameras (daylight, shooting light, night, moonlight), with Reveal's weather for that moment: temperature, wind with drifting streaks and where scent drifts, sky and clouds, pressure trend. Each camera's newest photo pops up by its pin, buck/doe/fawn icons sit on one lane per camera, and following a buck draws his moves between cameras. Space plays, arrow keys step, `[` and `]` jump between animals, and the address bar links to the moment shown. **Cameras** lists every photo newest first, a day at a time, filtered by camera and by what's in it.
 - **Map**: place the cameras on satellite imagery. Pins are also mirrored to `data/camera_locations.json`. The area the cameras are in (e.g. "Garvin County, Oklahoma") is told to the AI as context.
 
 Only photos you've confirmed are used as references, so auto-match mistakes don't compound.
@@ -50,6 +50,25 @@ python -m deercam export-demo site   # read-only static copy of the UI and data,
 ```
 
 The first time, every buck lands in Review. Name a few there and the rest get matched against them.
+
+## AI costs
+
+Only animal crops go to the AI. Each ranch's spending is counted per month and model (Settings → AI, in the ranch's `ai_usage.db`), and the admin can set a monthly limit per ranch. When it's reached, photos still download and animals are still found; the crops wait for the AI until the next month or a higher limit. For a sense of scale: four busy cameras send about 400 photos and 400 animal crops a day, which comes to a few dollars a day with Grok 4.3 for the first look and Grok 4.7 for the bucks. Prices per model are in `deercam/usage.py`.
+
+## Running on a server
+
+Any Linux VPS with Docker works; no GPU needed. Four cores and 8 GB of memory is comfortable (the detector takes a few seconds per photo on two cores). You need a domain name (or subdomain) pointed at the server, for HTTPS.
+
+```bash
+git clone https://github.com/kdeanjohnson/deercam.git && cd deercam
+cp .env.example .env    # then fill in: DEERCAM_DOMAIN, PUBLIC_URL, DEERCAM_SECRET_KEY, XAI_API_KEY, SYNC_INTERVAL_HOURS
+docker compose up -d --build
+docker compose logs deercam | grep join    # the link that creates the admin account
+```
+
+Caddy gets and renews the HTTPS certificate by itself; ports 80 and 443 must be open. Everything DeerCam keeps is in `./data` on the server (photos, databases, model weights), with a database snapshot per ranch each day in `data/ranches/<id>/backups/`. Copy `./data` somewhere else regularly, e.g. with the VPS provider's backups. Keep `DEERCAM_SECRET_KEY` out of those backups.
+
+To update: `git pull && docker compose up -d --build`. Commands run inside the container, e.g. `docker compose exec deercam python -m deercam admin-link`.
 
 ## Ranches
 

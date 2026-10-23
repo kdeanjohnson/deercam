@@ -1,0 +1,33 @@
+# DeerCam behind Caddy, which gets and renews the HTTPS certificate on its own.
+# Needs a domain name pointed at the server, set as DEERCAM_DOMAIN in .env. See "Running on a server" in the README.
+services:
+  deercam:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+      FORWARDED_ALLOW_IPS: "*"  # only Caddy can reach it; lets it see visitors' real addresses and https
+    volumes:
+      - ./data:/data
+    expose:
+      - "8600"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DEERCAM_DOMAIN: ${DEERCAM_DOMAIN:?set DEERCAM_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - deercam
+
+volumes:
+  caddy_data:
+  caddy_config:

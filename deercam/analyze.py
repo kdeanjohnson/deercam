@@ -6,6 +6,7 @@ from datetime import datetime
 
 from . import db
 from .config import pool, settings
+from .usage import BudgetError
 from .vision import AntlerCheck, DeerAnalysis, ImagePart, get_provider
 from .vision.base import ANALYZE_PROMPT, ANALYZE_SYSTEM, VERIFY_PROMPT, VERIFY_SYSTEM
 
@@ -21,7 +22,8 @@ def local_time(meta_json: str | None) -> str:
 
 
 def analyze(limit: int | None = None, workers: int = 6) -> int:
-    provider = get_provider()
+    """The first look at every new crop, with the cheaper model: species, sex, rack."""
+    provider = get_provider(fast=True)
     with db.session() as conn:
         rows = conn.execute(
             """SELECT d.id, d.crop_path, c.name AS camera, p.meta_json
@@ -36,13 +38,16 @@ def analyze(limit: int | None = None, workers: int = 6) -> int:
         image = ImagePart("Animal crop:", settings.data_dir / row["crop_path"])
         return provider.structured(ANALYZE_SYSTEM.format(region=settings.effective_region), [image], prompt, DeerAnalysis)
 
-    done = 0
+    done, out_of_budget = 0, None
     with pool(workers) as executor, db.session() as conn:
         futures = {executor.submit(work, row): row for row in rows}
         for fut in as_completed(futures):
             row = futures[fut]
             try:
                 a: DeerAnalysis = fut.result()
+            except BudgetError as e:  # left 'new', for when there's budget again
+                out_of_budget = e
+                continue
             except Exception as e:
                 log.warning("detection %s failed: %s", row["id"], e)
                 conn.execute("UPDATE detections SET status='error', analysis_json=? WHERE id=?",
@@ -56,6 +61,8 @@ def analyze(limit: int | None = None, workers: int = 6) -> int:
             if done % 20 == 0:
                 conn.commit()
                 log.info("analyzed %d/%d", done, len(rows))
+    if out_of_budget:
+        raise out_of_budget
     verify_bucks(workers=workers)
     return done
 
@@ -79,12 +86,16 @@ def verify_bucks(workers: int = 6) -> dict[str, int]:
         return provider.structured(VERIFY_SYSTEM, [image], VERIFY_PROMPT, AntlerCheck)
 
     counts = {"yes": 0, "unclear": 0, "no": 0}
+    out_of_budget = None
     with pool(workers) as executor, db.session() as conn:
         futures = {executor.submit(work, row): row for row in rows}
         for fut in as_completed(futures):
             row = futures[fut]
             try:
                 check: AntlerCheck = fut.result()
+            except BudgetError as e:
+                out_of_budget = e
+                continue
             except Exception as e:
                 log.warning("antler check for detection %s failed: %s", row["id"], e)
                 continue
@@ -97,4 +108,6 @@ def verify_bucks(workers: int = 6) -> dict[str, int]:
                 conn.execute("UPDATE detections SET analysis_json=? WHERE id=?", (db.dumps(analysis), row["id"]))
             counts[check.antlers] += 1
     log.info("antler check: %s", counts)
+    if out_of_budget:
+        raise out_of_budget
     return counts

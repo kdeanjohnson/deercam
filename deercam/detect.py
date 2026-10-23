@@ -49,7 +49,7 @@ def detect(batch_size: int = 8) -> int:
     from .config import torch_device
     device = torch_device()
     if device == "cpu":
-        log.warning("No GPU (CUDA or Apple MPS) available; MegaDetector will be slow")
+        log.info("No GPU (CUDA or Apple MPS); running MegaDetector on the CPU, a second or few per photo")
     model = YOLO(str(_weights_path()))
     settings.crops_dir.mkdir(parents=True, exist_ok=True)
 

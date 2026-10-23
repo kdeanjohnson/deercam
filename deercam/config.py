@@ -34,7 +34,7 @@ def _flag(name: str, default: str) -> bool:
 
 # Values the UI may write to settings.json. Secrets (password, API keys) are never sent back to the browser.
 EDITABLE = {
-    "vision_provider", "vision_model", "vision_fast_model", "custom_base_url",
+    "vision_provider", "vision_model", "vision_fast_model", "custom_base_url", "ai_monthly_limit",
     "xai_api_key", "anthropic_api_key", "openai_api_key", "gemini_api_key", "custom_api_key",
     "region", "region_auto", "region_auto_key", "region_center", "season_start", "sync_interval_hours", "shooting_minutes", "setup_done",
 }
@@ -62,10 +62,13 @@ class Settings:
 
     # Vision LLM: a key of vision.PROVIDERS (grok, claude, openai, gemini, custom)
     vision_provider: str = field(default_factory=lambda: _env("VISION_PROVIDER", "grok"))
-    # None = the provider's default (or GROK_MODEL / CLAUDE_MODEL etc. from the environment)
+    # Two models: the main one for the buck work (antler double-check, matching), and a cheaper, quicker
+    # one for the first look at every animal crop and for name ideas. None = the provider's default
+    # (or GROK_MODEL / GROK_FAST_MODEL etc. from the environment).
     vision_model: str | None = field(default_factory=lambda: _env("VISION_MODEL"))
-    # Quick, low-stakes calls from the UI (name ideas), where waiting on a reasoning model is annoying
     vision_fast_model: str | None = field(default_factory=lambda: _env("VISION_FAST_MODEL"))
+    # Dollars of AI per calendar month for this ranch; None = no cap (usage.py)
+    ai_monthly_limit: float | None = field(default_factory=lambda: float(_env("AI_MONTHLY_LIMIT", "0")) or None)
     custom_base_url: str | None = field(default_factory=lambda: _env("CUSTOM_BASE_URL"))
     xai_api_key: str | None = field(default_factory=lambda: _env("XAI_API_KEY"))
     anthropic_api_key: str | None = field(default_factory=lambda: _env("ANTHROPIC_API_KEY"))
@@ -218,4 +221,6 @@ def torch_device() -> str:
         return "cuda"
     if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
         return "mps"
+    # On a server without a GPU, leave a core for the web pages while the models run
+    torch.set_num_threads(max(1, (os.cpu_count() or 2) - 1))
     return "cpu"

@@ -1,0 +1,4 @@
+{$DEERCAM_DOMAIN} {
+	encode gzip
+	reverse_proxy deercam:8600
+}

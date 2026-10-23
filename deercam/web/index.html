@@ -2608,13 +2608,17 @@ async function showSettings(firstRun = false) {
     </section>
     ${can('admin') ? `<section id="s-ai">
       <h3>${num()}AI for analyzing deer</h3>
-      <div class="meta">Looks at each animal crop (buck or doe, rack description) and compares bucks. The detector and similarity search run locally on your GPU; only crops go to the AI.</div>
+      <div class="meta">Takes a first look at each animal crop (buck or doe, rack description) with a cheaper model, then double-checks antlers and compares bucks with the better one.
+        Finding the animals in each photo and the similarity search run on this computer or server; only the crops go to the AI.</div>
       <div class="row"><label>Provider</label><select id="ai-provider">${Object.entries(p).map(([k, v]) =>
         `<option value="${k}" ${k === cfg.vision_provider ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></div>
       <div class="row" id="ai-url-row"><label>Server URL</label><input id="ai-url" value="${esc(cfg.custom_base_url)}" placeholder="e.g. http://localhost:11434/v1"></div>
       <div class="row"><label>API key</label><input id="ai-key" type="password" autocomplete="off"></div>
-      <div class="row"><label>Main model</label><input id="ai-model" list="ai-models"><button class="act" id="ai-list">Load models</button></div>
-      <div class="row"><label>Quick model</label><input id="ai-fast" list="ai-models" title="Used for quick UI calls like name ideas"></div>
+      <div class="row"><label>Buck model</label><input id="ai-model" list="ai-models" title="Double-checks antlers and matches bucks"><button class="act" id="ai-list">Load models</button></div>
+      <div class="row"><label>First-look model</label><input id="ai-fast" list="ai-models" title="Looks at every animal crop first, and suggests names"></div>
+      <div class="row"><label>Monthly limit</label><input id="ai-limit" type="number" min="0" step="1" style="width:110px" placeholder="no limit"
+        value="${cfg.ai_usage?.limit ?? ''}"><span class="meta">dollars of AI a month for this ranch; photos keep downloading when it's reached</span></div>
+      <div class="row"><label>Spent</label><div class="meta" id="ai-usage">${aiUsage(cfg.ai_usage)}</div></div>
       <datalist id="ai-models"></datalist>
       <div class="row"><label></label><button class="act" id="ai-test" title="One real request with a photo; costs a cent or two">Test</button>
         <button class="act primary" id="ai-save">Save</button><span id="ai-msg" class="meta"></span></div>
@@ -2724,6 +2728,16 @@ function fillProvider() {
   $('#ai-fast').placeholder = p.fast ? `default: ${p.fast}` : 'optional; defaults to the main model';
   $('#ai-models').innerHTML = '';
   $('#ai-msg').textContent = '';
+}
+
+// This month's AI spending (per model) and the months before, from the ranch's ai_usage table.
+function aiUsage(u) {
+  if (!u) return '';
+  const usd = n => `$${n.toFixed(2)}`, m = u.this_month;
+  const models = m.models.map(x => `${esc(x.model)} ${usd(x.cost)}${x.priced ? '' : ' (estimated)'}, ${x.calls.toLocaleString('en-US')} calls`).join(' · ');
+  const name = ym => new Date(`${ym}-15`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  return `<b style="color:var(--ink)">${usd(m.cost)}</b> in ${name(m.month)}${u.limit ? ` of ${usd(u.limit)}` : ''}${models ? `: ${models}` : ''}`
+    + (u.earlier.length ? `<br>${u.earlier.slice(0, 3).map(e => `${name(e.month)} ${usd(e.cost)}`).join(' · ')}` : '');
 }
 
 function aiProbe() {
@@ -2845,8 +2859,10 @@ async function settingsClick(e) {
     const name = $('#ai-provider').value;
     try {
       cfg = await post('/api/settings', { vision_provider: name, api_key: $('#ai-key').value, vision_model: $('#ai-model').value,
-                                          vision_fast_model: $('#ai-fast').value, custom_base_url: $('#ai-url').value });
+                                          vision_fast_model: $('#ai-fast').value, custom_base_url: $('#ai-url').value,
+                                          ai_monthly_limit: Number($('#ai-limit').value) || 0 });
       fillProvider();
+      $('#ai-usage').innerHTML = aiUsage(cfg.ai_usage);
       $('#ai-msg').className = 'ok'; $('#ai-msg').textContent = `Saved; using ${cfg.providers[name].label}`;
     } catch (err) { $('#ai-msg').className = 'bad'; $('#ai-msg').textContent = err.detail || 'Save failed'; }
   }

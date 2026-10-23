@@ -1,5 +1,6 @@
 import anthropic
 
+from .. import usage
 from .base import ImagePart, T, encode_jpeg
 
 
@@ -22,6 +23,7 @@ class ClaudeProvider:
                 "type": "base64", "media_type": "image/jpeg", "data": encode_jpeg(part.path)}})
         content.append({"type": "text", "text": prompt})
 
+        usage.check()
         response = self.client.messages.parse(
             model=self.model,
             max_tokens=16000,
@@ -32,6 +34,9 @@ class ClaudeProvider:
             extra_headers={"anthropic-beta": "server-side-fallback-2026-07-01"},
             extra_body={"fallbacks": "default"},
         )
+        u = response.usage
+        usage.record(self.model, u.input_tokens + (u.cache_creation_input_tokens or 0) + (u.cache_read_input_tokens or 0),
+                     u.output_tokens)
         if response.stop_reason == "refusal":
             raise RefusalError(str(response.stop_details))
         return response.parsed_output

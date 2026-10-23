@@ -3,6 +3,7 @@
 Every route says who may use it with @needs(...): "public", "user" (anyone signed in), a role in the
 current ranch ("viewer", "member", "owner"; see accounts.py) or "admin". A route without it refuses
 everyone, so a new route can't be left open by accident."""
+import itertools
 import json
 import logging
 import queue
@@ -17,7 +18,7 @@ from fastapi.responses import FileResponse
 from PIL import Image
 from pydantic import BaseModel
 
-from .. import accounts, connections, db, patterns, pipeline, place, ranches
+from .. import accounts, connections, db, patterns, pipeline, place, ranches, usage
 from ..analyze import local_time
 from ..config import PUBLIC_URL, settings
 from ..identify import (QUERY_COLS, Galleries, add_notes, after_naming, embed_bucks, identify, merge_bucks, propagate_bursts,
@@ -111,10 +112,13 @@ def media(path: str):
 class Jobs:
     """One background worker for imports and LLM matching, shared by all ranches, so naming several
     bucks in a row queues up instead of running overlapping passes over the same crops. A job runs on
-    the ranch it was submitted from, and each ranch sees only its own jobs."""
+    the ranch it was submitted from, and each ranch sees only its own jobs. Jobs someone asked for go
+    ahead of the scheduled photo checks (background=True), so one ranch's long import doesn't keep
+    another ranch waiting on a button."""
 
     def __init__(self):
-        self.tasks: queue.Queue = queue.Queue()
+        self.tasks: queue.PriorityQueue = queue.PriorityQueue()
+        self.seq = itertools.count()  # first come, first served within a priority
         self.lock = threading.Lock()
         self.current: tuple[str, str] | None = None  # (ranch, label)
         self.pending: dict[str, int] = {}
@@ -122,11 +126,11 @@ class Jobs:
         self.last_import: dict[str, float] = {}
         threading.Thread(target=self._run, daemon=True).start()
 
-    def submit(self, label: str, fn, *args, **kwargs):
+    def submit(self, label: str, fn, *args, background: bool = False, **kwargs):
         rid = ranches.current_id()
         with self.lock:
             self.pending[rid] = self.pending.get(rid, 0) + 1
-        self.tasks.put((rid, label, fn, args, kwargs))
+        self.tasks.put((int(background), next(self.seq), rid, label, fn, args, kwargs))
 
     def step(self, label: str):
         self.current = (ranches.current_id(), label)
@@ -140,7 +144,7 @@ class Jobs:
 
     def _run(self):
         while True:
-            rid, label, fn, args, kwargs = self.tasks.get()
+            _, _, rid, label, fn, args, kwargs = self.tasks.get()
             self.current = (rid, label)
             try:
                 with ranches.use(rid):
@@ -181,7 +185,7 @@ def _scheduler():
                 hours = settings.sync_interval_hours
                 if (hours and connections.connected() and not jobs.status()["running"]
                         and time.time() - jobs.last_import.get(r["id"], 0) >= hours * 3600):
-                    jobs.submit("checking for new photos", _import)
+                    jobs.submit("checking for new photos", _import, background=True)
 
 
 for _r in ranches.all_ranches():
@@ -479,6 +483,7 @@ def get_settings(request: Request):
     return season | {
         "vision_provider": settings.vision_provider, "vision_model": settings.vision_model,
         "vision_fast_model": settings.vision_fast_model, "custom_base_url": settings.custom_base_url,
+        "ai_usage": usage.summary(),
         "providers": {name: {"label": p["label"], "model": p["model"], "fast": p["fast"],
                              "key": _key_source(p["key"])} for name, p in PROVIDERS.items()},
         "region": settings.region, "region_auto": settings.auto_region,
@@ -492,6 +497,7 @@ class SettingsUpdate(BaseModel):
     vision_fast_model: str | None = None
     custom_base_url: str | None = None
     api_key: str | None = None  # for vision_provider; blank keeps the current one
+    ai_monthly_limit: float | None = None  # dollars; 0 or blank = no cap
     region: str | None = None
     season_start: str | None = None
     sync_interval_hours: float | None = None
@@ -500,7 +506,7 @@ class SettingsUpdate(BaseModel):
 
 
 # The admin pays for the AI, so only the admin picks the provider, model and key.
-AI_FIELDS = {"vision_provider", "vision_model", "vision_fast_model", "custom_base_url", "api_key"}
+AI_FIELDS = {"vision_provider", "vision_model", "vision_fast_model", "custom_base_url", "api_key", "ai_monthly_limit"}
 
 
 @app.post("/api/settings")
@@ -523,6 +529,8 @@ def save_settings(body: SettingsUpdate, request: Request):
     for k in ("vision_model", "vision_fast_model", "custom_base_url"):
         if k in changes and not (changes[k] or "").strip():
             changes[k] = None  # back to the provider default
+    if "ai_monthly_limit" in changes and not (changes["ai_monthly_limit"] or 0) > 0:
+        changes["ai_monthly_limit"] = None
     settings.save(changes)
     return get_settings(request)
 

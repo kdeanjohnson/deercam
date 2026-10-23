@@ -1,5 +1,6 @@
 from openai import OpenAI
 
+from .. import usage
 from .base import ImagePart, T, encode_jpeg
 
 
@@ -20,11 +21,17 @@ class OpenAICompatProvider:
                 "url": f"data:image/jpeg;base64,{encode_jpeg(part.path)}", "detail": "high"}})
         content.append({"type": "text", "text": prompt})
 
+        usage.check()
         completion = self.client.chat.completions.parse(
             model=self.model,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": content}],
             response_format=schema,
         )
+        if u := completion.usage:
+            out = u.completion_tokens
+            if self.name == "grok":  # xAI counts reasoning apart from completion tokens (OpenAI includes it)
+                out += getattr(u.completion_tokens_details, "reasoning_tokens", 0) or 0
+            usage.record(self.model, u.prompt_tokens, out)
         message = completion.choices[0].message
         if message.parsed is None:
             raise RuntimeError(f"{self.name} returned no parsed output: {message.refusal or message.content!r}")

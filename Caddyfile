@@ -2,3 +2,9 @@
 	encode gzip
 	reverse_proxy deercam:8600
 }
+
+# www.<domain> forwards to the bare domain. Needs a www DNS record too; without one Caddy just logs
+# that it couldn't get a certificate for it, and the main site is unaffected.
+www.{$DEERCAM_DOMAIN} {
+	redir https://{$DEERCAM_DOMAIN}{uri} permanent
+}

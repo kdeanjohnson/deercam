@@ -928,6 +928,27 @@ def reject_many(body: Picked):
         return {"ok": True}
 
 
+class NotABuck(BaseModel):
+    sex: Literal["doe", "fawn"]
+
+
+@app.post("/api/bucks/{buck_id}/not-a-buck")
+@needs("member")
+def group_not_a_buck(buck_id: int, body: NotABuck):
+    """An auto-group that's really a doe (or fawn): relabel its photos and remove the group. Matching
+    only looks at bucks, so they stay out of it from now on."""
+    with db.session() as conn:
+        b = conn.execute("SELECT generic FROM bucks WHERE id=?", (buck_id,)).fetchone()
+        if b is None:
+            raise HTTPException(404, "no such buck")
+        if not b["generic"]:
+            raise HTTPException(400, "Only an auto-group can be relabeled this way; use 'Not him' on a named buck's photos")
+        n = conn.execute("UPDATE detections SET sex=?, buck_id=NULL, match_status=NULL, match_confidence=NULL, "
+                         "match_reason=NULL WHERE buck_id=?", (body.sex, buck_id)).rowcount
+        _drop_empty_groups(conn)
+        return {"ok": True, "relabeled": n}
+
+
 class AnimalLabel(BaseModel):
     animal: str  # a key of wildlife.KINDS, or 'deer'
 

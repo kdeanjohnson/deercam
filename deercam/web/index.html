@@ -48,7 +48,7 @@
   /* What a role can't do is hidden; the server refuses it anyway */
   body.role-viewer #sync, body.role-viewer [data-go="review"], body.role-viewer .tagrow, body.role-viewer .season-notes,
   body.role-viewer .ptile .acts, body.role-viewer .edit-h, body.role-viewer #buck-edit, body.role-viewer #status-edit,
-  body.role-viewer [data-act="group-returning"], body.role-viewer .nudge { display:none; }
+  body.role-viewer [data-act="group-returning"], body.role-viewer .nudge, body.role-viewer .notbuck, body.role-viewer #merge-row { display:none; }
   body:not(.role-owner) [data-place], body:not(.role-owner) [data-unplace] { display:none; }
   .settings .person > label:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .settings details > summary { cursor:pointer; color:var(--ink2); font-size:13px; }
@@ -988,6 +988,9 @@ async function showBuck(id) {
       ${b.generic ? `<div class="hint">Grouped automatically because these photos came in one burst or matched closely.
         Remove any that aren't him with “Not him”, then give him a name below to keep him (that confirms the rest),
         or, if he's a buck you've already named, pick him below.</div>${mergeRow}
+        <div class="form notbuck"><div class="row"><span class="meta">Not a buck at all?</span>
+          <button class="btn small" data-act="not-a-buck" data-sex="doe">It’s a doe</button>
+          <button class="btn small" data-act="not-a-buck" data-sex="fawn">It’s a fawn</button></div></div>
         ${past.length && sightings.length ? `<div class="form"><div class="row"><button class="btn small" data-act="group-returning"
           data-det="${sightings.slice().sort((x, y) => y.size_pct - x.size_pct)[0].id}">Could he be a buck from an earlier season?</button></div>
           <div class="meta" id="group-returning-out"></div></div>` : ''}`
@@ -3183,6 +3186,14 @@ document.addEventListener('click', async e => {
     await showBuck(buckId);
     $('#buck-saved').textContent = 'Saved';
     return;
+  }
+  if (act === 'not-a-buck') {
+    btn.disabled = true;
+    try {
+      const r = await post(`/api/bucks/${buckId}/not-a-buck`, { sex: btn.dataset.sex });
+      toast(`${r.relabeled} photo${r.relabeled === 1 ? '' : 's'} relabeled as ${btn.dataset.sex === 'doe' ? 'a doe' : 'a fawn'}`);
+      return go('bucks');
+    } catch (err) { btn.disabled = false; toast(err.detail || 'Not saved'); return; }
   }
   if (act === 'merge-buck') {
     const into = Number($('#merge-into').value), name = $('#merge-into').selectedOptions[0]?.textContent;

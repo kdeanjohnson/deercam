@@ -1009,6 +1009,31 @@ def rename(buck_id: int, body: Rename):
     return {"ok": True, "merged_into": merged_into, "searching": bool(buck["generic"])}
 
 
+class MergeInto(BaseModel):
+    into: int
+
+
+@app.post("/api/bucks/{buck_id}/merge")
+@needs("member")
+def merge_buck(buck_id: int, body: MergeInto, request: Request):
+    """'He's really that buck': move all his photos to the other buck and remove this one. Merging a named
+    buck (not just an auto-group) takes an owner, since his name, notes and status go away."""
+    if body.into == buck_id:
+        raise HTTPException(400, "pick a different buck")
+    with db.session() as conn:
+        src = conn.execute("SELECT name, generic FROM bucks WHERE id=?", (buck_id,)).fetchone()
+        dst = conn.execute("SELECT name FROM bucks WHERE id=?", (body.into,)).fetchone()
+        if src is None or dst is None:
+            raise HTTPException(404, "no such buck")
+        if not src["generic"] and not _is(request, "owner"):
+            raise HTTPException(403, "Only an owner merges two named bucks")
+        # Picking the buck vouches for the photos on this page, like naming a group does.
+        conn.execute("UPDATE detections SET match_status='confirmed' WHERE buck_id=? AND match_status='auto'", (buck_id,))
+        n = merge_bucks(conn, buck_id, body.into, f"merged from {src['name']} by the user")
+    jobs.submit(f"looking for more photos of {dst['name']}", after_naming, body.into)
+    return {"ok": True, "moved": n, "into": body.into}
+
+
 class Status(BaseModel):
     status: Literal["alive", "harvested", "dead"]
     date: str | None = None  # YYYY-MM-DD, defaults to today

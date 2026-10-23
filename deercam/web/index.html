@@ -930,8 +930,16 @@ function buckCard(b) {
 }
 
 async function showBuck(id) {
-  const [{ buck: b, sightings }, list] = await Promise.all([api(`/api/bucks/${id}`), api(`/api/bucks?season=${season()}`)]);
+  const [{ buck: b, sightings }, list, everyone] = await Promise.all([api(`/api/bucks/${id}`), api(`/api/bucks?season=${season()}`),
+                                                                    api('/api/bucks?season=all')]);
   bucks = list;
+  // named bucks he could really be, any season
+  const others = everyone.filter(x => x.id !== id && !x.generic).sort((x, y) => x.name.localeCompare(y.name));
+  const mergeRow = others.length ? `<div class="form merge" id="merge-row"><div class="row">
+      <label for="merge-into">${b.generic ? 'He’s one of your bucks:' : 'Same deer as another buck?'}</label>
+      <select id="merge-into"><option value="">Pick a buck…</option>${others.map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select>
+      <button class="btn small${b.generic ? ' primary' : ''}" data-act="merge-buck" disabled>${b.generic ? 'Move these photos to him' : 'Merge into him'}</button></div>
+      <div class="meta" id="merge-out"></div></div>` : '';
   const past = bucks.filter(x => x.absent && x.id !== id);
   const hero = sightings.length ? sightings.slice().sort((x, y) => (y.match_status === 'confirmed') - (x.match_status === 'confirmed') || y.size_pct - x.size_pct)[0] : null;
   const curNotes = b.seasons.find(s => String(s.season) === season())?.notes || b.seasons[0]?.notes;
@@ -942,7 +950,7 @@ async function showBuck(id) {
       <div class="meta">${badges(b)} ${esc(curNotes || (hero ? rackLine(hero.rack) : ''))}</div>
       ${b.generic ? `<div class="hint">Grouped automatically because these photos came in one burst or matched closely.
         Remove any that aren't him with “Not him”, then give him a name below to keep him (that confirms the rest),
-        or type an existing buck's name to merge this group into him, including a buck from an earlier season.</div>
+        or, if he's a buck you've already named, pick him below.</div>${mergeRow}
         ${past.length && sightings.length ? `<div class="form"><div class="row"><button class="btn small" data-act="group-returning"
           data-det="${sightings.slice().sort((x, y) => y.size_pct - x.size_pct)[0].id}">Could he be a buck from an earlier season?</button></div>
           <div class="meta" id="group-returning-out"></div></div>` : ''}`
@@ -971,6 +979,7 @@ async function showBuck(id) {
                title="Carries over between seasons (rack features go with each season above)"></div>
         <div class="row"><button class="btn small primary" data-act="save-buck">Save</button><span class="meta" id="buck-saved"></span></div>
       </div>
+      ${b.generic ? '' : mergeRow}
       ${b.generic ? '' : `<h3 class="edit-h">Status</h3>
       <div class="form" id="status-edit"><div class="row">
         <select data-status>${['alive', 'harvested', 'dead'].map(s => `<option value="${s}" ${b.status === s ? 'selected' : ''}>${{ alive: 'Alive', harvested: 'Harvested', dead: 'Found dead' }[s]}</option>`).join('')}</select>
@@ -2965,6 +2974,11 @@ async function settingsClick(e) {
 
 document.addEventListener('change', async e => {
   if (e.target.id === 'ai-provider') fillProvider();
+  if (e.target.id === 'merge-into') {
+    const btn = $('[data-act="merge-buck"]');
+    btn.disabled = !e.target.value;
+    if (btn.dataset.sure) { delete btn.dataset.sure; btn.textContent = 'Merge into him'; }
+  }
   if (e.target.dataset.member) {
     try {
       await post(`/api/members/${e.target.dataset.member}`, { role: e.target.value });
@@ -3045,6 +3059,20 @@ document.addEventListener('click', async e => {
     $('#buck-saved').textContent = 'Saved';
     return;
   }
+  if (act === 'merge-buck') {
+    const into = Number($('#merge-into').value), name = $('#merge-into').selectedOptions[0]?.textContent;
+    if (!into) return;
+    // a named buck's name, notes and status go away: ask for a second tap rather than a browser dialog
+    if (!bucks.find(x => x.id === buckId)?.generic && !btn.dataset.sure) {
+      btn.dataset.sure = 1; btn.textContent = `Tap again: ${$('.buckpage h2').textContent.trim()} becomes ${name}`;
+      return;
+    }
+    btn.disabled = true;
+    try { await post(`/api/bucks/${buckId}/merge`, { into }); }
+    catch (err) { btn.disabled = false; $('#merge-out').textContent = err.detail || 'Not merged'; return; }
+    watchJob();
+    return go('buck', into);
+  }
   if (act === 'set-tag') {
     const tag = btn.classList.contains('sel') ? null : btn.dataset.tag;  // tap again to clear
     await post(`/api/bucks/${buckId}/tag`, { tag });
@@ -3072,7 +3100,7 @@ document.addEventListener('click', async e => {
     btn.disabled = true;
     const b = await askReturning(Number(btn.dataset.det), $('#group-returning-out'));
     btn.disabled = false;
-    if (b) $('#group-returning-out').textContent += ` To merge, type “${b.name}” as his name below and Save.`;
+    if (b) $('#group-returning-out').textContent += ` If so, pick ${b.name} below.`;
     return;
   }
   const tile = btn.closest('[data-id]'), id = tile?.dataset.id;

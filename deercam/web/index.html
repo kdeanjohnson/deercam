@@ -258,8 +258,7 @@
   /* ---- timeline: the cameras on a map at one moment with the light and weather then, and a time slider;
      or (Cameras) every photo in a scrolling list */
   body.tl-on { padding-bottom:0; overflow:hidden; }
-  body.tl-on #job { position:fixed; z-index:21; left:0; right:0; background:rgba(255,255,255,.92); }
-  body.tl-on h1.title { margin-bottom:12px; }
+  body.tl-on h1.title { font-size:24px; margin:4px 16px 0; }
   #tl { position:fixed; left:0; right:0; bottom:0; overflow:hidden; --dim:var(--ink2); }
 
   /* the photo used by the camera panel, with boxes around the animals */
@@ -342,6 +341,20 @@
   .tl-legend span { display:inline-flex; align-items:center; gap:5px; }
   .tl-legend svg { width:13px; height:13px; }
   .tl-legend .note { margin-left:auto; }
+  /* the slider's three sizes: everything, compact lanes, or just the controls */
+  .tl-panel.sz-1 { padding:8px 12px 10px; }
+  .tl-panel.sz-1 .tl-bar { margin-bottom:6px; }
+  .tl-panel.sz-1 .tl-legend { display:none; }
+  .tl-panel.sz-1 .tl-labels div { font-size:11px; }
+  .tl-panel.sz-1 .tl-ico { transform:scale(.75); }
+  .tl-panel.sz-1 .tl-ico:hover, .tl-panel.sz-1 .tl-ico.near { transform:scale(.95); }
+  .tl-panel.sz-0 { padding:8px 12px; }
+  .tl-panel.sz-0 .tl-bar { margin-bottom:0; }
+  .tl-panel.sz-0 .tl-track, .tl-panel.sz-0 .tl-legend { display:none; }
+  .tl-size svg { width:16px; height:16px; }
+  .tl-show { font:inherit; font-size:13px; font-weight:600; height:32px; padding:0 10px; border-radius:16px; border:0; background:#fff; color:var(--ink);
+             max-width:170px; }
+  .tl-show.on { background:#d97706; color:#fff; }
   .tl-card { position:fixed; z-index:40; width:230px; pointer-events:none; overflow:hidden; border-radius:14px; display:none;
              background:#fff; box-shadow:0 8px 30px rgba(0,0,0,.22); }
   .tl-card img { width:100%; aspect-ratio:4/3; object-fit:cover; background:#000; }
@@ -409,9 +422,6 @@
                 box-shadow:0 2px 12px rgba(0,0,0,.25); }
   .tlm-follow:not(:empty) { display:inline-flex; }
   .tlm-follow b { color:#b45309; }
-  .tl-follow { margin-left:auto; display:inline-flex; align-items:center; gap:6px; color:var(--ink2); }
-  .tl-follow select { font:inherit; font-size:12.5px; padding:4px 8px; border-radius:12px; border:0; background:#fff; color:var(--ink); }
-  .tl-follow.on select { background:#d97706; color:#fff; }
 
   /* one camera's photo at the moment, opened from its pin or the timeline */
   .tlm-side { position:absolute; z-index:7; top:12px; right:60px; width:330px; max-height:calc(100% - var(--panel-h, 200px) - 24px); overflow:auto;
@@ -455,6 +465,11 @@
     .tl-legend { padding-left:0; }
     .tl-legend .note { display:none; }
     .tl-span, #tl-speed { display:none; }
+    .tl-bar { flex-wrap:wrap; row-gap:6px; }
+    .tl-show { flex:1; min-width:0; max-width:none; order:1; }
+    .tl-size { order:2; }
+    #tl-ranges { order:3; margin-left:0; }
+    #tl-latest { order:4; margin-left:auto; }
     .tl-seg button { padding:5px 9px; }
     .tl-seg .long { display:none; } .tl-seg .short { display:inline; }
     .tlm-top { left:12px; max-width:calc(100% - 70px); }
@@ -1592,7 +1607,8 @@ async function showTimeline() {
   const data = tlPrep(await api('/api/timeline'));
   if (view !== 'timeline') return;
   Object.assign(TL, { data, days: 30, playing: false, speed: 3600, dirty: true, raf: 0, lastFrame: 0, cloudX: 0, cloudY: 0,
-                      feed: { cam: null, what: 'all', n: 0 } });
+                      feed: { cam: null, what: 'all', n: 0 }, show: 'all', shown: data.animals,
+                      size: [0, 1, 2].includes(Number(localStorage.getItem('tlSize') ?? 2)) ? Number(localStorage.getItem('tlSize') ?? 2) : 2 });
   $('#main').innerHTML = `<h1 class="title tl-titlebar" id="tl-title">Timeline
     <div class="tl-seg tl-mode" id="tl-mode"><button data-mode="map">Map</button><button data-mode="cams">Cameras</button></div></h1><div id="tl">
     <div id="tl-map"></div><div class="tlm-note" id="tlm-note"></div>
@@ -1630,6 +1646,8 @@ async function showTimeline() {
   };
   TL.topSize = new ResizeObserver(() => tlPlaceCards());
   TL.topSize.observe($('#tlm-top'));
+  TL.jobSize = new ResizeObserver(() => TL.onResize?.());  // the status line above the title comes and goes
+  TL.jobSize.observe($('#job'));
   TL.onResize = () => { tlLayout(); tlSizeCanvas(); $$('#tlm-side .tl-tile').forEach(tlFitBoxes); tlMapMetrics(); tlPlaceCards(); };
   TL.onKey = tlKey;
   addEventListener('resize', TL.onResize);
@@ -1765,8 +1783,9 @@ function tlDestroy() {
   cancelAnimationFrame(TL.raf);
   TL.map?.remove();
   TL.topSize?.disconnect();
+  TL.jobSize?.disconnect();
   TL.feedMore?.disconnect();
-  Object.assign(TL, { map: null, pins: null, amb: null, sel: null, sideSrc: null, pathKey: null, pathLayer: null, legs: [], follow: '', feedMore: null });
+  Object.assign(TL, { map: null, frame: null, pins: null, amb: null, sel: null, sideSrc: null, pathKey: null, pathLayer: null, legs: [], follow: '', feedMore: null });
   if (TL.onResize) removeEventListener('resize', TL.onResize);
   if (TL.onKey) removeEventListener('keydown', TL.onKey);
   Object.assign(TL, { onResize: null, onKey: null, raf: 0 });
@@ -1833,13 +1852,16 @@ async function tlMapInit() {
   m.on('zoomend moveend resize', () => tlPlaceCards());
   m.createPane('tlpath').style.zIndex = 460;  // the followed buck's path: above the light of the moment, under the pins
   const placed = TL.data.cameras.filter(c => c.lat != null), unplaced = TL.data.cameras.filter(c => c.lat == null);
-  // Frame the cameras in the open space between the strip at the top and the timeline.
-  const phone = innerWidth <= 760, panelH = tlMapMetrics(), where = tlWhere();
-  const H = box.clientHeight, top = $('#tlm-top').offsetHeight + 12 + 70, bottom = panelH + 50;
-  const squeeze = Math.min(1, H * .75 / (top + bottom));  // small screens: keep some map between the cards
-  if (placed.length) m.fitBounds(placed.map(c => [c.lat, c.lon]), {
-    paddingTopLeft: [phone ? 40 : 170, top * squeeze], paddingBottomRight: [phone ? 40 : 170, bottom * squeeze], maxZoom: 17 });
-  else m.setView([where.lat, where.lon], 12);
+  // Frame the cameras in the open space between the strip at the top and the timeline (again when the timeline changes size).
+  TL.frame = () => {
+    const phone = innerWidth <= 760, panelH = tlMapMetrics(), where = tlWhere();
+    const H = box.clientHeight, top = $('#tlm-top').offsetHeight + 12 + 70, bottom = panelH + 50;
+    const squeeze = Math.min(1, H * .75 / (top + bottom));  // small screens: keep some map between the cards
+    if (placed.length) m.fitBounds(placed.map(c => [c.lat, c.lon]), {
+      paddingTopLeft: [phone ? 40 : 170, top * squeeze], paddingBottomRight: [phone ? 40 : 170, bottom * squeeze], maxZoom: 17 });
+    else m.setView([where.lat, where.lon], 12);
+  };
+  TL.frame();
   TL.pins = {};
   TL.data.cameras.forEach((c, ci) => {
     if (c.lat == null) return;
@@ -2025,14 +2047,18 @@ function tlPath() {
     : `<b>${esc(TL.follow)}</b> not seen in this range`;
 }
 
-function tlFollow(name) {
-  TL.follow = name;
-  TL.followAt = TL.data.animals.filter(a => a.buck === name && a.cam != null);
-  $('#tl-follow-wrap')?.classList.toggle('on', !!name);
+// What the slider and the map show: 'all' animals, 'bucks', or one named buck (followed: his moves are drawn on the map).
+function tlShow(v) {
+  TL.show = v;
+  TL.follow = v === 'all' || v === 'bucks' ? '' : v;
+  TL.shown = v === 'all' ? TL.data.animals : TL.data.animals.filter(tlShows);
+  TL.followAt = TL.follow ? TL.shown.filter(a => a.cam != null) : [];
+  $('#tl-show')?.classList.toggle('on', v !== 'all');
   TL.pathKey = null;
   tlDrawTrack();
   TL.dirty = true;
 }
+const tlShows = a => TL.show === 'all' || (TL.show === 'bucks' ? a.kind === 'buck' : a.buck === TL.show);
 
 function tlMapScene(sun, cover, dark, warm) {
   if (!TL.amb) return;
@@ -2051,7 +2077,7 @@ function tlMapScene(sun, cover, dark, warm) {
 // A new animal sets off a ripple in its color; the glow under a pin grows with the last 3 hours' animals.
 function tlMapCams(t) {
   if (!TL.pins) return;
-  const as = TL.data.animals, a0 = tlBisect(as, t - 3 * HOUR, a => a.t), a1 = tlBisect(as, t + 1, a => a.t);
+  const as = TL.shown, a0 = tlBisect(as, t - 3 * HOUR, a => a.t), a1 = tlBisect(as, t + 1, a => a.t);
   const scent = tlScent(), fa = TL.follow ? TL.followAt : [], at = fa[tlBisect(fa, t + 1, a => a.t) - 1];
   TL.data.cameras.forEach((c, ci) => {
     const pin = TL.pins[ci];
@@ -2129,7 +2155,8 @@ function tlFitBoxes(tile) {
 }
 
 // ---- slider
-const TL_ROW = { dates: 18, light: 12, temp: 30, lane: 26 };
+const TL_ROWS = [null, { dates: 16, light: 8, temp: 0, lane: 18 }, { dates: 18, light: 12, temp: 30, lane: 26 }];  // by TL.size
+let TL_ROW = TL_ROWS[2];
 function tlSetRange(days) {
   const d = TL.data, span = Math.min(days * DAY, Math.max(d.end - d.start, HOUR * 6));
   TL.rangeDays = days;
@@ -2139,13 +2166,17 @@ function tlSetRange(days) {
 }
 function tlPanel() {
   const cams = TL.data.cameras;
-  const rows = [['', TL_ROW.dates], ['Light', TL_ROW.light], ['Temp', TL_ROW.temp], ...cams.map(c => [c, TL_ROW.lane])];
+  TL_ROW = TL_ROWS[TL.size || 2];
+  const rows = [['', TL_ROW.dates], [TL.size === 2 ? 'Light' : '', TL_ROW.light], ['Temp', TL_ROW.temp], ...cams.map(c => [c, TL_ROW.lane])].filter(r => r[1]);
   TL.trackH = rows.reduce((s, r) => s + r[1], 0) + 6;
   const kinds = Object.entries(TL_KINDS);
   // named bucks seen in the timeline's data, hit-list first
   const named = {};
   for (const a of TL.data.animals) if (a.buck) named[a.buck] = named[a.buck] || a.tag === 'target';
   const followable = Object.entries(named).map(([name, target]) => ({ name, target })).sort((a, b) => b.target - a.target || a.name.localeCompare(b.name));
+  const opt = (v, label) => `<option value="${esc(v)}" ${v === TL.show ? 'selected' : ''}>${esc(label)}</option>`;
+  const sizeIcon = TL.size ? '<path d="M3.5 6 8 10.5 12.5 6"/>' : '<path d="M3.5 10 8 5.5l4.5 4.5"/>';
+  $('#tl-panel').className = `tl-panel sz-${TL.size}`;
   $('#tl-panel').innerHTML = `
     <div class="tl-bar">
       <button class="tl-btn play" id="tl-play" title="Play (space)">${TL_SVG.play}</button>
@@ -2153,8 +2184,11 @@ function tlPanel() {
       <button class="tl-btn" id="tl-next" title="Next animal (])">${TL_SVG.next}</button>
       <button class="tl-btn" id="tl-speed" title="Playback speed">${TL_SPEEDS.find(s => s[0] === TL.speed)[1]}</button>
       <span class="tl-span" id="tl-span"></span>
+      <select class="tl-show${TL.show !== 'all' ? ' on' : ''}" id="tl-show" title="Which animals to show">${opt('all', 'All animals')}${opt('bucks', 'Bucks')}
+        ${followable.length ? `<optgroup label="One buck (shows his moves)">${followable.map(b => opt(b.name, b.name + (b.target ? ' ★' : ''))).join('')}</optgroup>` : ''}</select>
       <div class="tl-seg" id="tl-ranges">${TL_RANGES.map(([l, d, short]) => `<button data-days="${d}" class="${d === TL.rangeDays ? 'on' : ''}"><span class="long">${l}</span><span class="short">${short}</span></button>`).join('')}</div>
       <button class="tl-btn" id="tl-latest" title="Jump to the newest photo">Latest</button>
+      <button class="tl-btn tl-size" id="tl-size" title="${['Show the timeline', 'Hide the timeline', 'Make the timeline smaller'][TL.size]}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${sizeIcon}</svg></button>
     </div>
     <div class="tl-track" id="tl-track" tabindex="0">
       <div class="tl-labels">${rows.map(([r, h]) => `<div style="--h:${h}px">${typeof r === 'string' ? r : `<i style="background:${r.color}"></i>${esc(r.name || r.camera_id)}`}</div>`).join('')}</div>
@@ -2162,10 +2196,13 @@ function tlPanel() {
         <div class="tl-hover" id="tl-hover"><span></span></div><div class="tl-head" id="tl-head"></div></div>
     </div>
     <div class="tl-legend">${kinds.map(([k, v]) => `<span style="color:${v.color}">${TL_SVG[k]}<em style="color:var(--dim);font-style:normal">${v.label}</em></span>`).join('')}
-      <span class="note" id="tl-note"></span>
-      ${followable.length ? `<label class="tl-follow${TL.follow ? ' on' : ''}" id="tl-follow-wrap">Follow <select id="tl-follow"><option value="">no one</option>
-        ${followable.map(b => `<option value="${esc(b.name)}" ${b.name === TL.follow ? 'selected' : ''}>${esc(b.name)}${b.target ? ' ★' : ''}</option>`).join('')}</select></label>` : ''}</div>`;
-  $('#tl-follow')?.addEventListener('change', e => tlFollow(e.target.value));
+      <span class="note" id="tl-note"></span></div>`;
+  $('#tl-show').onchange = e => tlShow(e.target.value);
+  $('#tl-size').onclick = () => {
+    TL.size = (TL.size + 2) % 3;  // full, compact, controls only, then full again
+    localStorage.setItem('tlSize', TL.size);
+    tlPanel(); TL.onResize(); tlHead(); TL.frame?.();
+  };
   $('#tl-play').onclick = () => tlPlay(!TL.playing);
   $('#tl-prev').onclick = () => tlJump(-1);
   $('#tl-next').onclick = () => tlJump(1);
@@ -2272,7 +2309,9 @@ function tlDrawTrack() {
   }
   // temperature line
   const ws = TL.data.weather.filter(w => w.temp != null && w.t >= v0 - 6 * HOUR && w.t <= v1 + 6 * HOUR);
-  if (ws.length > 1) {
+  if (!TL_ROW.temp) {
+    // compact: no temperature row
+  } else if (ws.length > 1) {
     const lo = Math.min(...ws.map(w => w.temp)), hi = Math.max(...ws.map(w => w.temp)), pad = 5;
     const Y = t => yTemp + pad + (1 - (t - lo) / Math.max(1, hi - lo)) * (TL_ROW.temp - pad * 2);
     const grad = g.createLinearGradient(0, yTemp, 0, yTemp + TL_ROW.temp);
@@ -2314,7 +2353,7 @@ function tlDrawTrack() {
 
 function tlIcons(X, yLanes) {
   const box = $('#tl-icons'), W = box.clientWidth;
-  const all = TL.data.animals.filter(a => a.t >= TL.v0 && a.t <= TL.v1 && a.cam != null && (!TL.follow || a.buck === TL.follow));
+  const all = TL.shown.filter(a => a.t >= TL.v0 && a.t <= TL.v1 && a.cam != null);
   const groups = [];
   const open = {};
   for (const a of all) {
@@ -2365,7 +2404,7 @@ function tlSeek(t) {
   TL.hashT = setTimeout(() => history.replaceState(null, '', `#timeline/${Math.round(TL.t)}`), 400);
 }
 function tlJump(dir) {
-  const as = TL.follow ? TL.followAt : TL.data.animals;  // following a buck: jump between his sightings
+  const as = TL.shown;  // showing bucks or one buck: jump between those sightings
   if (!as.length) return;
   const gap = 20 * 60e3;  // skip the rest of the same visit
   const a = dir > 0 ? as.find(x => x.t > TL.t + gap) : [...as].reverse().find(x => x.t < TL.t - gap);

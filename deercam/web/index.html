@@ -186,6 +186,43 @@
   .q { font-size:24px; font-weight:800; letter-spacing:-.01em; margin:16px 0 4px; }
   .cands { display:flex; gap:12px; overflow-x:auto; padding:6px 0 4px; scrollbar-width:none; }
   .cands::-webkit-scrollbar { display:none; }
+  /* with a mouse there's no swipe: wrap the candidates into rows, scrolling down if there are many */
+  @media (pointer: fine) {
+    .review .cands { flex-wrap:wrap; overflow-x:hidden; overflow-y:auto; max-height:min(46vh, 430px); scrollbar-width:thin; padding-right:4px; }
+    .review .cands::-webkit-scrollbar { display:block; width:8px; }
+    .review .cands::-webkit-scrollbar-thumb { background:var(--line); border-radius:4px; }
+  }
+  .rv-compare { margin-top:10px; }
+
+  /* compare: the photo under review beside a candidate's photos, with the AI's opinion on request */
+  .cmp { position:fixed; inset:0; z-index:45; background:rgba(10,12,16,.72); display:flex; align-items:center; justify-content:center; padding:16px; }
+  .cmp-box { background:#fff; border-radius:var(--radius); width:min(1100px, 100%); max-height:100%; overflow:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+  .cmp-head { display:flex; align-items:center; gap:10px; }
+  .cmp-head h3 { margin:0; font-size:20px; }
+  .cmp-head .tlm-x { margin-left:auto; }
+  .cmp-panes { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .cmp-pane { display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .cmp-pane .lbl { font-size:13px; font-weight:700; display:flex; gap:8px; align-items:baseline; }
+  .cmp-pane .lbl span { font-weight:500; color:var(--ink2); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cmp-img { position:relative; background:#111; border-radius:12px; overflow:hidden; aspect-ratio:4/3; }
+  .cmp-img img { width:100%; height:100%; object-fit:contain; cursor:zoom-in; display:block; }
+  .cmp-nav { position:absolute; top:50%; transform:translateY(-50%); width:34px; height:34px; border:0; border-radius:50%; background:rgba(255,255,255,.9);
+             font-size:20px; line-height:1; color:var(--ink); }
+  .cmp-nav.l { left:8px; } .cmp-nav.r { right:8px; }
+  .cmp-nav:disabled { opacity:.3; }
+  .cmp-strip { display:flex; gap:6px; overflow-x:auto; scrollbar-width:thin; padding-bottom:2px; }
+  .cmp-strip img { width:52px; height:52px; border-radius:8px; object-fit:cover; flex:none; cursor:pointer; opacity:.6; border:2px solid transparent; }
+  .cmp-strip img.cur { opacity:1; border-color:var(--accent); }
+  .cmp-ai { background:var(--soft); border-radius:12px; padding:10px 12px; font-size:13.5px; line-height:1.45; display:flex; flex-direction:column; gap:6px; }
+  .cmp-ai ul { margin:0; padding-left:18px; }
+  .cmp-verdict { display:inline-block; font-weight:800; padding:2px 10px; border-radius:12px; color:#fff; margin-right:6px; }
+  .cmp-verdict.same { background:#0f9d76; } .cmp-verdict.different { background:#d6336c; } .cmp-verdict.cant_tell { background:#8a929c; }
+  .cmp-acts { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  @media (max-width: 760px) {
+    .cmp { padding:0; align-items:stretch; }
+    .cmp-box { border-radius:0; }
+    .cmp-panes { grid-template-columns:1fr; }
+  }
   .cand { flex:0 0 92px; border:0; background:none; padding:0; text-align:center; }
   .cand img, .cand .plus { width:92px; height:92px; border-radius:50%; object-fit:cover; border:3px solid var(--line); }
   .cand.sel img, .cand.sel .plus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(31,111,235,.2); }
@@ -1228,6 +1265,7 @@ async function renderReview() {
       <div class="q">Who is this?</div>
       <div class="cands" id="rv-cands"><div class="meta">Loading…</div></div>
       <div id="rv-past"></div>
+      <button class="btn small rv-compare" id="rv-compare" style="display:none"></button>
       <div id="rv-new" style="display:none" class="form">
         <div class="row"><input id="rv-name" placeholder="New buck's name" autocomplete="off"><button class="btn small" id="rv-ideas" title="Ask the AI for nickname ideas based on this photo">Suggest names</button></div>
         <div class="ideas" id="rv-ideas-out"></div>
@@ -1290,6 +1328,9 @@ function refreshPick() {
   const save = $('#rv-save');
   save.textContent = rv.pick === 'new' ? `Save new buck${$('#rv-name').value.trim() ? ` “${$('#rv-name').value.trim()}”` : ''}` : b ? `That's ${b.name}` : 'Pick who this is';
   save.disabled = !rv.pick || (rv.pick === 'new' && !$('#rv-name').value.trim());
+  const cmpBtn = $('#rv-compare');
+  cmpBtn.style.display = b ? '' : 'none';
+  if (b) cmpBtn.textContent = `Compare with ${b.name} side by side`;
   $('#rv-old-notes').textContent = b?.absent ? 'Picking him ties this season to his history and starts a search for his other photos this season.'
     : b?.season_notes ? `Already noted for ${b.name} this season: ${b.season_notes}. Anything you add is appended.` : '';
 }
@@ -1335,6 +1376,90 @@ async function reviewClick(e) {
     return refreshPick();
   }
   if (t.id === 'rv-save') return saveReview();
+  if (t.id === 'rv-compare') return openCompare(d, rv.pick);
+}
+
+// Side by side: the photo under review and a candidate's photos (his most alike first), and, on request,
+// the buck model's opinion. "That's him" saves the review as him.
+async function openCompare(d, buckId) {
+  closeCompare();
+  const box = document.createElement('div');
+  box.className = 'cmp'; box.id = 'cmp';
+  box.innerHTML = '<div class="cmp-box"><div class="meta">Loading…</div></div>';
+  document.body.append(box);
+  let data;
+  try { data = await api(`/api/detections/${d.id}/compare/${buckId}`); }
+  catch { box.querySelector('.cmp-box').innerHTML = '<div class="meta">Couldn’t load his photos.</div>'; return; }
+  const ps = data.photos, name = data.buck.name, member = !document.body.classList.contains('role-viewer');
+  let i = 0, full = false, theirsFull = false;
+  box.querySelector('.cmp-box').innerHTML = `
+    <div class="cmp-head"><h3>Is this ${esc(name)}?</h3><button class="tlm-x" data-cmp="x" title="Close (Esc)">×</button></div>
+    <div class="cmp-panes">
+      <div class="cmp-pane"><div class="lbl">This photo <span>${esc(d.camera)} · ${esc(when(d.when))}</span></div>
+        <div class="cmp-img"><img id="cmp-mine" src="${d.crop}" alt="" title="Tap for the full photo"></div>
+        <div class="meta">${esc(rackLine(d.rack))}</div></div>
+      <div class="cmp-pane"><div class="lbl">${esc(name)} <span id="cmp-cap"></span></div>
+        <div class="cmp-img">${ps.length ? `<img id="cmp-theirs" alt="" title="Tap for the full photo">
+          <button class="cmp-nav l" data-cmp="prev" title="Previous (←)">‹</button><button class="cmp-nav r" data-cmp="next" title="Next (→)">›</button>`
+          : '<div class="empty" style="color:#ccc">No photos of him yet</div>'}</div>
+        <div class="cmp-strip">${ps.map((p, j) => `<img src="${p.crop}" data-cmp-i="${j}" alt="" loading="lazy">`).join('')}</div></div>
+    </div>
+    <div class="cmp-ai" id="cmp-ai"${ps.length && member ? '' : ' style="display:none"'}>
+      <div><button class="btn small" data-cmp="ai">Ask the AI</button>
+        <span class="meta">It compares this photo with his ${Math.min(3, ps.length)} most alike photos (one call to the buck model, a few cents).</span></div></div>
+    <div class="cmp-acts">${member ? `<button class="btn blue" data-cmp="yes">That’s ${esc(name)}</button>` : ''}
+      <button class="btn" data-cmp="x">${member ? 'Not him' : 'Close'}</button></div>`;
+  const show = () => {
+    const p = ps[i];
+    if (!p) return;
+    $('#cmp-theirs').src = theirsFull ? p.photo : p.crop;
+    $('#cmp-cap').textContent = `${i + 1} of ${ps.length} · ${p.camera || ''} · ${when(p.when)}${p.season !== d.season ? ` · ${seasonLabel(p.season)}` : ''}${p.confirmed ? '' : ' · auto-matched'}`;
+    box.querySelector('[data-cmp="prev"]').disabled = i === 0;
+    box.querySelector('[data-cmp="next"]').disabled = i === ps.length - 1;
+    box.querySelectorAll('.cmp-strip img').forEach((x, j) => x.classList.toggle('cur', j === i));
+    box.querySelector('.cmp-strip img.cur')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  };
+  show();
+  box.onclick = async e => {
+    if (e.target === box) return closeCompare();
+    const t = e.target.closest('[data-cmp], [data-cmp-i], #cmp-mine, #cmp-theirs');
+    if (!t) return;
+    if (t.id === 'cmp-mine') { full = !full; t.src = full ? d.photo : d.crop; return; }
+    if (t.id === 'cmp-theirs') { theirsFull = !theirsFull; return show(); }
+    if (t.dataset.cmpI) { i = Number(t.dataset.cmpI); return show(); }
+    const act = t.dataset.cmp;
+    if (act === 'x') return closeCompare();
+    if (act === 'prev' || act === 'next') { i = Math.max(0, Math.min(ps.length - 1, i + (act === 'next' ? 1 : -1))); return show(); }
+    if (act === 'yes') { closeCompare(); rv.pick = buckId; refreshPick(); return saveReview(); }
+    if (act === 'ai') {
+      const out = $('#cmp-ai');
+      t.disabled = true; t.textContent = 'Looking…';
+      try {
+        const r = await post(`/api/detections/${d.id}/compare/${buckId}`);
+        if (!$('#cmp')) return;
+        const list = (title, xs) => xs.length ? `<div><b>${title}</b><ul>${xs.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '';
+        out.innerHTML = `<div><span class="cmp-verdict ${r.verdict}">${{ same: 'Same buck', different: 'Different buck', cant_tell: 'Can’t tell' }[r.verdict]}</span>
+            <span class="meta">${Math.round(r.confidence * 100)}% sure · it compared ${r.refs.length} of his photos</span></div>
+          <div>${esc(r.explanation)}</div>${list('What agrees', r.same_features)}${list('What doesn’t', r.conflicting_features)}
+          <details><summary>What it saw</summary><div class="meta">This photo: ${esc(r.new_photo_rack)}<br>${esc(name)}: ${esc(r.candidate_rack)}</div></details>
+          <div class="meta">The AI’s matching is often unsure; trust what you see.</div>`;
+        // show his photos in the order it looked at them
+        const first = ps.findIndex(p => p.id === r.refs[0]);
+        if (first >= 0) { i = first; show(); }
+      } catch (err) { t.disabled = false; t.textContent = 'Try again'; out.insertAdjacentHTML('beforeend', `<div class="bad">${esc(err.detail || 'The AI check failed')}</div>`); }
+    }
+  };
+
+  TL.cmpKey = e => {
+    if (!$('#cmp')) return;
+    if (e.key === 'Escape') closeCompare();
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); i = Math.max(0, Math.min(ps.length - 1, i + (e.key === 'ArrowRight' ? 1 : -1))); show(); }
+  };
+  addEventListener('keydown', TL.cmpKey);
+}
+function closeCompare() {
+  $('#cmp')?.remove();
+  if (TL.cmpKey) { removeEventListener('keydown', TL.cmpKey); TL.cmpKey = null; }
 }
 
 async function saveReview() {

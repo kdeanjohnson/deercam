@@ -25,7 +25,7 @@ from ..identify import (QUERY_COLS, Galleries, add_notes, after_naming, embed_bu
                         suggest_returning)
 from ..reveal import SignInError
 from ..vision import PROVIDERS, AntlerCheck, ImagePart, NameIdeas, SetupError, get_provider, list_models
-from ..vision.base import NAME_SYSTEM, VERIFY_PROMPT, VERIFY_SYSTEM
+from ..vision.base import MATCH_SYSTEM, NAME_SYSTEM, VERIFY_PROMPT, VERIFY_SYSTEM, PairCheck
 
 ranches.migrate_legacy()
 accounts.init()
@@ -1155,6 +1155,58 @@ def candidates(det_id: int):
         scored = sorted(((max(float(np.dot(qvec, np.frombuffer(r["embedding"], dtype=np.float32))) for r in refs), b)
                          for b, refs in gallery.items()), reverse=True)
         return [{"id": b, "similarity": round(sim, 3)} for sim, b in scored]
+
+
+def _compare_refs(conn, q, buck_id: int, limit: int = 12) -> list:
+    """A buck's photos to set beside q: the same season's first when he has any, the most alike first."""
+    rows = conn.execute(DETECTION_SQL + "WHERE d.buck_id=? AND d.match_status IN ('confirmed', 'auto') AND d.id<>?",
+                        (buck_id, q["id"])).fetchall()
+    qvec = np.frombuffer(q["embedding"], dtype=np.float32) if q["embedding"] else None
+    sim = lambda r: float(np.dot(qvec, np.frombuffer(r["embedding"], dtype=np.float32))) if qvec is not None and r["embedding"] else -1
+    rows = sorted(rows, key=lambda r: (r["season"] != q["season"], r["match_status"] != "confirmed", -sim(r)))
+    return rows[:limit]
+
+
+@app.get("/api/detections/{det_id}/compare/{buck_id}")
+@needs("viewer")
+def compare(det_id: int, buck_id: int):
+    """A candidate's photos for comparing side by side with this one."""
+    with db.session() as conn:
+        q = conn.execute(DETECTION_SQL + "WHERE d.id=?", (det_id,)).fetchone()
+        b = conn.execute("SELECT id, name, notes FROM bucks WHERE id=?", (buck_id,)).fetchone()
+        if q is None or b is None:
+            raise HTTPException(404, "not found")
+        refs = _compare_refs(conn, q, buck_id)
+    return {"buck": dict(b), "photos": [{
+        "id": r["id"], "crop": f"/media/{r['crop_path']}", "photo": f"/media/{r['photo_path']}", "camera": r["camera"],
+        "when": local_time(r["meta_json"]), "season": r["season"], "confirmed": r["match_status"] == "confirmed",
+        "rack": json.loads(r["analysis_json"] or "{}").get("rack"),
+    } for r in refs]}
+
+
+@app.post("/api/detections/{det_id}/compare/{buck_id}")
+@needs("member")
+def compare_ai(det_id: int, buck_id: int):
+    """Ask the buck model whether this is him, with his most alike photos (one AI call)."""
+    with db.session() as conn:
+        q = conn.execute(DETECTION_SQL + "WHERE d.id=?", (det_id,)).fetchone()
+        b = conn.execute("SELECT name FROM bucks WHERE id=?", (buck_id,)).fetchone()
+        if q is None or b is None:
+            raise HTTPException(404, "not found")
+        refs = _compare_refs(conn, q, buck_id, limit=max(3, settings.refs_per_buck))
+    if not refs:
+        raise HTTPException(400, f"{b['name']} has no photos to compare with")
+    images = [ImagePart("NEW PHOTO:", settings.data_dir / q["crop_path"])]
+    images += [ImagePart(f"Candidate, reference photo {n}:", settings.data_dir / r["crop_path"]) for n, r in enumerate(refs, 1)]
+    # Same rule as the matcher: images only, no names or notes (they bias the model).
+    try:
+        result = get_provider().structured(MATCH_SYSTEM, images, "Is the buck in the NEW PHOTO the same individual as the "
+                                           "candidate in the reference photos?", PairCheck)
+    except SetupError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"comparison failed: {e}")
+    return result.model_dump() | {"refs": [r["id"] for r in refs]}
 
 
 @app.get("/api/map")

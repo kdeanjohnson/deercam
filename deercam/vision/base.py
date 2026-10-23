@@ -84,6 +84,19 @@ class MatchDecision(BaseModel):
     reasoning: str = Field(description="Which antler features agree or disagree")
 
 
+class PairCheck(BaseModel):
+    """One candidate, for a person comparing side by side: look first, then say."""
+    new_photo_rack: str = Field(description="What you can actually see of the NEW PHOTO's rack, per side")
+    candidate_rack: str = Field(description="What the candidate's reference photos show of his rack, per side")
+    same_features: list[str] = Field(description="Antler features visible in both that agree")
+    conflicting_features: list[str] = Field(
+        description="Antler features clearly visible in both that disagree (not just hidden by angle)")
+    verdict: Literal["same", "different", "cant_tell"] = Field(
+        description="'same' only when specific features line up and nothing conflicts")
+    confidence: float = Field(description="0.0-1.0 confidence in the verdict")
+    explanation: str = Field(description="Two or three plain sentences for the hunter: what decided it")
+
+
 ANALYZE_SYSTEM = (
     "You analyze trail-camera crops of animals for a deer hunter in {region}. Photos are low resolution "
     "and often night infrared (grayscale), blurry, or partially out of frame. Most deer at these feeders are "

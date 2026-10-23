@@ -36,7 +36,8 @@ class DeerAnalysis(BaseModel):
     # Field order matters: the model fills these in sequence, so it has to look at the head
     # and say what is (or isn't) there before it commits to a sex.
     species: Literal["deer", "other", "unknown"]
-    other_species: str = Field(description="If species is 'other', what animal it is; else empty")
+    other_species: str = Field(description="If species is 'other', its common name, e.g. 'wild turkey', 'feral hog', "
+                                           "'coyote', 'bobcat', 'raccoon', 'armadillo', 'domestic dog', 'crow'; else empty")
     head_visible: bool = Field(description="Is the top of this deer's head (between and above the ears) in frame and discernible?")
     antler_evidence: str = Field(
         description="Describe exactly what is on top of the head between/above the ears, e.g. 'two main beams "

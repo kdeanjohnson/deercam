@@ -6,12 +6,10 @@ Ideas and next steps that aren't built yet, roughly in order. The multi-user bui
 ## Next
 
 - **Phone alerts** per member, as web push from the installed web app (multi-user step 6).
-- **Other wildlife by name.** The AI already names non-deer animals in free text (on the home ranch so
-  far: turkeys, hogs, raccoons, armadillos, skunks, grackles, crows), but the app only shows "Other
-  animal". Turn that into a fixed list: turkey, hog, coyote, bobcat, raccoon, armadillo, dog, cat,
-  bird, other (with the AI's words kept). Then give each its own icon and a filter on the Timeline
-  and Cameras pages, and let people correct a wrong label (the AI has called things a zebra and a
-  black bear here). Hogs and coyotes could get their own alerts.
+- **Other wildlife, the rest.** Done 2026-10-23: the AI's words are sorted into a fixed list
+  (`deercam/wildlife.py`), shown by name on the Timeline map and Cameras feed, filterable there, and
+  members can correct a label from the map's photo panel. Still to do: an icon per animal (all use the
+  paw today), wildlife counts on Home and the Engine room, and alerts for hogs and coyotes.
 
 ## Later
 

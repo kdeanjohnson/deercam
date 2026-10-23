@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS detections (
     crop_path TEXT,
     status TEXT NOT NULL DEFAULT 'new',      -- new | too_small | analyzed | error
     species TEXT,                            -- deer | other | unknown
+    animal TEXT,                             -- a person's label for a non-deer animal (wildlife.KINDS), over the AI's
     sex TEXT,                                -- buck | doe | fawn | unknown
     analysis_json TEXT,
     embedding BLOB,
@@ -79,6 +80,7 @@ MIGRATIONS = [
     ("cameras", "lat", "REAL"),
     ("cameras", "lon", "REAL"),
     ("cameras", "location_source", "TEXT"),
+    ("detections", "animal", "TEXT"),
 ]
 
 

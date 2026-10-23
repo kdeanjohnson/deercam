@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse
 from PIL import Image
 from pydantic import BaseModel
 
-from .. import accounts, connections, db, patterns, pipeline, place, ranches, usage
+from .. import accounts, connections, db, patterns, pipeline, place, ranches, usage, wildlife
 from ..analyze import local_time
 from ..config import PUBLIC_URL, settings
 from ..identify import (QUERY_COLS, Galleries, add_notes, after_naming, embed_bucks, identify, merge_bucks, propagate_bursts,
@@ -928,6 +928,28 @@ def reject_many(body: Picked):
         return {"ok": True}
 
 
+class AnimalLabel(BaseModel):
+    animal: str  # a key of wildlife.KINDS, or 'deer'
+
+
+@app.post("/api/detections/{det_id}/animal")
+@needs("member")
+def label_animal(det_id: int, body: AnimalLabel):
+    """Correct what an animal is. A deer made into wildlife leaves any buck it was matched to; wildlife
+    made into a deer waits for someone to tag it, as an unlabeled deer."""
+    if body.animal != "deer" and body.animal not in wildlife.KINDS:
+        raise HTTPException(400, f"unknown animal {body.animal}")
+    with db.session() as conn:
+        if body.animal == "deer":
+            conn.execute("UPDATE detections SET species='deer', animal=NULL, sex=CASE WHEN species='deer' THEN sex ELSE 'unknown' END "
+                         "WHERE id=?", (det_id,))
+        else:
+            conn.execute("UPDATE detections SET species='other', animal=?, sex=NULL, buck_id=NULL, match_status=NULL, "
+                         "match_confidence=NULL, match_reason=NULL WHERE id=?", (body.animal, det_id))
+            _drop_empty_groups(conn)
+        return {"ok": True}
+
+
 @app.post("/api/detections/{det_id}/unassign")
 @needs("member")
 def unassign(det_id: int):
@@ -1231,7 +1253,7 @@ def timeline(days: int = 30):
         photos = conn.execute("SELECT photo_id, camera_id, taken_utc, path, weather_json, meta_json FROM photos "
                               "WHERE taken_utc >= ? ORDER BY taken_utc", (since,)).fetchall()
         dets = conn.execute(
-            """SELECT d.id, d.photo_id, d.species, d.sex, d.status, d.conf, d.crop_path, d.analysis_json,
+            """SELECT d.id, d.photo_id, d.species, d.sex, d.status, d.conf, d.crop_path, d.analysis_json, d.animal,
                       d.x1, d.y1, d.x2, d.y2, d.match_status, b.name AS buck, b.tag, b.generic
                FROM detections d JOIN photos p USING(photo_id)
                LEFT JOIN bucks b ON b.id = d.buck_id AND d.match_status IN ('confirmed', 'auto')  -- not Review guesses
@@ -1278,13 +1300,15 @@ def timeline(days: int = 30):
         animals.append({
             "id": d["id"], "t": t, "cam": ci, "kind": kind, "conf": d["conf"],
             "species": a.get("other_species") or None, "age": a.get("age_class"),
+            "animal": (d["animal"] or wildlife.classify(a.get("other_species"))) if kind == "other" else None,
             "summary": a.get("summary"), "buck": None if d["generic"] else d["buck"], "tag": d["tag"],
             "crop": f"/media/{d['crop_path']}" if d["crop_path"] else None, "photo": f"/media/{path}",
             "box": [d["x1"], d["y1"], d["x2"], d["y2"]],
         })
     animals.sort(key=lambda a: a["t"])
     return {"cameras": cams, "photos": out_photos, "weather": sorted(weather.values(), key=lambda w: w["t"]),
-            "animals": animals, "offsets": offsets, "start": start, "end": end, "area": place.area()}
+            "animals": animals, "offsets": offsets, "start": start, "end": end, "area": place.area(),
+            "wildlife": wildlife.listing()}
 
 
 # ------------------------------------------------------------------ engine room (calendar of what came in)

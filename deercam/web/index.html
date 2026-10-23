@@ -435,6 +435,11 @@
   .tlm-side-what { display:flex; flex-wrap:wrap; gap:6px; }
   .tlm-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px 3px 7px; border-radius:14px; background:var(--k); color:#fff; font-size:12.5px; font-weight:700; }
   .tlm-chip svg { width:14px; height:14px; }
+  button.tlm-chip { border:0; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
+  .tlm-chip em { font-style:normal; font-size:10px; opacity:.8; margin-left:1px; }
+  .tlm-fix { flex-basis:100%; display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; font-size:12.5px; color:var(--ink2); }
+  .tlm-fix:empty { display:none; }
+  .tlm-fix select { font:inherit; padding:4px 8px; border-radius:10px; border:1px solid var(--line, #ddd); background:#fff; color:var(--ink); }
   .tlm-side-acts { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
   .tlm-side-acts .tl-btn { background:var(--soft); }
   .tlm-side-acts .tl-btn:disabled { opacity:.4; }
@@ -1489,6 +1494,12 @@ const TL_RANGES = [['Day', 1, '1D'], ['3 days', 3, '3D'], ['Week', 7, '1W'], ['M
 const TL_SPEEDS = [[1800, '½ h/s'], [3600, '1 h/s'], [3 * 3600, '3 h/s'], [12 * 3600, '12 h/s']];
 const HOUR = 3600e3, DAY = 864e5;
 const TL = { map: null };
+// What to call an animal: a buck by name, wildlife by what it is (turkey, hog...), else its kind.
+const tlWild = key => TL.data.wildlife?.find(w => w.key === key) || { key, label: 'Other animal', plural: 'Other animals' };
+const tlName = a => a.buck || (a.kind === 'other' ? tlWild(a.animal).label : TL_KINDS[a.kind].label.replace(', not labeled yet', ''));
+// The wildlife in the data, most seen first: [key, how many]
+const tlWildSeen = () => Object.entries(TL.data.animals.reduce((n, a) => (a.kind === 'other' && (n[a.animal] = (n[a.animal] || 0) + 1), n), {}))
+  .sort((a, b) => b[1] - a[1]);
 
 // ---- sun and moon. sunTimes is the same NOAA formula as deercam/sun.py, so labels agree with the rest of the app.
 const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
@@ -1641,6 +1652,7 @@ async function showTimeline() {
     if (t.id === 'tlm-side-x') return tlSelect(null);
     if (t.classList.contains('tl-tile')) return tlOpen(TL.sideSrc);
     if (t.id === 'tlm-tag') return go('review', t.dataset.det);
+    if (t.classList.contains('fix')) return tlFixMenu(Number(t.dataset.id));
     const ps = TL.data.cameras[TL.sel].photos, i = TL.sideIdx + (t.id === 'tlm-nextp' ? 1 : t.id === 'tlm-prevp' ? -1 : 0);
     if (ps[i] && i !== TL.sideIdx) { tlPlay(false); tlSeek(ps[i][0]); }
   };
@@ -1664,13 +1676,15 @@ const TLF_PAGE = 60;
 const TLF_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>';
 function tlFeedList() {
   const { cam, what } = TL.feed, by = TL.data.byPhoto;
+  const wild = what.startsWith('w:') && what.slice(2);
   return TL.data.photos.filter(p => p[1] != null && (cam == null || p[1] === cam) && (what === 'all'
-    || (what === 'animals' ? (by[p[2]] || []).length : (by[p[2]] || []).some(a => a.kind === 'buck')))).reverse()
+    || (what === 'animals' ? (by[p[2]] || []).length
+      : (by[p[2]] || []).some(a => wild ? a.kind === 'other' && a.animal === wild : a.kind === 'buck')))).reverse()
     .map(p => ({ p, day: tlDate(p[0], { weekday: 'long', month: 'long', day: 'numeric' }), bucks: (by[p[2]] || []).some(a => a.kind === 'buck') }));
 }
 function tlFeed() {
   const f = TL.feed, d = TL.data, by = d.byPhoto;
-  const has = (p, k) => (by[p[2]] || []).some(a => !k || a.kind === k);
+  const has = (p, k) => (by[p[2]] || []).some(a => !k || (k.startsWith('w:') ? a.kind === 'other' && a.animal === k.slice(2) : a.kind === k));
   const count = (ci, k) => d.photos.filter(p => p[1] != null && (ci == null || p[1] === ci) && (k === undefined || has(p, k))).length;
   const camChip = (ci, label, color) => `<button class="chip${f.cam === ci ? ' sel' : ''}" data-cam="${ci ?? ''}"${color ? ` style="--c:${color}"` : ''}>${color ? '<i></i>' : ''}${esc(label)}<span>${count(ci).toLocaleString('en-US')}</span></button>`;
   const whatChip = (k, label, n) => `<button class="chip${f.what === k ? ' sel' : ''}" data-what="${k}">${label}<span>${n.toLocaleString('en-US')}</span></button>`;
@@ -1681,7 +1695,8 @@ function tlFeed() {
   TL.feedMore?.disconnect();
   $('#tl-feed').innerHTML = `<div class="tlf-bar" id="tlf-bar">
       <div class="chips">${camChip(null, 'All cameras')}${d.cameras.map((c, i) => camChip(i, c.name || c.camera_id, c.color)).join('')}</div>
-      <div class="chips">${whatChip('all', 'All photos', count(f.cam))}${whatChip('animals', 'With animals', count(f.cam, null))}${whatChip('bucks', 'Bucks', count(f.cam, 'buck'))}</div>
+      <div class="chips">${whatChip('all', 'All photos', count(f.cam))}${whatChip('animals', 'With animals', count(f.cam, null))}${whatChip('bucks', 'Bucks', count(f.cam, 'buck'))}
+        ${tlWildSeen().map(([w]) => [w, count(f.cam, `w:${w}`)]).filter(([, n]) => n).map(([w, n]) => whatChip(`w:${w}`, esc(tlWild(w).plural), n)).join('')}</div>
     </div><div id="tlf-days"></div><div class="tlf-end" id="tlf-end"></div>`;
   $('#tl-feed').scrollTop = 0;
   tlLayout();
@@ -1704,10 +1719,10 @@ function tlFeedPage() {
     const c = cams[p[1]], clock = tlClock(p[0]), anims = by[p[2]] || [];
     // one chip per kind of animal, named bucks by name
     const chips = {};
-    for (const a of anims) { const k = a.buck || a.kind; (chips[k] ??= { a, n: 0 }).n++; }
+    for (const a of anims) { const k = tlName(a); (chips[k] ??= { a, n: 0 }).n++; }
     const what = Object.values(chips).sort((x, y) => TL_KINDS[y.a.kind].rank - TL_KINDS[x.a.kind].rank).map(({ a, n }) => {
       const k = TL_KINDS[a.kind];
-      return `<span class="tlm-chip" style="--k:${k.color}">${TL_SVG[a.kind]}${esc(a.buck || k.label.replace(', not labeled yet', ''))}${n > 1 ? ` ×${n}` : ''}</span>`;
+      return `<span class="tlm-chip" style="--k:${k.color}">${TL_SVG[a.kind]}${esc(tlName(a))}${n > 1 ? ` ×${n}` : ''}</span>`;
     }).join('');
     grid.insertAdjacentHTML('beforeend', `<figure class="tlf-ph" data-src="${esc(p[2])}" data-t="${p[0]}" data-cam="${p[1]}" style="--c:${c.color}">
       <img loading="lazy" decoding="async" alt="" src="${esc(p[2])}">
@@ -1971,10 +1986,11 @@ function tlSide(t) {
   const img = tile.querySelector('img'), anims = src ? TL.data.byPhoto[src] || [] : [];
   if (src) { img.classList.remove('in'); img.onload = () => { img.classList.add('in'); tlFitBoxes(tile); }; img.src = src; } else img.removeAttribute('src');
   tile.querySelector('.tl-boxes').innerHTML = src ? tlBoxes(src) : '';
+  const canFix = !document.body.classList.contains('role-viewer');
   $('#tlm-side-what').innerHTML = anims.length ? anims.map(a => {
-    const k = TL_KINDS[a.kind];
-    return `<span class="tlm-chip" style="--k:${k.color}">${TL_SVG[a.kind]}${esc(a.buck || k.label.replace(', not labeled yet', ''))}</span>`;
-  }).join('') : src ? '<span class="meta">No animals found in this photo</span>' : '';
+    const k = TL_KINDS[a.kind], fix = canFix && !a.buck;  // members can say what an unnamed animal really is
+    return `<${fix ? 'button' : 'span'} class="tlm-chip${fix ? ' fix' : ''}" data-id="${a.id}" style="--k:${k.color}"${fix ? ' title="Wrong? Say what it is"' : ''}>${TL_SVG[a.kind]}${esc(tlName(a))}${fix ? '<em>▾</em>' : ''}</${fix ? 'button' : 'span'}>`;
+  }).join('') + '<div class="tlm-fix" id="tlm-fix"></div>' : src ? '<span class="meta">No animals found in this photo</span>' : '';
   const deer = anims.filter(a => !a.buck && a.kind !== 'other').sort((a, b) => TL_KINDS[b.kind].rank - TL_KINDS[a.kind].rank)[0];
   const tag = $('#tlm-tag');
   tag.style.display = deer && !document.body.classList.contains('role-viewer') ? '' : 'none';
@@ -2050,7 +2066,7 @@ function tlPath() {
 // What the slider and the map show: 'all' animals, 'bucks', or one named buck (followed: his moves are drawn on the map).
 function tlShow(v) {
   TL.show = v;
-  TL.follow = v === 'all' || v === 'bucks' ? '' : v;
+  TL.follow = v === 'all' || v === 'bucks' || v.startsWith('w:') ? '' : v;
   TL.shown = v === 'all' ? TL.data.animals : TL.data.animals.filter(tlShows);
   TL.followAt = TL.follow ? TL.shown.filter(a => a.cam != null) : [];
   $('#tl-show')?.classList.toggle('on', v !== 'all');
@@ -2058,7 +2074,27 @@ function tlShow(v) {
   tlDrawTrack();
   TL.dirty = true;
 }
-const tlShows = a => TL.show === 'all' || (TL.show === 'bucks' ? a.kind === 'buck' : a.buck === TL.show);
+const tlShows = a => TL.show === 'all' || (TL.show === 'bucks' ? a.kind === 'buck'
+  : TL.show.startsWith('w:') ? a.kind === 'other' && a.animal === TL.show.slice(2) : a.buck === TL.show);
+
+// Say what an animal really is: deer, or one of the wildlife kinds. Updates this page without reloading it.
+function tlFixMenu(id) {
+  const a = TL.data.animals.find(x => x.id === id), box = $('#tlm-fix');
+  if (!a || !box) return;
+  const cur = a.kind === 'other' ? a.animal : 'deer';
+  box.innerHTML = `<label>What is it? <select id="tlm-fix-sel">${[{ key: 'deer', label: 'Deer' }, ...TL.data.wildlife]
+    .map(w => `<option value="${w.key}" ${w.key === cur ? 'selected' : ''}>${esc(w.label)}</option>`).join('')}</select></label>
+    ${a.species ? `<span class="meta">The AI said “${esc(a.species)}”</span>` : ''}`;
+  $('#tlm-fix-sel').onchange = async e => {
+    const v = e.target.value;
+    try { await post(`/api/detections/${id}/animal`, { animal: v }); }
+    catch (err) { box.innerHTML = `<span class="bad">${esc(err.detail || 'Couldn’t save')}</span>`; return; }
+    if (v === 'deer') { if (a.kind === 'other') a.kind = 'animal'; a.animal = null; }
+    else Object.assign(a, { kind: 'other', animal: v, buck: null, tag: null });
+    TL.sideSrc = undefined;
+    tlPanel(); tlShow(TL.show); TL.onResize();
+  };
+}
 
 function tlMapScene(sun, cover, dark, warm) {
   if (!TL.amb) return;
@@ -2097,7 +2133,7 @@ function tlMapCams(t) {
     el.classList.toggle('hot', !!best);
     el.style.setProperty('--k', best ? TL_KINDS[best.kind].color : '#fff');
     el.style.setProperty('--r', recent ? `${Math.round(40 + 22 * Math.sqrt(recent))}px` : '0px');
-    el.querySelector('.tlm-seen').innerHTML = best ? `${TL_SVG[best.kind]}<span>${esc(best.buck || TL_KINDS[best.kind].label.replace(', not labeled yet', ''))}${near.length > 1 ? ` · ${near.length}` : ''}</span>` : '';
+    el.querySelector('.tlm-seen').innerHTML = best ? `${TL_SVG[best.kind]}<span>${esc(tlName(best))}${near.length > 1 ? ` · ${near.length}` : ''}</span>` : '';
     el.querySelector('.tlm-age').textContent = !p ? '' : age < 1 ? 'Just now' : age < 60 ? `${Math.round(age)} min ago` : '';
     if ((newest?.id ?? null) !== pin.last) {
       pin.last = newest?.id ?? null;
@@ -2141,7 +2177,7 @@ function tlScent() {
 // A box around each animal found in a photo, labeled with the buck's name or what it is.
 const tlBoxes = src => (TL.data.byPhoto[src] || []).filter(a => a.box?.every(v => v != null)).map(a => {
   const [x1, y1, x2, y2] = a.box, k = TL_KINDS[a.kind];
-  return `<div class="tl-box" style="left:${x1 * 100}%;top:${y1 * 100}%;width:${(x2 - x1) * 100}%;height:${(y2 - y1) * 100}%;--k:${k.color}"><span>${esc(a.buck || k.label.replace(', not labeled yet', ''))}</span></div>`;
+  return `<div class="tl-box" style="left:${x1 * 100}%;top:${y1 * 100}%;width:${(x2 - x1) * 100}%;height:${(y2 - y1) * 100}%;--k:${k.color}"><span>${esc(tlName(a))}</span></div>`;
 }).join('');
 
 // The photo fills its tile (object-fit: cover, so edges are cropped); size the box layer to the whole
@@ -2185,7 +2221,8 @@ function tlPanel() {
       <button class="tl-btn" id="tl-speed" title="Playback speed">${TL_SPEEDS.find(s => s[0] === TL.speed)[1]}</button>
       <span class="tl-span" id="tl-span"></span>
       <select class="tl-show${TL.show !== 'all' ? ' on' : ''}" id="tl-show" title="Which animals to show">${opt('all', 'All animals')}${opt('bucks', 'Bucks')}
-        ${followable.length ? `<optgroup label="One buck (shows his moves)">${followable.map(b => opt(b.name, b.name + (b.target ? ' ★' : ''))).join('')}</optgroup>` : ''}</select>
+        ${followable.length ? `<optgroup label="One buck (shows his moves)">${followable.map(b => opt(b.name, b.name + (b.target ? ' ★' : ''))).join('')}</optgroup>` : ''}
+        ${tlWildSeen().length ? `<optgroup label="Other wildlife">${tlWildSeen().map(([w, n]) => opt(`w:${w}`, `${tlWild(w).plural} (${n})`)).join('')}</optgroup>` : ''}</select>
       <div class="tl-seg" id="tl-ranges">${TL_RANGES.map(([l, d, short]) => `<button data-days="${d}" class="${d === TL.rangeDays ? 'on' : ''}"><span class="long">${l}</span><span class="short">${short}</span></button>`).join('')}</div>
       <button class="tl-btn" id="tl-latest" title="Jump to the newest photo">Latest</button>
       <button class="tl-btn tl-size" id="tl-size" title="${['Show the timeline', 'Hide the timeline', 'Make the timeline smaller'][TL.size]}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${sizeIcon}</svg></button>
@@ -2376,9 +2413,9 @@ function tlHoverIcon(e) {
   if (!ico) { card.style.display = 'none'; return; }
   const g = TL.groups[Number(ico.dataset.g)], a = g.items.find(x => x.buck) || g.items[0], k = TL_KINDS[g.kind];
   const cam = TL.data.cameras[g.cam], kinds = {};
-  g.items.forEach(x => { kinds[x.kind] = (kinds[x.kind] || 0) + 1; });
-  card.innerHTML = `<img src="${a.crop || a.photo}" alt=""><div><b style="color:${k.color}">${esc(a.buck || k.label)}</b>
-    ${esc(cam.name || '')} · ${tlStamp(g.items[0].t)}${g.items.length > 1 ? `<br>${Object.entries(kinds).map(([kk, n]) => `${n} ${TL_KINDS[kk].label.toLowerCase()}`).join(', ')} in this stretch` : ''}
+  g.items.forEach(x => { const n = x.kind === 'other' ? tlName(x) : TL_KINDS[x.kind].label; kinds[n] = (kinds[n] || 0) + 1; });
+  card.innerHTML = `<img src="${a.crop || a.photo}" alt=""><div><b style="color:${k.color}">${esc(a.buck || (g.kind === 'other' ? tlName(a) : k.label))}</b>
+    ${esc(cam.name || '')} · ${tlStamp(g.items[0].t)}${g.items.length > 1 ? `<br>${Object.entries(kinds).map(([kk, n]) => `${n} ${esc(kk.toLowerCase())}`).join(', ')} in this stretch` : ''}
     ${a.summary ? `<br>${esc(a.summary)}` : a.species ? `<br>${esc(a.species)}` : ''}</div>`;
   card.style.display = 'block';
   const r = ico.getBoundingClientRect();

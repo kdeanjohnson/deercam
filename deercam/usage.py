@@ -19,6 +19,7 @@ from .vision import SetupError
 PRICES = {
     "grok-4.20": (1.25, 2.50), "grok-4.3": (1.25, 2.50),
     "grok-4.5": (2.00, 6.00), "grok-4.6": (2.00, 6.00), "grok-4.7": (2.00, 6.00),
+    "gpt-6.1-sol": (2.00, 10.00), "gpt-6-luna": (0.10, 0.50),  # third-party rate cards, Oct 2026
     "claude-opus-5-5": (4.00, 20.00), "claude-opus-5": (5.00, 25.00),
 }
 UNKNOWN = (5.00, 25.00)  # a model not in the list: assume it's expensive rather than free

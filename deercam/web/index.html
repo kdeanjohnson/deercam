@@ -255,64 +255,53 @@
   #lightbox .lb-tag { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(24px + env(safe-area-inset-bottom)); }
   #tip { position:fixed; pointer-events:none; background:var(--ink); color:#fff; border-radius:8px; padding:6px 9px; font-size:12px; display:none; z-index:60; max-width:260px; }
 
-  /* ---- timeline: every camera's photo at one moment, the sky and weather then, and a time slider */
+  /* ---- timeline: the cameras on a map at one moment with the light and weather then, and a time slider;
+     or (Cameras) every photo in a scrolling list */
   body.tl-on { padding-bottom:0; overflow:hidden; }
   body.tl-on #job { position:fixed; z-index:21; left:0; right:0; background:rgba(255,255,255,.92); }
   body.tl-on h1.title { margin-bottom:12px; }
   #tl { position:fixed; left:0; right:0; bottom:0; overflow:hidden; --dim:var(--ink2); }
 
-  /* conditions card: the sky at that moment on top (sun, stars, moon, clouds, wind), readings below */
-  .tl-hud { position:absolute; z-index:5; top:0; left:16px; width:316px; overflow:hidden; background:var(--soft); border-radius:var(--radius); }
-  .tl-skyhead { position:relative; overflow:hidden; color:#fff; padding:14px 16px 16px; }
-  .tl-sky { position:absolute; inset:0; transition:background .5s linear; }
-  .tl-fx { position:absolute; inset:0; pointer-events:none; }
-  canvas.tl-fx { width:100%; height:100%; }
-  #tl-stars { transition:opacity .6s linear; }
-  .tl-clouds { opacity:0; background-repeat:repeat; background-size:600px 600px; transition:opacity .6s linear, filter .6s linear; }
-  .tl-moon { position:absolute; top:14px; right:16px; width:44px; height:44px; pointer-events:none; filter:drop-shadow(0 0 14px rgba(244,238,219,.35)); transition:opacity .6s linear; }
-  #tl-hudsky { position:relative; z-index:1; text-shadow:0 1px 10px rgba(0,0,0,.35); }
-  .tl-date { font-size:12.5px; font-weight:700; letter-spacing:.02em; text-transform:uppercase; opacity:.92; }
-  .tl-time { font-size:44px; font-weight:800; letter-spacing:-.03em; line-height:1.05; font-variant-numeric:tabular-nums; margin:2px 0 10px; }
-  .tl-time small { font-size:15px; font-weight:650; letter-spacing:0; margin-left:4px; opacity:.92; }
-  .tl-light { display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:650; padding:5px 11px 5px 9px; border-radius:20px;
-              background:#fff; color:var(--ink); text-shadow:none; }
-  .tl-light i { width:9px; height:9px; border-radius:50%; display:inline-block; }
-  .tl-light span { color:var(--ink2); font-weight:500; }
-  #tl-hudbody { padding:14px 16px; }
-  .tl-metrics { display:grid; grid-template-columns:1fr 1fr; gap:12px 14px; }
-  .tl-m { display:flex; gap:10px; align-items:center; min-width:0; }
-  .tl-m > div { min-width:0; }
-  .tl-m svg { flex:none; }
-  .tl-m b { display:block; font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
-  .tl-m span { display:block; font-size:12px; color:var(--ink2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .tl-src { margin-top:12px; font-size:11.5px; color:var(--ink2); }
-  .tl-src.warn { color:var(--warn); }
-
-  /* camera tiles: like the photo cards elsewhere, with white name pills */
-  .tl-grid { position:absolute; z-index:4; top:0; left:348px; right:16px; bottom:300px; display:grid; gap:10px; }
-  .tl-tile { margin:0; position:relative; min-height:0; border-radius:var(--radius); overflow:hidden; background:var(--soft2); cursor:zoom-in;
-             outline:3px solid transparent; outline-offset:-3px; transition:outline-color .3s; }
-  .tl-tile.hot { outline-color:var(--k); }
+  /* the photo used by the camera panel, with boxes around the animals */
+  .tl-tile { margin:0; position:relative; min-height:0; border-radius:var(--radius); overflow:hidden; background:var(--soft2); cursor:zoom-in; }
   .tl-photo { position:absolute; inset:0; overflow:hidden; }
   .tl-photo img { width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity .25s, filter .4s; }
   .tl-photo img.in { opacity:1; }
-  .tl-tile.stale .tl-photo img { filter:grayscale(.85) brightness(.55); }
-  .tl-tile.empty { cursor:default; }
   .tl-boxes { position:absolute; inset:0; pointer-events:none; }
   .tl-box { position:absolute; border:2px solid var(--k); border-radius:8px; box-shadow:0 0 0 1px rgba(0,0,0,.25); }
   .tl-box span { position:absolute; left:-2px; top:-22px; font-size:11px; font-weight:700; color:#fff; background:var(--k); padding:2px 7px; border-radius:6px; white-space:nowrap; }
-  .tl-tile.stale .tl-box { display:none; }
-  .tl-tile figcaption { position:absolute; left:0; right:0; top:0; display:flex; justify-content:space-between; align-items:center; gap:8px;
-                        padding:10px; font-size:13px; font-weight:700; }
   .tl-tname { display:inline-flex; align-items:center; gap:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
               background:#fff; color:var(--ink); border-radius:18px; padding:5px 12px 5px 10px; box-shadow:0 1px 6px rgba(0,0,0,.18); }
   .tl-tname i { width:8px; height:8px; border-radius:50%; background:var(--c); flex:none; }
-  .tl-age { color:var(--ink2); background:rgba(255,255,255,.9); border-radius:18px; padding:5px 10px; font-size:12px; font-weight:600;
-            white-space:nowrap; font-variant-numeric:tabular-nums; }
-  .tl-seen { position:absolute; left:10px; bottom:10px; display:none; align-items:center; gap:6px; padding:5px 12px 5px 9px; border-radius:18px;
-             background:var(--k); color:#fff; font-size:13px; font-weight:700; box-shadow:0 1px 6px rgba(0,0,0,.18); }
-  .tl-tile.hot .tl-seen { display:inline-flex; }
-  .tl-seen svg { width:16px; height:16px; }
+  .tl-age { color:var(--ink2); font-size:12px; font-weight:600; white-space:nowrap; font-variant-numeric:tabular-nums; }
+
+  /* Cameras: every photo the cameras sent, newest first, a day at a time (like Reveal's photo list) */
+  .tl-feed { position:absolute; inset:0; overflow-y:auto; display:none; padding:0 16px calc(var(--nav-h) + 24px + env(safe-area-inset-bottom)); }
+  #tl.mode-cams .tl-feed { display:block; }
+  #tl.mode-cams .tl-panel, #tl.mode-cams .tl-card { display:none; }
+  .tlf-bar { position:sticky; top:0; z-index:3; background:#fff; padding:0 0 10px; display:flex; flex-direction:column; gap:8px; }
+  .tlf-bar .chips { padding:0; }
+  .tlf-bar .chip i { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--c); margin-right:6px; vertical-align:1px; }
+  .tlf-bar .chip span { color:var(--ink2); font-weight:500; margin-left:5px; }
+  .tlf-bar .chip.sel span { color:rgba(255,255,255,.75); }
+  .tlf-day { position:sticky; top:var(--bar-h, 96px); z-index:2; background:#fff; display:flex; align-items:baseline; gap:10px; padding:12px 0 8px; }
+  .tlf-day b { font-size:17px; letter-spacing:-.01em; }
+  .tlf-day span { font-size:13px; color:var(--ink2); }
+  .tlf-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:10px; }
+  .tlf-ph { margin:0; position:relative; aspect-ratio:4/3; border-radius:var(--radius); overflow:hidden; background:var(--soft2); cursor:zoom-in; }
+  .tlf-ph img { width:100%; height:100%; object-fit:cover; display:block; }
+  .tlf-ph figcaption { position:absolute; left:0; right:0; top:0; display:flex; justify-content:space-between; align-items:center; gap:6px; padding:8px; font-size:12px; font-weight:700; }
+  .tlf-ph .tl-tname { padding:3px 10px 3px 8px; }
+  .tlf-ph .tl-age { background:rgba(255,255,255,.9); border-radius:14px; padding:3px 9px; }
+  .tlf-what { position:absolute; left:8px; right:44px; bottom:8px; display:flex; flex-wrap:wrap; gap:4px; }
+  .tlf-what .tlm-chip { font-size:11.5px; padding:2px 8px 2px 6px; box-shadow:0 1px 4px rgba(0,0,0,.25); }
+  .tlf-what .tlm-chip svg { width:13px; height:13px; }
+  .tlf-go { position:absolute; right:8px; bottom:8px; width:30px; height:30px; border:0; border-radius:50%; background:rgba(255,255,255,.92); color:var(--ink);
+            display:flex; align-items:center; justify-content:center; padding:0; box-shadow:0 1px 4px rgba(0,0,0,.25); }
+  .tlf-go:hover { background:#fff; }
+  .tlf-go svg { width:16px; height:16px; }
+  .tlf-end { padding:22px 0 8px; text-align:center; color:var(--ink2); font-size:13px; }
+  .tlf-end .btn { margin-left:8px; }
 
   /* time slider */
   .tl-panel { position:absolute; z-index:6; left:50%; transform:translateX(-50%); width:min(1180px, calc(100% - 32px));
@@ -368,8 +357,6 @@
   .tl-mode button.on { background:var(--ink); }
   #tl-map { position:absolute; inset:0; z-index:0; display:none; background:#1d2328; }  /* own stacking context: Leaflet's panes stay under the cards */
   #tl.mode-map #tl-map { display:block; }
-  #tl.mode-map .tl-grid { display:none; }
-  #tl.mode-map .tl-hud { top:12px; box-shadow:0 8px 28px rgba(0,0,0,.28); }
   #tl.mode-map .tl-panel { box-shadow:0 8px 28px rgba(0,0,0,.28); }
   #tl-map .leaflet-tile-pane { transition:filter .6s linear; }
   #tl-map .leaflet-control-zoom { margin-top:12px; margin-right:16px; border:0; box-shadow:0 2px 10px rgba(0,0,0,.25); }
@@ -406,7 +393,6 @@
   #tl.mode-map .tlm-note:not(:empty) { display:block; }
 
   /* map mode, top left: the moment in one strip (the sky's color behind the clock), and who's being followed */
-  #tl.mode-map .tl-hud { display:none; }
   .tlm-top { position:absolute; z-index:6; top:12px; left:16px; max-width:calc(100% - 92px); display:none; flex-direction:column; align-items:flex-start; gap:8px; }
   #tl.mode-map .tlm-top { display:flex; }
   .tlm-strip { display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px; padding:6px 16px 6px 6px; background:#fff; border-radius:var(--radius);
@@ -433,7 +419,7 @@
   #tl.mode-map .tlm-side.on { display:flex; }
   .tlm-side-head { display:flex; align-items:center; gap:8px; min-width:0; }
   .tlm-side-head .tl-tname { background:var(--soft); box-shadow:none; }
-  .tlm-side-head .tl-age { display:inline; margin-left:auto; padding:0; background:none; overflow:hidden; text-overflow:ellipsis; }
+  .tlm-side-head .tl-age { margin-left:auto; overflow:hidden; text-overflow:ellipsis; }
   .tlm-x { border:0; background:var(--soft); width:30px; height:30px; border-radius:50%; font-size:18px; line-height:1; flex:none; color:var(--ink); }
   .tlm-side .tl-tile { aspect-ratio:4/3; flex:none; cursor:zoom-in; }
   .tlm-side-what { display:flex; flex-wrap:wrap; gap:6px; }
@@ -458,22 +444,17 @@
   .tlm-pin.fresh .tlm-lead { opacity:1; }
 
   @media (max-width: 760px) {
-    .tl-hud { width:auto; right:16px; }
-    .tl-skyhead { padding:10px 14px 12px; }
-    .tl-time { font-size:30px; margin-bottom:6px; }
-    .tl-moon { width:34px; height:34px; top:10px; right:12px; }
-    #tl-hudbody { padding:10px 14px; }
-    .tl-metrics { grid-template-columns:repeat(4, auto); gap:8px 12px; }
-    .tl-m svg { display:none; }
-    .tl-m b { font-size:14px; }
-    .tl-grid { left:16px; gap:8px; }
-    .tl-tile figcaption { padding:7px; font-size:11.5px; }
-    .tl-tname { padding:4px 9px 4px 8px; }
-    .tl-age { display:none; }
+    .tl-feed { padding-left:10px; padding-right:10px; }
+    .tlf-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px; }
+    .tlf-ph figcaption { padding:6px; font-size:11px; }
+    .tlf-ph .tl-tname { padding:2px 8px 2px 6px; }
+    .tlf-ph .tl-age { padding:2px 7px; }
+    .tlf-what { left:6px; bottom:6px; right:40px; }
+    .tlf-go { width:28px; height:28px; right:6px; bottom:6px; }
     .tl-track { grid-template-columns:64px 1fr; }
     .tl-legend { padding-left:0; }
     .tl-legend .note { display:none; }
-    .tl-span, #tl-speed, .tl-src { display:none; }
+    .tl-span, #tl-speed { display:none; }
     .tl-seg button { padding:5px 9px; }
     .tl-seg .long { display:none; } .tl-seg .short { display:inline; }
     .tlm-top { left:12px; max-width:calc(100% - 70px); }
@@ -1598,17 +1579,22 @@ function tlWhere() {  // where sun times are worked out: placed cameras' middle,
   return { lat: 37, lon: -96, label: null };
 }
 
-async function showTimeline() {
-  tlDestroy();
-  const data = await api('/api/timeline');
-  if (view !== 'timeline') return;
+function tlPrep(data) {
   data.cameras.forEach((c, i) => { c.color = TL_CAM_COLORS[i % TL_CAM_COLORS.length]; c.photos = []; });
   for (const p of data.photos) if (p[1] != null) data.cameras[p[1]].photos.push(p);
   data.byPhoto = {};
   for (const a of data.animals) (data.byPhoto[a.photo] ??= []).push(a);
-  Object.assign(TL, { data, playing: false, speed: 3600, dirty: true, raf: 0, lastFrame: 0, cloudX: 0, cloudY: 0, shown: {} });
+  return data;
+}
+
+async function showTimeline() {
+  tlDestroy();
+  const data = tlPrep(await api('/api/timeline'));
+  if (view !== 'timeline') return;
+  Object.assign(TL, { data, days: 30, playing: false, speed: 3600, dirty: true, raf: 0, lastFrame: 0, cloudX: 0, cloudY: 0,
+                      feed: { cam: null, what: 'all', n: 0 } });
   $('#main').innerHTML = `<h1 class="title tl-titlebar" id="tl-title">Timeline
-    <div class="tl-seg tl-mode" id="tl-mode"><button data-mode="cams">Cameras</button><button data-mode="map">Map</button></div></h1><div id="tl">
+    <div class="tl-seg tl-mode" id="tl-mode"><button data-mode="map">Map</button><button data-mode="cams">Cameras</button></div></h1><div id="tl">
     <div id="tl-map"></div><div class="tlm-note" id="tlm-note"></div>
     <div class="tlm-top" id="tlm-top"><div class="tlm-strip" id="tlm-strip"></div><div class="tlm-follow" id="tlm-follow"></div></div>
     <aside class="tlm-side" id="tlm-side">
@@ -1620,15 +1606,7 @@ async function showTimeline() {
         <button class="tl-btn" id="tlm-nextp" title="This camera's next photo">Later ›</button>
         <button class="btn blue small" id="tlm-tag" style="display:none">Who is this?</button></div>
     </aside>
-    <div class="tl-hud" id="tl-hud"><div class="tl-skyhead">
-      <div class="tl-sky" id="tl-sky"></div><canvas class="tl-fx" id="tl-stars"></canvas><div class="tl-fx tl-glow"></div>
-      <div class="tl-fx tl-clouds"></div><canvas class="tl-fx" id="tl-wind"></canvas>
-      <div class="tl-moon" id="tl-moon"></div><div id="tl-hudsky"></div></div>
-      <div id="tl-hudbody"></div></div>
-    <div class="tl-grid" id="tl-grid">${data.cameras.map((c, i) => `<figure class="tl-tile" data-cam="${i}" style="--c:${c.color}">
-        <div class="tl-photo"><img alt=""><div class="tl-boxes"></div></div>
-        <figcaption><span class="tl-tname"><i></i>${esc(c.name || c.camera_id)}</span><span class="tl-age"></span></figcaption>
-        <div class="tl-seen"></div></figure>`).join('')}</div>
+    <div class="tl-feed" id="tl-feed"></div>
     <div class="tl-panel" id="tl-panel"></div>
     <div class="tl-card" id="tl-card"></div>
   </div>`;
@@ -1639,10 +1617,7 @@ async function showTimeline() {
   tlSetRange(3);
   tlPanel();
   tlClouds();
-  $('#tl-grid').addEventListener('click', e => {
-    const tile = e.target.closest('.tl-tile');
-    tlOpen(tile && TL.shown[tile.dataset.cam]);
-  });
+  $('#tl-feed').addEventListener('click', tlFeedClick);
   $('#tl-mode').onclick = e => { const b = e.target.closest('button'); if (b) tlSetMode(b.dataset.mode); };
   $('#tlm-side').onclick = e => {
     const t = e.target.closest('button, .tl-tile');
@@ -1655,18 +1630,111 @@ async function showTimeline() {
   };
   TL.topSize = new ResizeObserver(() => tlPlaceCards());
   TL.topSize.observe($('#tlm-top'));
-  TL.onResize = () => { tlLayout(); tlSizeCanvas(); tlStars(); $$('#tl-grid .tl-tile, #tlm-side .tl-tile').forEach(tlFitBoxes); tlMapMetrics(); tlPlaceCards(); };
-  // On phones the tiles sit under the conditions card, whose height changes with what it shows.
-  TL.hudSize = new ResizeObserver(() => { tlLayout(); $$('#tl-grid .tl-tile').forEach(tlFitBoxes); });
-  TL.hudSize.observe($('#tl-hud'));
+  TL.onResize = () => { tlLayout(); tlSizeCanvas(); $$('#tlm-side .tl-tile').forEach(tlFitBoxes); tlMapMetrics(); tlPlaceCards(); };
   TL.onKey = tlKey;
   addEventListener('resize', TL.onResize);
   addEventListener('keydown', TL.onKey);
   tlLayout();
   tlSizeCanvas();
-  tlStars();
   TL.raf = requestAnimationFrame(tlFrame);
   tlSetMode(localStorage.getItem('tlMode') || 'map');
+}
+
+// ---- Cameras: every photo, newest first, grouped by the cameras' own calendar day. Filter by camera
+// and by what's in the photo; tap a photo for full size, or the pin to see that moment on the map.
+const TLF_PAGE = 60;
+const TLF_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>';
+function tlFeedList() {
+  const { cam, what } = TL.feed, by = TL.data.byPhoto;
+  return TL.data.photos.filter(p => p[1] != null && (cam == null || p[1] === cam) && (what === 'all'
+    || (what === 'animals' ? (by[p[2]] || []).length : (by[p[2]] || []).some(a => a.kind === 'buck')))).reverse()
+    .map(p => ({ p, day: tlDate(p[0], { weekday: 'long', month: 'long', day: 'numeric' }), bucks: (by[p[2]] || []).some(a => a.kind === 'buck') }));
+}
+function tlFeed() {
+  const f = TL.feed, d = TL.data, by = d.byPhoto;
+  const has = (p, k) => (by[p[2]] || []).some(a => !k || a.kind === k);
+  const count = (ci, k) => d.photos.filter(p => p[1] != null && (ci == null || p[1] === ci) && (k === undefined || has(p, k))).length;
+  const camChip = (ci, label, color) => `<button class="chip${f.cam === ci ? ' sel' : ''}" data-cam="${ci ?? ''}"${color ? ` style="--c:${color}"` : ''}>${color ? '<i></i>' : ''}${esc(label)}<span>${count(ci).toLocaleString('en-US')}</span></button>`;
+  const whatChip = (k, label, n) => `<button class="chip${f.what === k ? ' sel' : ''}" data-what="${k}">${label}<span>${n.toLocaleString('en-US')}</span></button>`;
+  f.list = tlFeedList();
+  f.days = {};
+  for (const x of f.list) { const k = f.days[x.day] ??= { n: 0, bucks: 0 }; k.n++; k.bucks += x.bucks; }
+  f.n = 0;
+  TL.feedMore?.disconnect();
+  $('#tl-feed').innerHTML = `<div class="tlf-bar" id="tlf-bar">
+      <div class="chips">${camChip(null, 'All cameras')}${d.cameras.map((c, i) => camChip(i, c.name || c.camera_id, c.color)).join('')}</div>
+      <div class="chips">${whatChip('all', 'All photos', count(f.cam))}${whatChip('animals', 'With animals', count(f.cam, null))}${whatChip('bucks', 'Bucks', count(f.cam, 'buck'))}</div>
+    </div><div id="tlf-days"></div><div class="tlf-end" id="tlf-end"></div>`;
+  $('#tl-feed').scrollTop = 0;
+  tlLayout();
+  tlFeedPage();
+  TL.feedMore = new IntersectionObserver(es => { if (es[0].isIntersecting) tlFeedPage(); }, { root: $('#tl-feed'), rootMargin: '900px' });
+  TL.feedMore.observe($('#tlf-end'));
+}
+function tlFeedPage() {
+  const f = TL.feed, days = $('#tlf-days');
+  if (!days || f.n >= f.list.length && f.n) return;
+  const by = TL.data.byPhoto, cams = TL.data.cameras, page = f.list.slice(f.n, f.n + TLF_PAGE);
+  for (const { p, day: key } of page) {
+    let grid = days.lastElementChild?.dataset.day === key ? days.lastElementChild.querySelector('.tlf-grid') : null;
+    if (!grid) {
+      const { n, bucks } = f.days[key];
+      days.insertAdjacentHTML('beforeend', `<section data-day="${esc(key)}"><div class="tlf-day"><b>${esc(key)}</b>
+        <span>${n.toLocaleString('en-US')} photo${n === 1 ? '' : 's'}${bucks ? ` · ${bucks} with bucks` : ''}</span></div><div class="tlf-grid"></div></section>`);
+      grid = days.lastElementChild.querySelector('.tlf-grid');
+    }
+    const c = cams[p[1]], clock = tlClock(p[0]), anims = by[p[2]] || [];
+    // one chip per kind of animal, named bucks by name
+    const chips = {};
+    for (const a of anims) { const k = a.buck || a.kind; (chips[k] ??= { a, n: 0 }).n++; }
+    const what = Object.values(chips).sort((x, y) => TL_KINDS[y.a.kind].rank - TL_KINDS[x.a.kind].rank).map(({ a, n }) => {
+      const k = TL_KINDS[a.kind];
+      return `<span class="tlm-chip" style="--k:${k.color}">${TL_SVG[a.kind]}${esc(a.buck || k.label.replace(', not labeled yet', ''))}${n > 1 ? ` ×${n}` : ''}</span>`;
+    }).join('');
+    grid.insertAdjacentHTML('beforeend', `<figure class="tlf-ph" data-src="${esc(p[2])}" data-t="${p[0]}" data-cam="${p[1]}" style="--c:${c.color}">
+      <img loading="lazy" decoding="async" alt="" src="${esc(p[2])}">
+      <figcaption><span class="tl-tname"><i></i>${esc(c.name || c.camera_id)}</span><span class="tl-age">${clock.hm} ${clock.ap}</span></figcaption>
+      <div class="tlf-what">${what}</div><button class="tlf-go" title="See this moment on the map">${TLF_PIN}</button></figure>`);
+  }
+  f.n += page.length;
+  const more = f.n < f.list.length;
+  $('#tlf-end').innerHTML = more ? '' : !f.list.length ? 'No photos match.'
+    : `That's everything from ${tlDate(TL.data.start, { month: 'long', day: 'numeric' })} on.<button class="btn small" id="tlf-older">Show older photos</button>`;
+}
+function tlFeedClick(e) {
+  const chip = e.target.closest('.chip');
+  if (chip) {
+    if ('cam' in chip.dataset) TL.feed.cam = chip.dataset.cam === '' ? null : Number(chip.dataset.cam);
+    else TL.feed.what = chip.dataset.what;
+    return tlFeed();
+  }
+  if (e.target.closest('#tlf-older')) return tlOlder();
+  const ph = e.target.closest('.tlf-ph');
+  if (!ph) return;
+  if (e.target.closest('.tlf-go')) {
+    tlSetMode('map');
+    tlSeek(Number(ph.dataset.t));
+    tlSelect(Number(ph.dataset.cam));
+    return;
+  }
+  tlOpen(ph.dataset.src);
+}
+// Load a longer stretch of photos (the map's slider gets it too), keeping the feed where it was.
+async function tlOlder() {
+  const btn = $('#tlf-older');
+  btn.disabled = true; btn.textContent = 'Loading…';
+  const days = TL.days + 60;
+  let data;
+  try { data = tlPrep(await api(`/api/timeline?days=${days}`)); } catch { btn.disabled = false; btn.textContent = 'Try again'; return; }
+  if (view !== 'timeline') return;
+  if (data.photos.length <= TL.data.photos.length) { $('#tlf-end').textContent = 'No older photos.'; return; }
+  const top = $('#tl-feed').scrollTop, shown = TL.feed.n;
+  Object.assign(TL, { data, days, dirty: true, pathKey: null });
+  tlPanel();
+  tlSizeCanvas();
+  tlFeed();
+  while (TL.feed.n < shown && TL.feed.n < TL.feed.list.length) tlFeedPage();
+  $('#tl-feed').scrollTop = top;
 }
 
 // A camera's photo full size, with "Who is this?" for an unnamed deer in it.
@@ -1683,23 +1751,24 @@ function tlOpen(src) {
 }
 
 function tlSetMode(mode) {
-  TL.mode = mode === 'map' ? 'map' : 'cams';
+  TL.mode = mode === 'cams' ? 'cams' : 'map';
   localStorage.setItem('tlMode', TL.mode);
   $('#tl').classList.toggle('mode-map', TL.mode === 'map');
+  $('#tl').classList.toggle('mode-cams', TL.mode === 'cams');
   $$('#tl-mode button').forEach(b => b.classList.toggle('on', b.dataset.mode === TL.mode));
-  TL.shown = {};
   TL.dirty = true;
-  if (TL.mode === 'map') tlMapInit();
+  if (TL.mode === 'map') { tlSizeCanvas(); tlMapMetrics(); tlMapInit(); }
+  else { tlPlay(false); tlSelect(null); tlFeed(); }
 }
 
 function tlDestroy() {
   cancelAnimationFrame(TL.raf);
   TL.map?.remove();
   TL.topSize?.disconnect();
-  Object.assign(TL, { map: null, pins: null, amb: null, sel: null, sideSrc: null, pathKey: null, pathLayer: null, legs: [], follow: '' });
+  TL.feedMore?.disconnect();
+  Object.assign(TL, { map: null, pins: null, amb: null, sel: null, sideSrc: null, pathKey: null, pathLayer: null, legs: [], follow: '', feedMore: null });
   if (TL.onResize) removeEventListener('resize', TL.onResize);
   if (TL.onKey) removeEventListener('keydown', TL.onKey);
-  TL.hudSize?.disconnect();
   Object.assign(TL, { onResize: null, onKey: null, raf: 0 });
 }
 
@@ -1707,20 +1776,8 @@ function tlLayout() {
   const tl = $('#tl');
   if (!tl) return;
   tl.style.top = `${$('#tl-title').getBoundingClientRect().bottom + 12}px`;
-  const panel = $('#tl-panel'), grid = $('#tl-grid'), hud = $('#tl-hud');
-  if (!panel || !grid) return;
-  const box = tl.getBoundingClientRect(), pr = panel.getBoundingClientRect();
-  grid.style.bottom = `${box.bottom - pr.top + 12}px`;
-  grid.style.top = innerWidth <= 760 ? `${hud.offsetHeight + 10}px` : '0';
-  // Lay the tiles out in the most square grid that keeps each photo near 16:10.
-  const n = TL.data.cameras.length || 1, W = grid.clientWidth, H = grid.clientHeight;
-  let best = 1, bestArea = 0;
-  for (let cols = 1; cols <= n; cols++) {
-    const rows = Math.ceil(n / cols), w = (W - 12 * (cols - 1)) / cols, h = Math.min((H - 12 * (rows - 1)) / rows, w / 1.6);
-    if (h * 1.6 * h > bestArea) { bestArea = h * 1.6 * h; best = cols; }
-  }
-  grid.style.gridTemplateColumns = `repeat(${best}, minmax(0, 1fr))`;
-  grid.style.gridTemplateRows = `repeat(${Math.ceil(n / best)}, minmax(0, 1fr))`;
+  const bar = $('#tlf-bar');
+  if (bar) $('#tl-feed').style.setProperty('--bar-h', `${bar.offsetHeight}px`);
 }
 
 // Sky colors, top and horizon, by sun altitude.
@@ -1737,43 +1794,14 @@ function skyAt(alt, cover) {
   const gray = c => { const l = (c[0] + c[1] + c[2]) / 3; return c.map(v => Math.round(v + (l - v) * cover * .7)); };
   return { top: gray(mix(a[1], b[1])), low: gray(mix(a[2], b[2])) };
 }
-function tlStars() {
-  const c = $('#tl-stars');
-  if (!c) return;
-  const dpr = TL.dpr || 1; c.width = c.clientWidth * dpr; c.height = c.clientHeight * dpr;
-  const g = c.getContext('2d');
-  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  for (let i = 0; i < 260; i++) {
-    const x = rnd() * c.width, y = rnd() * c.height * .8, r = (rnd() < .08 ? 1.3 : .7) * dpr;
-    g.fillStyle = `rgba(255,255,255,${.25 + rnd() * .6})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
-  }
-}
-
 function tlScene() {
+  if (TL.mode !== 'map') return;
   const t = TL.t, where = tlWhere(), sun = sunPos(t, where.lat, where.lon), moon = moonAt(t), w = tlWeather(t);
   const lt = lightAt(t, where.lat, where.lon), cover = skyCover(w?.sky);
-  const sky = skyAt(sun.alt, cover);
-  $('#tl-sky').style.background = `linear-gradient(180deg, rgb(${sky.top}) 0%, rgb(${sky.low}) 100%)`;
   const dark = Math.min(1, Math.max(0, (-sun.alt - 4) / 10));
-  $('#tl-stars').style.opacity = (dark * (1 - cover) * .9).toFixed(3);
-  // warm glow on the horizon, on the side the sun is (east right, west left)
-  const warm = Math.max(0, 1 - Math.abs(sun.alt - 1) / 9) * (1 - .6 * cover);
-  const gx = 50 + 46 * Math.sin(rad(sun.az));
-  $('.tl-glow').style.background = warm > .02 ? `radial-gradient(ellipse 60% 55% at ${gx}% 100%, rgba(255,170,100,${(warm * .55).toFixed(3)}), transparent 70%)` : 'none';
-  const clouds = $('.tl-clouds');
-  clouds.style.opacity = (cover * .75).toFixed(3);
-  clouds.style.filter = `brightness(${(.25 + .75 * (1 - dark)).toFixed(2)})`;
-  // the moon, when the sun is down
-  const r = 22, k = moon.illum, rx = r * Math.abs(1 - 2 * k);
-  const mEl = $('#tl-moon');
-  mEl.style.opacity = (Math.min(1, Math.max(0, (-sun.alt - 2) / 8)) * (1 - .5 * cover)).toFixed(3);
-  if (mEl.dataset.k !== k.toFixed(2)) {
-    mEl.dataset.k = k.toFixed(2);
-    mEl.innerHTML = `<svg viewBox="-26 -26 52 52"><circle r="${r}" fill="rgba(255,255,255,.06)"/><path d="M0 ${-r}A${r} ${r} 0 0 ${moon.waxing ? 1 : 0} 0 ${r}A${rx} ${r} 0 0 ${(k > .5) === moon.waxing ? 1 : 0} 0 ${-r}Z" fill="#f4eedb"/></svg>`;
-  }
+  const warm = Math.max(0, 1 - Math.abs(sun.alt - 1) / 9) * (1 - .6 * cover);  // dawn and dusk glow, on the sun's side
   TL.wind = w ? { deg: w.wind_deg, speed: w.wind || 0, rain: /rain|shower|drizzle|storm|thunder/i.test(w.sky || ''), snow: /snow|flurr|sleet/i.test(w.sky || ''), night: sun.alt < -4 } : null;
-  tlHud(t, w, lt, moon, where);
-  if (TL.mode === 'map') { tlStrip(t, w, lt, moon, skyAt(sun.alt, cover)); tlMapScene(sun, cover, dark, warm); tlMapCams(t); } else tlCams(t);
+  tlStrip(t, w, lt, moon, skyAt(sun.alt, cover)); tlMapScene(sun, cover, dark, warm); tlMapCams(t);
 }
 
 // ---- map mode
@@ -2100,32 +2128,6 @@ function tlFitBoxes(tile) {
   Object.assign(layer.style, { width: `${w}px`, height: `${h}px`, left: `${(W - w) / 2}px`, top: `${(H - h) / 2}px`, right: 'auto', bottom: 'auto' });
 }
 
-// Each tile shows the newest photo its camera took at or before the slider's time, with boxes around
-// any animals the detector found in it. Photos older than 45 minutes fade back.
-function tlCams(t) {
-  TL.data.cameras.forEach((c, ci) => {
-    const tile = $(`#tl-grid .tl-tile[data-cam="${ci}"]`);
-    if (!tile) return;
-    const ps = c.photos, p = ps[tlBisect(ps, t + 1, x => x[0]) - 1];
-    const img = tile.querySelector('img'), age = p ? (t - p[0]) / 60e3 : Infinity;
-    if (p && TL.shown[ci] !== p[2]) {
-      TL.shown[ci] = p[2];
-      img.classList.remove('in'); img.onload = () => { img.classList.add('in'); tlFitBoxes(tile); }; img.src = p[2];
-      tile.querySelector('.tl-boxes').innerHTML = tlBoxes(p[2]);
-    }
-    if (!p) { TL.shown[ci] = null; img.removeAttribute('src'); tile.querySelector('.tl-boxes').innerHTML = ''; }
-    tile.classList.toggle('stale', age > 45);
-    tile.classList.toggle('empty', !p);
-    tile.querySelector('.tl-age').textContent = !p ? 'No photos yet'
-      : age < 1 ? 'Just now' : age < 60 ? `${Math.round(age)} min ago` : age < 48 * 60 ? `${Math.round(age / 60)} h ago · ${tlClock(p[0]).hm} ${tlClock(p[0]).ap}` : `Last photo ${tlDate(p[0])}`;
-    const near = TL.data.animals.filter(a => a.cam === ci && Math.abs(a.t - t) < 10 * 60e3);
-    const best = near.sort((a, b) => TL_KINDS[b.kind].rank - TL_KINDS[a.kind].rank)[0];
-    tile.classList.toggle('hot', !!best);
-    tile.style.setProperty('--k', best ? TL_KINDS[best.kind].color : 'transparent');
-    tile.querySelector('.tl-seen').innerHTML = best ? `${TL_SVG[best.kind]}<span>${esc(best.buck || TL_KINDS[best.kind].label.replace(', not labeled yet', ''))}${near.length > 1 ? ` · ${near.length}` : ''}</span>` : '';
-  });
-}
-
 // ---- slider
 const TL_ROW = { dates: 18, light: 12, temp: 30, lane: 26 };
 function tlSetRange(days) {
@@ -2218,9 +2220,7 @@ function tlPan(dt) {
   tlDrawTrack();
 }
 function tlSizeCanvas() {
-  const fx = $('#tl-wind'), dpr = Math.min(2, devicePixelRatio || 1);
-  if (fx) { fx.width = fx.clientWidth * dpr; fx.height = fx.clientHeight * dpr; }
-  const c = $('#tl-canvas');
+  const dpr = Math.min(2, devicePixelRatio || 1), c = $('#tl-canvas');
   if (c) { c.width = c.clientWidth * dpr; c.height = c.clientHeight * dpr; }
   TL.dpr = dpr;
   tlDrawTrack();
@@ -2377,7 +2377,7 @@ function tlPlay(on) {
   const b = $('#tl-play'); if (b) b.innerHTML = on ? TL_SVG.pause : TL_SVG.play;
 }
 function tlKey(e) {
-  if (view !== 'timeline' || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+  if (view !== 'timeline' || TL.mode !== 'map' || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
   if (e.key === ' ') { e.preventDefault(); tlPlay(!TL.playing); }
   else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
     e.preventDefault(); tlPlay(false);
@@ -2404,40 +2404,6 @@ function tlFrame(now) {
 }
 
 
-function tlHud(t, w, lt, moon, where) {
-  const clock = tlClock(t), color = TL_LIGHT[lt?.kind] || '#999';
-  const lightName = { day: 'Daylight', shooting: 'Shooting light', night: 'Night' }[lt?.kind] || 'Light unknown';
-  const trend = { R: ['Rising', 'M3 11 8 5l5 6'], S: ['Steady', 'M3 8h10'], F: ['Falling', 'M3 5l5 6 5-6'] }[w?.trend];
-  const wind = w?.wind_deg != null ? `<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15" fill="#fff"/>
-      <text x="17" y="6.4" text-anchor="middle" font-size="5.5" font-weight="700" fill="#8f98a3">N</text>
-      <g transform="rotate(${w.wind_deg} 17 17)"><path d="M17 6.5v19M12.6 21l4.4 4.6 4.4-4.6" fill="none" stroke="#15171a" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g></svg>` : '';
-  const r = 13, k = moon.illum, rx = r * Math.abs(1 - 2 * k);
-  const moonSvg = `<svg width="30" height="30" viewBox="-15 -15 30 30"><circle r="${r}" fill="#d5d8dd"/>
-      <path d="M0 ${-r}A${r} ${r} 0 0 ${moon.waxing ? 1 : 0} 0 ${r}A${rx} ${r} 0 0 ${(k > .5) === moon.waxing ? 1 : 0} 0 ${-r}Z" fill="#e6b83a"/></svg>`;
-  const sky = w?.sky ? (lt?.kind === 'night' ? w.sky.replace(/partly sunny/i, 'Partly cloudy').replace(/sunny/i, 'clear').replace(/^clear$/i, 'Clear') : w.sky) : null;
-  const agoMin = w ? Math.round(Math.abs(w.t - t) / 60e3) : null;
-  $('#tl-hudsky').innerHTML = `
-    <div class="tl-date">${tlDate(t, { weekday: 'long', month: 'long', day: 'numeric' })}</div>
-    <div class="tl-time">${clock.hm}<small>${clock.ap}</small></div>
-    <div class="tl-light"><i style="background:${color}"></i>${lightName}${lt ? `<span>· ${lt.label}</span>` : ''}</div>`;
-  $('#tl-hudbody').innerHTML = `
-    <div class="tl-metrics">
-      <div class="tl-m"><svg width="22" height="30" viewBox="0 0 22 30"><path d="M8 4.5a3 3 0 0 1 6 0v12.2a6 6 0 1 1-6 0z" fill="none" stroke="#e8590c" stroke-width="1.6"/><circle cx="11" cy="22" r="3.2" fill="#e8590c"/></svg>
-        <div title="${w?.lo != null ? `12-hour range ${w.lo}° to ${w.hi}°` : ''}"><b>${w?.temp != null ? `${Math.round(w.temp)}°F` : '—'}</b><span>${w?.dep ? `${w.dep > 0 ? '+' : '−'}${Math.abs(w.dep)}° vs yesterday` : w?.lo != null ? `${w.lo}° to ${w.hi}° over 12 h` : 'No reading'}</span></div></div>
-      <div class="tl-m">${wind}<div><b>${w?.wind_dir ? `${w.wind_dir} ${Math.round(w.wind)}` : '—'}<small style="font-size:11px;font-weight:500;color:var(--dim)"> mph</small></b>
-        <span>${w?.gust != null ? `Gusts ${Math.round(w.gust)} mph` : 'No wind reading'}</span></div></div>
-      <div class="tl-m"><svg width="22" height="22" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7.5" fill="#fff"/>${trend ? `<path d="${trend[1]}" fill="none" stroke="#1f6feb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>` : ''}</svg>
-        <div><b>${w?.pressure != null ? w.pressure.toFixed(2) : '—'}<small style="font-size:11px;font-weight:500;color:var(--dim)"> inHg</small></b><span>${trend ? trend[0] : 'Pressure'}</span></div></div>
-      <div class="tl-m">${moonSvg}<div><b>${Math.round(moon.illum * 100)}%</b><span>${moon.name}</span></div></div>
-    </div>
-    <div class="tl-src${!w ? ' warn' : ''}">${[
-      w ? `${esc(sky || 'Weather')} · Reveal reading ${agoMin < 2 ? 'at this time' : `${agoMin} min ${w.t < t ? 'earlier' : 'later'}`}` : 'No Reveal weather within 3 hours of this time',
-      where.label ? `Sun times for ${esc(where.label)}` : 'Sun times are approximate',
-      `Camera time, ${tlUtcLabel(t)}`].filter(Boolean).join('<br>')}</div>`;
-}
-
-
-
 // ---- weather layers: a soft drifting cloud texture, and wind streaks (or rain) on a canvas
 function tlClouds() {
   const N = 256, c = document.createElement('canvas'); c.width = c.height = N;
@@ -2458,45 +2424,36 @@ function tlClouds() {
   }
   g.putImageData(img, 0, 0);
   TL.cloudUrl = c.toDataURL();
-  $('.tl-clouds').style.backgroundImage = `url(${TL.cloudUrl})`;
   TL.streaks = [...Array(150)].map(() => ({ x: Math.random(), y: Math.random(), l: .4 + Math.random() * .6, a: .25 + Math.random() * .75 }));
 }
 function tlWind(dt) {
-  const sky = $('#tl-wind'), mapCv = TL.mode === 'map' ? TL.amb?.querySelector('canvas') : null;
-  const cvs = [sky, mapCv].filter(Boolean);
-  cvs.forEach(cv => cv.getContext('2d').clearRect(0, 0, cv.width, cv.height));
+  const mapCv = TL.mode === 'map' ? TL.amb?.querySelector('canvas') : null;
+  mapCv?.getContext('2d').clearRect(0, 0, mapCv.width, mapCv.height);
   const w = TL.wind;
-  if (!cvs.length || !w || w.deg == null || !TL.streaks) return;
+  if (!mapCv || !w || w.deg == null || !TL.streaks) return;
   const toward = rad(w.deg + 180), dx = Math.sin(toward), dy = -Math.cos(toward);
   const sp = (0.00002 + w.speed * 0.0000075) * dt;  // screen fractions per frame
   TL.cloudX += dx * (.004 + w.speed * .0016) * dt; TL.cloudY += dy * (.004 + w.speed * .0016) * dt;
-  $('.tl-clouds').style.backgroundPosition = `${TL.cloudX.toFixed(1)}px ${TL.cloudY.toFixed(1)}px`;
-  if (mapCv) {  // cloud shadows stay on the ground while the map pans
-    const p = TL.ambP || { x: 0, y: 0 };
-    TL.amb.querySelector('.tlm-clouds').style.backgroundPosition = `${(TL.cloudX * 1.8 - p.x).toFixed(1)}px ${(TL.cloudY * 1.8 - p.y).toFixed(1)}px`;
-  }
+  const p = TL.ambP || { x: 0, y: 0 };  // cloud shadows stay on the ground while the map pans
+  TL.amb.querySelector('.tlm-clouds').style.backgroundPosition = `${(TL.cloudX * 1.8 - p.x).toFixed(1)}px ${(TL.cloudY * 1.8 - p.y).toFixed(1)}px`;
   for (const s of TL.streaks) {
     if (w.rain) { s.x += dx * sp * .5; s.y += sp * 9; } else if (w.snow) { s.x += dx * sp * .6; s.y += sp * 1.6; } else { s.x += dx * sp * (1 + s.l); s.y += dy * sp * (1 + s.l); }
     if (s.x < -.05) s.x += 1.1; if (s.x > 1.05) s.x -= 1.1; if (s.y < -.05) s.y += 1.1; if (s.y > 1.05) s.y -= 1.1;
   }
-  const dpr = TL.dpr || 1;
-  for (const cv of cvs) {
-    const g = cv.getContext('2d'), W = cv.width, H = cv.height, onMap = cv === mapCv;
-    // Streak counts were made for a full-screen sky; the sky card is far smaller, so thin them out.
-    const fit = Math.sqrt(Math.min(1, W * H / (dpr ** 2 * 1e6)));
-    const n = Math.round((w.rain || w.snow ? 150 : Math.min(150, w.speed * 9)) * fit);
-    const len = (w.rain ? 18 : 10 + w.speed * 2.2) * dpr * (onMap ? 1.6 : 1);
-    g.lineCap = 'round';
-    for (let i = 0; i < n; i++) {
-      const s = TL.streaks[i], x = s.x * W, y = s.y * H;
-      const alpha = (w.night ? .09 : .16) * s.a * (w.rain ? 1.6 : 1) * (onMap ? 1.5 : 1);
-      if (w.snow) { g.fillStyle = `rgba(255,255,255,${alpha * 3})`; g.beginPath(); g.arc(x, y, 1.6 * dpr * s.l, 0, 7); g.fill(); continue; }
-      const vx = w.rain ? dx * .25 : dx, vy = w.rain ? 1 : dy, L2 = len * s.l;
-      const gr = g.createLinearGradient(x, y, x - vx * L2, y - vy * L2);
-      gr.addColorStop(0, `rgba(255,255,255,${alpha})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
-      g.strokeStyle = gr; g.lineWidth = (w.rain ? 1 : 1.3) * dpr;
-      g.beginPath(); g.moveTo(x, y); g.lineTo(x - vx * L2, y - vy * L2); g.stroke();
-    }
+  const dpr = TL.dpr || 1, g = mapCv.getContext('2d'), W = mapCv.width, H = mapCv.height;
+  const fit = Math.sqrt(Math.min(1, W * H / (dpr ** 2 * 1e6)));  // fewer streaks on a small screen
+  const n = Math.round((w.rain || w.snow ? 150 : Math.min(150, w.speed * 9)) * fit);
+  const len = (w.rain ? 18 : 10 + w.speed * 2.2) * dpr * 1.6;
+  g.lineCap = 'round';
+  for (let i = 0; i < n; i++) {
+    const s = TL.streaks[i], x = s.x * W, y = s.y * H;
+    const alpha = (w.night ? .09 : .16) * s.a * (w.rain ? 1.6 : 1) * 1.5;
+    if (w.snow) { g.fillStyle = `rgba(255,255,255,${alpha * 3})`; g.beginPath(); g.arc(x, y, 1.6 * dpr * s.l, 0, 7); g.fill(); continue; }
+    const vx = w.rain ? dx * .25 : dx, vy = w.rain ? 1 : dy, L2 = len * s.l;
+    const gr = g.createLinearGradient(x, y, x - vx * L2, y - vy * L2);
+    gr.addColorStop(0, `rgba(255,255,255,${alpha})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.strokeStyle = gr; g.lineWidth = (w.rain ? 1 : 1.3) * dpr;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x - vx * L2, y - vy * L2); g.stroke();
   }
 }
 

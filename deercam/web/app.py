@@ -532,6 +532,11 @@ def save_settings(body: SettingsUpdate, request: Request):
     if "ai_monthly_limit" in changes and not (changes["ai_monthly_limit"] or 0) > 0:
         changes["ai_monthly_limit"] = None
     settings.save(changes)
+    # The last job stopped for want of a key or budget: catch up on the waiting crops now, not at the next check
+    last = jobs.last.get(ranches.current_id())
+    if AI_FIELDS & body.model_fields_set and last and last.get("setup") and not jobs.status()["running"]:
+        jobs.last.pop(ranches.current_id(), None)
+        jobs.submit("checking for new photos", _import)
     return get_settings(request)
 
 

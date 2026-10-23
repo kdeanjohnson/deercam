@@ -2864,6 +2864,7 @@ async function settingsClick(e) {
       fillProvider();
       $('#ai-usage').innerHTML = aiUsage(cfg.ai_usage);
       $('#ai-msg').className = 'ok'; $('#ai-msg').textContent = `Saved; using ${cfg.providers[name].label}`;
+      watchJob();  // saving may have restarted work that was waiting on the AI
     } catch (err) { $('#ai-msg').className = 'bad'; $('#ai-msg').textContent = err.detail || 'Save failed'; }
   }
   if (t.id === 'ss-save') {

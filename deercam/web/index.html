@@ -241,7 +241,9 @@
   .rg { display:grid; grid-template-columns:repeat(auto-fill, minmax(108px, 1fr)); gap:6px; padding:0 16px; }
   .rg.picking { padding-bottom:300px; }
   .rgt { position:relative; aspect-ratio:1; border-radius:12px; overflow:hidden; background:#111; cursor:pointer; user-select:none; }
-  .rgt img { width:100%; height:100%; object-fit:cover; display:block; }
+  /* the whole crop, antlers included, over a blurred copy of itself instead of cutting it to a square */
+  .rgt img { position:relative; width:100%; height:100%; object-fit:contain; display:block; }
+  .rgt .bg { position:absolute; inset:-12px; width:calc(100% + 24px); height:calc(100% + 24px); object-fit:cover; filter:blur(10px) brightness(.55); }
   .rgt .cap { position:absolute; left:0; right:0; bottom:0; padding:16px 7px 5px; font-size:11px; color:#fff; white-space:nowrap;
               overflow:hidden; text-overflow:ellipsis; background:linear-gradient(transparent, rgba(0,0,0,.7)); }
   .rgt .tick { position:absolute; top:7px; left:7px; width:24px; height:24px; border-radius:50%; border:2px solid #fff;
@@ -1173,7 +1175,7 @@ async function showReviewGrid() {
       <button class="btn small" id="rematch" title="Re-match the queue against your named bucks">Re-run matching</button></div>
     <div class="pad meta" style="margin-top:-6px">Tap the photos you recognize, then pick who they are. ⤢ opens one by itself, with name ideas and the full photo.</div>
     <div class="rg">${items.map(d => `<div class="rgt ${rg.sel.has(d.id) ? 'sel' : ''}" data-sel="${d.id}">
-      <img src="${d.crop}" loading="lazy" alt=""><span class="tick">✓</span>
+      <img class="bg" src="${d.crop}" loading="lazy" alt=""><img src="${d.crop}" loading="lazy" alt=""><span class="tick">✓</span>
       <button class="open" data-open="${d.id}" title="Open by itself">⤢</button>
       <div class="cap">${esc(d.camera)} · ${esc(when(d.when))}</div></div>`).join('')}</div>
     <div class="rg-bar" id="rg-bar"></div></div>`;

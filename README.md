@@ -2,8 +2,6 @@
 
 Identifies individual bucks on Tactacam Reveal cell cams, and shows when and where each one moves in daylight.
 
-**Demo:** a read-only copy with real data, at the GitHub Pages link for this repo.
-
 ## What it does
 
 - **Sync**: signs in to Reveal (the same Cognito login as account.revealcellcam.com) and downloads photos from each connected account's cameras, shared with it or its own, plus their metadata (camera, time, weather, moon). A ranch can connect several accounts; a camera on two of them is downloaded once.

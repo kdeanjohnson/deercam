@@ -178,6 +178,14 @@
   .form .row > .btn, .form .row > .meta { flex:0 0 auto; }
 
   /* ---- review */
+  /* one photo from the grid, reviewed in a window over it so the grid keeps its place */
+  .rvm { position:fixed; inset:0; z-index:44; background:rgba(10,12,16,.72); display:flex; align-items:center; justify-content:center; padding:16px; }
+  .rvm-box { position:relative; background:#fff; border-radius:var(--radius); width:min(1200px, 100%); max-height:100%; overflow:auto; }
+  .rvm-x { position:sticky; top:10px; float:right; margin:10px 10px -40px 0; z-index:3; border:0; width:34px; height:34px; border-radius:50%;
+           background:rgba(255,255,255,.92); font-size:20px; line-height:1; color:var(--ink); box-shadow:0 1px 6px rgba(0,0,0,.25); }
+  .rvm [data-go="review"] { display:none; }
+  .rvm .rv-top { right:56px; }  /* clear of the close button */
+  @media (max-width: 760px) { .rvm { padding:0; } .rvm-box { border-radius:0; height:100%; } }
   .review .rv-photo { position:relative; background:#111; }
   .review .rv-photo img { width:100%; height:auto; max-height:min(52vh, 560px); object-fit:contain; cursor:pointer; margin:0 auto; }
   .rv-top { position:absolute; top:10px; left:12px; right:12px; display:flex; justify-content:space-between; color:#fff; font-weight:600; font-size:13px;
@@ -261,7 +269,7 @@
   @media (min-width: 700px) { .rg { grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:8px; } }
   @media (max-width: 699px) { .rg-head .title { flex-basis:100%; margin-bottom:0; } .rg-head select { margin-left:16px; } .rg-head { margin-bottom:10px; } }
   .ideas { display:flex; gap:6px; flex-wrap:wrap; }
-  .toast { position:fixed; z-index:40; left:50%; transform:translateX(-50%); bottom:calc(var(--nav-h) + 34px + env(safe-area-inset-bottom));
+  .toast { position:fixed; z-index:55; left:50%; transform:translateX(-50%); bottom:calc(var(--nav-h) + 34px + env(safe-area-inset-bottom));
            background:var(--ink); color:#fff; border-radius:12px; padding:10px 16px; font-size:14px; box-shadow:0 6px 20px rgba(0,0,0,.25); max-width:90vw; }
 
   /* ---- map */
@@ -1135,6 +1143,34 @@ document.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') s
 const rv = { items: [], i: 0, pick: null, cands: [], newName: '' };
 const rg = { items: [], sel: new Set(), pick: null, newName: '' };
 let rvMode = 'grid';
+let rvModal = false, rvModalDirty = false;  // a grid photo open in a window over the grid
+
+function openReviewModal(id) {
+  closeReviewModal(false);
+  rvModal = true; rvModalDirty = false;
+  rv.items = rg.items.slice();
+  rv.i = Math.max(0, rv.items.findIndex(d => d.id === Number(id)));
+  const box = document.createElement('div');
+  box.className = 'rvm'; box.id = 'rvm';
+  box.innerHTML = '<div class="rvm-box"><button class="rvm-x" id="rvm-x" title="Back to the grid (Esc)">×</button><div id="rvm-body"></div></div>';
+  box.addEventListener('click', e => { if (e.target === box || e.target.id === 'rvm-x') closeReviewModal(); });
+  document.body.append(box);
+  document.body.style.overflow = 'hidden';
+  renderReview();
+}
+async function closeReviewModal(refresh = true) {
+  if (!$('#rvm')) return;
+  closeCompare();
+  $('#rvm').remove();
+  document.body.style.overflow = '';
+  rvModal = false;
+  if (refresh && rvModalDirty && view === 'review' && rvMode === 'grid') {
+    // photos saved in the window leave the grid; keep the scroll position
+    const y = scrollY;
+    await showReviewGrid(); refreshCounts();
+    scrollTo(0, y);
+  }
+}
 
 async function loadReview(focusId) {
   const sort = localStorage.getItem('reviewSort') || 'similar';
@@ -1173,7 +1209,7 @@ async function showReviewGrid() {
       <select id="rv-sort">${[['similar', 'Look-alikes together'], ['size', 'Biggest first'], ['newest', 'Newest first']].map(([k, l]) =>
         `<option value="${k}" ${sort === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
       <button class="btn small" id="rematch" title="Re-match the queue against your named bucks">Re-run matching</button></div>
-    <div class="pad meta" style="margin-top:-6px">Tap the photos you recognize, then pick who they are. ⤢ opens one by itself, with name ideas and the full photo.</div>
+    <div class="pad meta" style="margin-top:-6px">Tap the photos you recognize, then pick who they are. ⤢ opens one in a window, with side-by-side compare, name ideas and the full photo.</div>
     <div class="rg">${items.map(d => `<div class="rgt ${rg.sel.has(d.id) ? 'sel' : ''}" data-sel="${d.id}">
       <img class="bg" src="${d.crop}" loading="lazy" alt=""><img src="${d.crop}" loading="lazy" alt=""><span class="tick">✓</span>
       <button class="open" data-open="${d.id}" title="Open by itself">⤢</button>
@@ -1209,7 +1245,7 @@ function refreshBar() {
 async function gridClick(e) {
   const t = e.target.closest('button, [data-sel]');
   if (!t) return;
-  if (t.dataset.open) return go('review', t.dataset.open);
+  if (t.dataset.open) return openReviewModal(t.dataset.open);
   if (t.dataset.sel) {
     const id = Number(t.dataset.sel);
     if (rg.sel.has(id)) rg.sel.delete(id); else rg.sel.add(id);
@@ -1249,7 +1285,7 @@ async function afterGrid() {
 }
 
 async function renderReview() {
-  const main = $('#main');
+  const main = rvModal ? $('#rvm-body') : $('#main');
   if (!rv.items.length) {
     main.innerHTML = `<h1 class="title">Review</h1><div class="empty">Nothing to review. New buck photos show up here after each check.</div>`;
     return;
@@ -1483,6 +1519,7 @@ async function saveReview() {
 
 async function afterReview() {
   // Same-burst photos may have been assigned too, so reload the queue and stay at this position.
+  rvModalDirty = true;
   const at = rv.i;
   await loadReview();
   rv.i = Math.min(at, Math.max(0, rv.items.length - 1));
@@ -3148,7 +3185,7 @@ const go = (v, id) => {
   if (location.hash === h) render(); else location.hash = h;
   scrollTo(0, 0);
 };
-addEventListener('hashchange', () => { render(); scrollTo(0, 0); });
+addEventListener('hashchange', () => { closeReviewModal(false); render(); scrollTo(0, 0); });
 
 document.addEventListener('click', async e => {
   const lbTag = e.target.closest('#lightbox .lb-tag');
@@ -3253,7 +3290,11 @@ document.addEventListener('click', async e => {
 });
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { $('#lightbox').style.display = 'none'; $('#lightbox .lb-tag').style.display = 'none'; }
+  if (e.key === 'Escape') {
+    const lb = $('#lightbox').style.display === 'flex';
+    $('#lightbox').style.display = 'none'; $('#lightbox .lb-tag').style.display = 'none';
+    if (!lb && !$('#cmp') && $('#rvm')) closeReviewModal();
+  }
   if (e.key === 'Enter' && e.target.closest('#buck-edit')) $('[data-act="save-buck"]').click();
   if (e.key === 'Enter' && e.target.id === 'rv-name') saveReview();
   if (e.key === 'Enter' && e.target.id === 'rg-name') saveGrid();
@@ -3304,7 +3345,7 @@ async function watchJob() {
   await loadSeasons();
   const typing = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
   if (view === 'settings' || typing) return refreshCounts();
-  if (view === 'review' && rvMode === 'grid') { await showReviewGrid(); refreshCounts(); }
+  if (view === 'review' && rvMode === 'grid') { if (rvModal) { rvModalDirty = true; return refreshCounts(); } await showReviewGrid(); refreshCounts(); }
   else if (view === 'review') { const id = rv.items[rv.i]?.id; await loadReview(id); renderReview(); refreshCounts(); }
   else render();
 }

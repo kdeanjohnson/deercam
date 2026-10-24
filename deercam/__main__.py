@@ -4,6 +4,7 @@
   detect    run MegaDetector over new photos and crop animals
   analyze   classify crops (buck/doe/fawn) and describe racks with the vision LLM
   verify    double-check buck calls (runs automatically after analyze; use for older crops)
+  wildlife  double-check what the animals that aren't deer are (runs automatically after analyze)
   identify  match buck crops against named bucks
   run       sync + detect + analyze + identify
   serve     start the review UI on http://localhost:8600
@@ -30,6 +31,7 @@ def main():
     p_an.add_argument("--limit", type=int, help="analyze at most N crops (handy for trying a provider)")
     p_an.add_argument("--workers", type=int, default=6, help="parallel LLM requests")
     sub.add_parser("verify")
+    sub.add_parser("wildlife")
     p_id = sub.add_parser("identify")
     p_id.add_argument("--recheck", action="store_true", help="also re-match everything in the review queue")
     p_id.add_argument("--limit", type=int, help="match at most N crops")
@@ -115,6 +117,9 @@ def command(args):
     if args.cmd == "verify":
         from .analyze import verify_bucks
         verify_bucks()
+    if args.cmd == "wildlife":
+        from .analyze import check_wildlife
+        print(check_wildlife())
     if args.cmd == "identify":
         from .identify import identify
         identify(recheck=args.recheck, limit=args.limit)

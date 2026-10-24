@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Protocol, TypeVar
 
-from PIL import Image
+from PIL import Image, ImageDraw
 from pydantic import BaseModel, Field
 
 T = TypeVar("T", bound=BaseModel)
@@ -65,6 +65,18 @@ class AntlerCheck(BaseModel):
                                         "near the head that could be mistaken for antlers")
     antlers: Literal["yes", "no", "unclear"] = Field(
         description="'yes' only if bony antler beams/tines clearly grow from the main deer's own skull")
+
+
+class WildlifeCheck(BaseModel):
+    """Second look at first-pass 'not a deer' calls, with the whole photo for context. The first look sees
+    only the crop and misnames a lot: turkeys' barred feathers as skunks, armadillos or zebras."""
+    looks: str = Field(description="What the boxed animal looks like: feathers, fur or armor; body shape; legs; "
+                                   "head, snout and ears; tail. Only what you can actually see")
+    others_in_photo: str = Field(description="The other animals in the whole photo, if any")
+    animal: str = Field(description="Common name of the boxed animal, e.g. 'wild turkey', 'feral hog', 'bobcat', "
+                                    "'raccoon', 'nine-banded armadillo', 'crow'; 'white-tailed deer' if it is a "
+                                    "deer; 'unknown' if you can't tell")
+    confidence: Literal["high", "medium", "low"]
 
 
 class CandidateComparison(BaseModel):
@@ -142,6 +154,20 @@ VERIFY_SYSTEM = (
 
 VERIFY_PROMPT = "Does the main deer in this crop have antlers?"
 
+WILDLIFE_SYSTEM = (
+    "You check trail-camera photos from {region}. A quick first pass said the animal in the red box is not a "
+    "deer and guessed what it is from a small crop; those guesses are often wrong. Name the animal in the "
+    "red box from its own features: feathers and a beak, or fur; two legs or four; the shape of the head, "
+    "ears and tail. Use the whole photo for its size against the feeder, fence and other animals. Common "
+    "mix-ups: a turkey's barred feathers read as a skunk's stripes or an armadillo's bands; a bobcat's "
+    "spotted coat, rounded head and short tail missed for a hog's; a crow or vulture in flight blurred into "
+    "something big. Animals seen here include white-tailed deer, wild turkeys, feral hogs, raccoons, "
+    "opossums, nine-banded armadillos, coyotes, bobcats, foxes, skunks, rabbits, squirrels, crows, vultures "
+    "and other birds, cattle, dogs and cats. Say 'unknown' rather than guess."
+)
+
+WILDLIFE_PROMPT = "What animal is in the red box? Trail camera '{camera}', {when}. The first pass said: '{first}'."
+
 MATCH_SYSTEM = (
     "You re-identify individual whitetail bucks across trail-camera photos by comparing antler structure: "
     "point count per side, tine lengths and positions, main beam curve, spread, mass, brow tines, and "
@@ -184,11 +210,16 @@ class ImagePart:
     """An image plus a caption that precedes it in the prompt."""
     caption: str
     path: Path
+    box: tuple[float, float, float, float] | None = None  # normalized x1, y1, x2, y2 to outline in red
 
 
-def encode_jpeg(path: Path, max_side: int = 1024, min_side: int = 640) -> str:
+def encode_jpeg(path: Path, max_side: int = 1024, min_side: int = 640, box=None) -> str:
     """Crops from 1024x768 originals are often ~150px; vision models read antlers far better upscaled."""
     img = Image.open(path).convert("RGB")
+    if box:
+        x1, y1, x2, y2 = box
+        ImageDraw.Draw(img).rectangle((x1 * img.width, y1 * img.height, x2 * img.width, y2 * img.height),
+                                      outline=(255, 0, 0), width=max(3, img.width // 250))
     scale = min(max(min_side / min(img.size), 1.0), max_side / max(img.size))
     if scale != 1.0:
         img = img.resize((round(img.width * scale), round(img.height * scale)), Image.LANCZOS)

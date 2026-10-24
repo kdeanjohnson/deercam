@@ -18,7 +18,7 @@ class OpenAICompatProvider:
         for part in images:
             content.append({"type": "text", "text": part.caption})
             content.append({"type": "image_url", "image_url": {
-                "url": f"data:image/jpeg;base64,{encode_jpeg(part.path)}", "detail": "high"}})
+                "url": f"data:image/jpeg;base64,{encode_jpeg(part.path, box=part.box)}", "detail": "high"}})
         content.append({"type": "text", "text": prompt})
 
         usage.check()

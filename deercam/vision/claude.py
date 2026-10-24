@@ -20,7 +20,7 @@ class ClaudeProvider:
         for part in images:
             content.append({"type": "text", "text": part.caption})
             content.append({"type": "image", "source": {
-                "type": "base64", "media_type": "image/jpeg", "data": encode_jpeg(part.path)}})
+                "type": "base64", "media_type": "image/jpeg", "data": encode_jpeg(part.path, box=part.box)}})
         content.append({"type": "text", "text": prompt})
 
         usage.check()

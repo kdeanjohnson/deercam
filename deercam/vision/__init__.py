@@ -1,7 +1,7 @@
 import os
 
 from ..config import settings
-from .base import AntlerCheck, DeerAnalysis, ImagePart, MatchDecision, NameIdeas, Rack, VisionProvider
+from .base import AntlerCheck, DeerAnalysis, ImagePart, MatchDecision, NameIdeas, Rack, VisionProvider, WildlifeCheck
 
 # label: shown in setup. key: the Settings field holding the API key. model: default for the buck work
 # (antler double-check, matching). fast: default for the first look at every crop and name ideas, where
@@ -59,4 +59,4 @@ def list_models(name: str, api_key: str | None = None, base_url: str | None = No
 
 
 __all__ = ["AntlerCheck", "DeerAnalysis", "ImagePart", "MatchDecision", "NameIdeas", "PROVIDERS", "Rack",
-           "SetupError", "VisionProvider", "get_provider", "list_models"]
+           "SetupError", "VisionProvider", "WildlifeCheck", "get_provider", "list_models"]

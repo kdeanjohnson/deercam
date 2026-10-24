@@ -531,6 +531,42 @@
     .tlm-side { left:12px; right:12px; width:auto; top:12px; }
     .tl-panel { padding:10px; }
   }
+  /* small screens in map mode (set by tlLayout): the title row goes, its Map/Cameras switch floats on the
+     map where the zoom buttons were (pinch zooms), and the strip, cards and timeline shrink */
+  body.tl-float h1.tl-titlebar { position:fixed; z-index:8; right:10px; margin:0; font-size:0; }
+  body.tl-float .tl-mode { gap:0; background:#fff; border-radius:16px; padding:2px; box-shadow:0 1px 6px rgba(0,0,0,.25); }
+  body.tl-float .tl-mode button { background:none; font-size:12.5px; padding:5px 11px; }
+  body.tl-float .tl-mode button.on { background:var(--ink); }
+  body.tl-float:has(.tlm-side.on) h1.tl-titlebar { display:none; }
+  body.tl-float #tl-map .leaflet-control-zoom { display:none; }
+  body.tl-float .tlm-top { left:10px; top:10px; max-width:calc(100% - 178px); gap:6px; }
+  body.tl-float .tlm-strip { gap:2px 10px; padding:4px 10px 4px 4px; border-radius:12px; }
+  body.tl-float .tlm-clock { padding:3px 8px 4px; border-radius:9px; }
+  body.tl-float .tlm-clock span { font-size:9px; }
+  body.tl-float .tlm-clock b { font-size:16px; }
+  body.tl-float .tlm-clock small { font-size:10px; margin-left:2px; }
+  body.tl-float .tlm-s { font-size:12px; gap:5px; }
+  body.tl-float .tlm-s span, body.tl-float .tlm-s.pr { display:none; }
+  body.tl-float .tlm-s svg { width:15px; height:15px; }
+  body.tl-float .tlm-follow { font-size:11.5px; padding:4px 10px; }
+  body.tl-float .tlm-card { width:112px; border-radius:10px; }
+  body.tl-float #tl-map .tlm-card img { width:112px; height:84px; }
+  body.tl-float .tlm-card .cap { padding:4px; font-size:10px; gap:4px; }
+  body.tl-float .tlm-card .cap span { padding:1px 6px; }
+  body.tl-float .tlm-name { font-size:11px; padding:2px 8px; }
+  body.tl-float .tlm-side { left:8px; right:8px; top:8px; padding:10px; gap:8px; }
+  body.tl-float .tl-panel { width:calc(100% - 16px); padding:8px; bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom)); }
+  body.tl-float .tl-bar { gap:5px; row-gap:5px; margin-bottom:6px; }
+  body.tl-float .tl-btn { height:30px; min-width:30px; padding:0 9px; }
+  body.tl-float .tl-btn.play { width:34px; height:34px; }
+  body.tl-float .tl-show { height:30px; min-width:118px; }
+  body.tl-float .tl-seg button { padding:4px 9px; font-size:12.5px; }
+  body.tl-float .tl-panel.sz-0 .tl-bar { margin-bottom:0; }
+  body.tl-float .tl-panel.sz-0 #tl-ranges, body.tl-float .tl-panel.sz-0 #tl-latest { display:none; }  /* no lanes to zoom */
+  body.tl-float .tl-track { grid-template-columns:14px 1fr; }  /* lanes keep their camera's color dot; the pins carry the names */
+  body.tl-float .tl-labels div { font-size:0; padding-right:0; }
+  body.tl-float .tl-legend { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; gap:12px; margin-top:6px; font-size:11px; white-space:nowrap; }
+  body.tl-float .tl-legend::-webkit-scrollbar { display:none; }
 
   /* ---- engine room: day-by-day calendar of what came in */
   .er { padding:0 16px 24px; }
@@ -1795,7 +1831,7 @@ async function showTimeline() {
   if (view !== 'timeline') return;
   Object.assign(TL, { data, days: 30, playing: false, speed: 3600, dirty: true, raf: 0, lastFrame: 0, cloudX: 0, cloudY: 0,
                       feed: { cam: null, what: 'all', n: 0 }, show: 'all', shown: data.animals,
-                      size: [0, 1, 2].includes(Number(localStorage.getItem('tlSize') ?? 2)) ? Number(localStorage.getItem('tlSize') ?? 2) : 2 });
+                      size: [0, 1, 2].includes(Number(localStorage.getItem('tlSize') ?? 'x')) ? Number(localStorage.getItem('tlSize')) : innerWidth <= 760 ? 1 : 2 });
   $('#main').innerHTML = `<h1 class="title tl-titlebar" id="tl-title">Timeline
     <div class="tl-seg tl-mode" id="tl-mode"><button data-mode="map">Map</button><button data-mode="cams">Cameras</button></div></h1><div id="tl">
     <div id="tl-map"></div><div class="tlm-note" id="tlm-note"></div>
@@ -1964,6 +2000,7 @@ function tlSetMode(mode) {
   localStorage.setItem('tlMode', TL.mode);
   $('#tl').classList.toggle('mode-map', TL.mode === 'map');
   $('#tl').classList.toggle('mode-cams', TL.mode === 'cams');
+  tlLayout();
   $$('#tl-mode button').forEach(b => b.classList.toggle('on', b.dataset.mode === TL.mode));
   TL.dirty = true;
   if (TL.mode === 'map') { tlSizeCanvas(); tlMapMetrics(); tlMapInit(); }
@@ -1980,12 +2017,19 @@ function tlDestroy() {
   if (TL.onResize) removeEventListener('resize', TL.onResize);
   if (TL.onKey) removeEventListener('keydown', TL.onKey);
   Object.assign(TL, { onResize: null, onKey: null, raf: 0 });
+  document.body.classList.remove('tl-float');
 }
 
 function tlLayout() {
   const tl = $('#tl');
   if (!tl) return;
-  tl.style.top = `${$('#tl-title').getBoundingClientRect().bottom + 12}px`;
+  const float = TL.mode !== 'cams' && (innerWidth <= 760 || innerHeight <= 520), title = $('#tl-title');
+  const was = document.body.classList.contains('tl-float');
+  document.body.classList.toggle('tl-float', float);
+  const top = float ? $('#job').getBoundingClientRect().bottom : title.getBoundingClientRect().bottom + 12;
+  title.style.top = float ? `${top + 10}px` : '';
+  tl.style.top = `${top}px`;
+  if (TL.data && $('#tl-panel')?.innerHTML && (float !== was || tlSz() !== TL.drawnSize)) { tlPanel(); tlSizeCanvas(); tlHead(); }
   const bar = $('#tlf-bar');
   if (bar) $('#tl-feed').style.setProperty('--bar-h', `${bar.offsetHeight}px`);
 }
@@ -2088,7 +2132,8 @@ function tlMapMetrics() {
 // gets a spot, shown or not, so cards don't jump around as photos come and go.
 function tlPlaceCards() {
   if (!TL.map || !TL.pins || TL.mode !== 'map') return;
-  const box = $('#tl-map').getBoundingClientRect(), W = 150, H = 112;
+  const small = document.body.classList.contains('tl-float');
+  const box = $('#tl-map').getBoundingClientRect(), W = small ? 112 : 150, H = small ? 84 : 112;
   if (!box.width) return;
   const rel = sel => {
     const el = $(sel), r = el && el.getBoundingClientRect();
@@ -2182,17 +2227,19 @@ function tlStrip(t, w, lt, moon, sky) {
   const el = $('#tlm-strip');
   if (!el) return;
   const clock = tlClock(t), color = TL_LIGHT[lt?.kind] || '#999';
-  const lightName = { day: 'Daylight', shooting: 'Shooting light', night: 'Night' }[lt?.kind] || 'Light unknown';
+  const small = document.body.classList.contains('tl-float');
+  const lightName = (small ? { day: 'Day', shooting: 'Shooting', night: 'Night' } : { day: 'Daylight', shooting: 'Shooting light', night: 'Night' })[lt?.kind]
+    || (small ? 'Light ?' : 'Light unknown');
   const trend = { R: '↑', S: '→', F: '↓' }[w?.trend] || '';
   const r = 8, k = moon.illum, rx = r * Math.abs(1 - 2 * k);
   const calm = !w || w.wind_deg == null || (w.wind || 0) < 1;
   el.innerHTML = `
     <div class="tlm-clock" style="background:linear-gradient(160deg, rgb(${sky.top}), rgb(${sky.low}))"><span>${tlDate(t)}</span><b>${clock.hm}<small>${clock.ap}</small></b></div>
     <div class="tlm-s"><i style="background:${color}"></i><b>${lightName}</b>${lt ? `<span>${lt.label}</span>` : ''}</div>
-    <div class="tlm-s"><b>${w?.temp != null ? `${Math.round(w.temp)}°F` : '—'}</b>${w?.dep ? `<span>${w.dep > 0 ? '+' : '−'}${Math.abs(w.dep)}° vs yesterday</span>` : ''}</div>
+    <div class="tlm-s"><b>${w?.temp != null ? `${Math.round(w.temp)}°${small ? '' : 'F'}` : '—'}</b>${w?.dep ? `<span>${w.dep > 0 ? '+' : '−'}${Math.abs(w.dep)}° vs yesterday</span>` : ''}</div>
     <div class="tlm-s">${calm ? '<b>Calm</b>' : `<svg width="18" height="18" viewBox="0 0 18 18"><g transform="rotate(${w.wind_deg} 9 9)"><path d="M9 2v14M5.5 12.5 9 16l3.5-3.5" fill="none" stroke="#15171a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
-      <b>${w.wind_dir || cardinal(w.wind_deg)} ${Math.round(w.wind)} mph</b><span>scent drifts ${cardinal(w.wind_deg + 180)}</span>`}</div>
-    ${w?.pressure != null ? `<div class="tlm-s"><b>${w.pressure.toFixed(2)}</b><span>inHg ${trend}</span></div>` : ''}
+      <b>${w.wind_dir || cardinal(w.wind_deg)} ${Math.round(w.wind)}${small ? '' : ' mph'}</b><span>scent drifts ${cardinal(w.wind_deg + 180)}</span>`}</div>
+    ${w?.pressure != null ? `<div class="tlm-s pr"><b>${w.pressure.toFixed(2)}</b><span>inHg ${trend}</span></div>` : ''}
     <div class="tlm-s"><svg width="18" height="18" viewBox="-9 -9 18 18"><circle r="${r}" fill="#d5d8dd"/><path d="M0 ${-r}A${r} ${r} 0 0 ${moon.waxing ? 1 : 0} 0 ${r}A${rx} ${r} 0 0 ${(k > .5) === moon.waxing ? 1 : 0} 0 ${-r}Z" fill="#e6b83a"/></svg>
       <b>${Math.round(k * 100)}%</b></div>`;
 }
@@ -2291,6 +2338,7 @@ function tlMapCams(t) {
   if (!TL.pins) return;
   const as = TL.shown, a0 = tlBisect(as, t - 3 * HOUR, a => a.t), a1 = tlBisect(as, t + 1, a => a.t);
   const scent = tlScent(), fa = TL.follow ? TL.followAt : [], at = fa[tlBisect(fa, t + 1, a => a.t) - 1];
+  const small = document.body.classList.contains('tl-float');
   TL.data.cameras.forEach((c, ci) => {
     const pin = TL.pins[ci];
     if (!pin) return;
@@ -2310,7 +2358,7 @@ function tlMapCams(t) {
     el.style.setProperty('--k', best ? TL_KINDS[best.kind].color : '#fff');
     el.style.setProperty('--r', recent ? `${Math.round(40 + 22 * Math.sqrt(recent))}px` : '0px');
     el.querySelector('.tlm-seen').innerHTML = best ? `${TL_SVG[best.kind]}<span>${esc(tlName(best))}${near.length > 1 ? ` · ${near.length}` : ''}</span>` : '';
-    el.querySelector('.tlm-age').textContent = !p ? '' : age < 1 ? 'Just now' : age < 60 ? `${Math.round(age)} min ago` : '';
+    el.querySelector('.tlm-age').textContent = !p ? '' : age < 1 ? (small ? 'Now' : 'Just now') : age < 60 ? `${Math.round(age)} min${small ? '' : ' ago'}` : '';
     if ((newest?.id ?? null) !== pin.last) {
       pin.last = newest?.id ?? null;
       if (newest) {
@@ -2368,6 +2416,7 @@ function tlFitBoxes(tile) {
 
 // ---- slider
 const TL_ROWS = [null, { dates: 16, light: 8, temp: 0, lane: 18 }, { dates: 18, light: 12, temp: 30, lane: 26 }];  // by TL.size
+const tlSz = () => innerHeight <= 520 ? Math.min(TL.size, 1) : TL.size;  // a short screen shows at most the compact lanes
 let TL_ROW = TL_ROWS[2];
 function tlSetRange(days) {
   const d = TL.data, span = Math.min(days * DAY, Math.max(d.end - d.start, HOUR * 6));
@@ -2378,8 +2427,9 @@ function tlSetRange(days) {
 }
 function tlPanel() {
   const cams = TL.data.cameras;
-  TL_ROW = TL_ROWS[TL.size || 2];
-  const rows = [['', TL_ROW.dates], [TL.size === 2 ? 'Light' : '', TL_ROW.light], ['Temp', TL_ROW.temp], ...cams.map(c => [c, TL_ROW.lane])].filter(r => r[1]);
+  const sz = TL.drawnSize = tlSz();
+  TL_ROW = TL_ROWS[sz || 2];
+  const rows = [['', TL_ROW.dates], [sz === 2 ? 'Light' : '', TL_ROW.light], ['Temp', TL_ROW.temp], ...cams.map(c => [c, TL_ROW.lane])].filter(r => r[1]);
   TL.trackH = rows.reduce((s, r) => s + r[1], 0) + 6;
   const kinds = Object.entries(TL_KINDS);
   // named bucks seen in the timeline's data, hit-list first
@@ -2387,8 +2437,8 @@ function tlPanel() {
   for (const a of TL.data.animals) if (a.buck) named[a.buck] = named[a.buck] || a.tag === 'target';
   const followable = Object.entries(named).map(([name, target]) => ({ name, target })).sort((a, b) => b.target - a.target || a.name.localeCompare(b.name));
   const opt = (v, label) => `<option value="${esc(v)}" ${v === TL.show ? 'selected' : ''}>${esc(label)}</option>`;
-  const sizeIcon = TL.size ? '<path d="M3.5 6 8 10.5 12.5 6"/>' : '<path d="M3.5 10 8 5.5l4.5 4.5"/>';
-  $('#tl-panel').className = `tl-panel sz-${TL.size}`;
+  const sizeIcon = sz ? '<path d="M3.5 6 8 10.5 12.5 6"/>' : '<path d="M3.5 10 8 5.5l4.5 4.5"/>';
+  $('#tl-panel').className = `tl-panel sz-${sz}`;
   $('#tl-panel').innerHTML = `
     <div class="tl-bar">
       <button class="tl-btn play" id="tl-play" title="Play (space)">${TL_SVG.play}</button>
@@ -2401,7 +2451,7 @@ function tlPanel() {
         ${tlWildSeen().length ? `<optgroup label="Other wildlife">${tlWildSeen().map(([w, n]) => opt(`w:${w}`, `${tlWild(w).plural} (${n})`)).join('')}</optgroup>` : ''}</select>
       <div class="tl-seg" id="tl-ranges">${TL_RANGES.map(([l, d, short]) => `<button data-days="${d}" class="${d === TL.rangeDays ? 'on' : ''}"><span class="long">${l}</span><span class="short">${short}</span></button>`).join('')}</div>
       <button class="tl-btn" id="tl-latest" title="Jump to the newest photo">Latest</button>
-      <button class="tl-btn tl-size" id="tl-size" title="${['Show the timeline', 'Hide the timeline', 'Make the timeline smaller'][TL.size]}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${sizeIcon}</svg></button>
+      <button class="tl-btn tl-size" id="tl-size" title="${['Show the timeline', 'Hide the timeline', 'Make the timeline smaller'][sz]}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${sizeIcon}</svg></button>
     </div>
     <div class="tl-track" id="tl-track" tabindex="0">
       <div class="tl-labels">${rows.map(([r, h]) => `<div style="--h:${h}px">${typeof r === 'string' ? r : `<i style="background:${r.color}"></i>${esc(r.name || r.camera_id)}`}</div>`).join('')}</div>
@@ -2412,7 +2462,7 @@ function tlPanel() {
       <span class="note" id="tl-note"></span></div>`;
   $('#tl-show').onchange = e => tlShow(e.target.value);
   $('#tl-size').onclick = () => {
-    TL.size = (TL.size + 2) % 3;  // full, compact, controls only, then full again
+    TL.size = sz ? sz - 1 : 2;  // full, compact, controls only, then full again
     localStorage.setItem('tlSize', TL.size);
     tlPanel(); TL.onResize(); tlHead(); TL.frame?.();
   };
@@ -2446,7 +2496,7 @@ function tlPanel() {
     hv.style.display = 'block'; hv.style.left = `${x}px`;
     hv.querySelector('span').textContent = tlStamp(xToT(x));
     hv.querySelector('span').style.transform = x > r.width - 130 ? 'translateX(calc(-100% - 12px))' : '';
-    tlHoverIcon(e);
+    if (e.pointerType === 'mouse') tlHoverIcon(e);
   });
   plot.addEventListener('pointerup', () => { dragging = false; });
   plot.addEventListener('pointerleave', () => { $('#tl-hover').style.display = 'none'; $('#tl-card').style.display = 'none'; });

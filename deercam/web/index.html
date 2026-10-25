@@ -894,6 +894,53 @@
   .in-reasons div { font-size:11.5px; background:var(--card); border-radius:9px; padding:4px 9px; color:var(--ink2); } .in-reasons b { color:var(--ink); } .in-reasons em { font-style:normal; font-weight:700; margin-left:4px; }
   .in-reasons .good em { color:var(--good); } .in-reasons .bad em { color:var(--warn); }
   @media (max-width: 1000px) { .intel { grid-template-columns:1fr; } .in-card, .in-best, .in-chart, .in-day, .in-where, .in-conds { grid-column:span 12; } .in-days { display:none; } }
+  /* ---- phones: a simple column. The header is the mark and the essentials; the Map tab becomes "Latest":
+     conditions, the cameras' newest photos and the timeline, no map; Intel's buck list is a row of faces. */
+  @media (max-width: 760px) {
+    header { padding:8px 12px; gap:6px; }
+    .brand span, #job, #season, [data-go="engine"] { display:none !important; }
+    .brand img { width:30px; height:30px; }
+    .hdr-actions { gap:5px; } .hdr-review { height:32px; padding:0 10px; font-size:12.5px; margin-right:0; }
+    .hdr-review .count:not(:empty) { min-width:18px; height:18px; font-size:10.5px; }
+    h1.title { font-size:26px; margin:4px 12px 8px; } h1.title-ico svg { width:36px; height:24px; }
+    #er-sync { font-size:12px; padding:6px 10px; white-space:nowrap; }
+    .er { padding:0 12px 24px; } .er-sub { font-size:13px; }
+    /* Map → Latest */
+    body.tl-on { overflow:auto; padding-bottom:calc(var(--nav-h) + 30px + env(safe-area-inset-bottom)); }
+    #tl { position:static !important; display:flex; flex-direction:column; gap:10px; padding:6px 10px 0; overflow:visible; }
+    #tl-map, .tlm-note { display:none !important; }
+    #tl .tlm-top, #tl .tl-panel { position:static !important; transform:none !important; width:100% !important; max-width:none; max-height:none; overflow:visible; left:auto; right:auto; top:auto; bottom:auto; margin:0; }
+    #tl .tlm-top { display:flex !important; flex-direction:column; gap:10px; align-items:stretch; }
+    #tl .tlm-right { order:1; } #tl .tl-panel { order:2; padding:10px; } #tl .tlm-top:not(.tlm-right) { order:3; }
+    #tl .tlm-strip { width:100% !important; } .tlm-right .tlm-strip + .tlm-strip { margin:0; }
+    body.tl-float .tlm-strip { flex-direction:column; align-items:stretch; padding:5px; border-radius:var(--radius); }
+    body.tl-float .tlm-clock { padding:8px 12px 9px; border-radius:11px; margin-bottom:4px; } body.tl-float .tlm-clock b { font-size:24px; } body.tl-float .tlm-clock span { font-size:10.5px; }
+    body.tl-float .tlm-s { padding:5px 7px; } body.tl-float .tlm-s + .tlm-s { border-top:1px solid var(--g-line); } body.tl-float .tlm-s span, body.tl-float .tlm-s.pr { display:block; }
+    body.tl-float .tlm-sh { display:block; } body.tl-float .tlm-kinds .tlm-sh { display:block; }
+    body.tl-float .tlm-kinds { flex-direction:column; overflow:visible; padding:0; } body.tl-float .tlm-k { width:100%; padding:4px 7px; font-size:12.5px; }
+    body.tl-float .tlm-k em { display:inline; } body.tl-float .tlm-k b { margin-left:auto; } body.tl-float .tlm-bucks { display:block; } body.tl-float .tlm-bucks[hidden], body.tl-float .tlm-kinds[hidden] { display:none; }
+    .tlm-lgrid { grid-template-columns:1fr 1fr; gap:6px; }
+    .tl-track { grid-template-columns:44px 1fr; } .tl-labels div img { width:36px; height:26px; }
+    .tl-foot { padding-left:0; margin-top:8px; } .tl-kinds { gap:2px 0; }
+    .tl-bar { gap:5px; } .tl-span { display:none; } .tl-transport { gap:4px; }
+    body.tl-float .tlm-side { position:fixed; inset:8px 8px auto; top:calc(8px + env(safe-area-inset-top)); z-index:45; width:auto; max-height:calc(100% - 100px); border-radius:18px;
+                              background:var(--g-bg); color:var(--g-ink); backdrop-filter:blur(16px); box-shadow:0 0 0 1px var(--g-line) inset, 0 24px 60px rgba(0,0,0,.6); }
+    body.tl-float .tlm-side .tl-tname { background:rgba(255,255,255,.1); color:#fff; } body.tl-float .tlm-side .tlm-x, body.tl-float .tlm-side .tl-btn { background:rgba(255,255,255,.12); color:#fff; }
+    body.tl-float .tlm-side .tl-btn.play { background:#fff; color:#15171a; }
+    /* Home */
+    .home { padding:4px 10px 0; gap:10px; } .spot-ph img { max-height:230px; } .spot-side { padding:12px 14px; } .spot-when b { font-size:22px; }
+    .hunt { grid-template-columns:1fr; } .home-h { margin:10px 0 6px; }
+    /* Intel */
+    .intel { padding:6px 10px 16px; gap:10px; }
+    .in-list { display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; padding:5px; } .in-list::-webkit-scrollbar { display:none; }
+    .in-list .tlm-sh { display:none; } .in-list .tlm-k { flex:none; width:auto; flex-direction:column; gap:4px; padding:6px 8px; font-size:11px; }
+    .in-list .tlm-k img { width:44px; height:44px; border-radius:50%; } .in-list .tlm-k b { display:none; } .in-list .tlm-k em { max-width:70px; }
+    .in-top { gap:10px; } .in-name img { width:40px; height:40px; } .in-name b { font-size:22px; } .in-name span { font-size:12px; } .in-days { display:none; }
+    .in-grid { gap:10px; } .in-card { padding:12px; }
+    .in-hrow { grid-template-columns:76px 1fr; gap:6px; font-size:11.5px; } .in-hcells { height:22px; }
+    .in-h { flex-wrap:wrap; } .in-chart .in-h span { display:none; }
+    .in-cl-grid { grid-template-columns:1fr; }
+  }
   /* ---- engine room: day-by-day calendar of what came in */
   .er { padding:0 16px 24px; }
   .er-sub { color:var(--ink2); font-size:14px; margin:-4px 0 18px; }
@@ -2643,7 +2690,9 @@ async function tlMapInit() {
   const placed = TL.data.cameras.filter(c => c.lat != null), unplaced = TL.data.cameras.filter(c => c.lat == null);
   // Frame the cameras in the open space between the strip at the top and the timeline (again when the timeline changes size).
   TL.frame = () => {
-    const phone = innerWidth <= 760, panelH = tlMapMetrics(), where = tlWhere();
+    const where = tlWhere();
+    if (!box.clientHeight) { if (!m._loaded) m.setView([where.lat, where.lon], 13); return; }  // hidden (phones): just a view, so markers exist
+    const phone = innerWidth <= 760, panelH = tlMapMetrics();
     const tabs = $('#tabs')?.getBoundingClientRect(), navH = tabs && tabs.top > box.getBoundingClientRect().top ? tabs.height : 0, docked = tlDocked();
     // desktop: the tiles take the left edge and the slider the top, so pad for those and a card's worth
     const H = box.clientHeight, top = docked ? panelH + 60 : $('#tlm-top').offsetHeight + 12 + 70, bottom = (docked ? navH + 10 : panelH) + 40;

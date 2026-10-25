@@ -81,7 +81,7 @@ def embed_bucks(batch_size: int = 16) -> int:
 
 
 def _points(analysis_json: str) -> int | None:
-    rack = json.loads(analysis_json).get("rack") or {}
+    rack = json.loads(analysis_json or "{}").get("rack") or {}
     left, right = rack.get("points_left", -1), rack.get("points_right", -1)
     return left + right if left >= 0 and right >= 0 else None
 
@@ -141,7 +141,7 @@ def _shortlist(unit, gallery: dict[int, list], limit: int | None = None) -> list
         sim = qvecs @ np.stack([_vec(r) for r in refs]).T  # frames x refs
         sims = sim.max(axis=0)  # each reference's best frame
         order = sorted(range(len(refs)), key=lambda i: (
-            -sims[i], QUALITY_RANK.get(json.loads(refs[i]["analysis_json"]).get("image_quality"), 3)))
+            -sims[i], QUALITY_RANK.get(json.loads(refs[i]["analysis_json"] or "{}").get("image_quality"), 3)))
         score = float(sim.max(axis=1).mean())
         ref_pts = [p for p in (_points(r["analysis_json"]) for r in refs) if p is not None]
         if qpts is not None and ref_pts:

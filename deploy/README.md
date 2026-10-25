@@ -26,9 +26,10 @@ DEERCAM_SECRET_KEY=<a new key: python3 -c "import base64,os; print(base64.urlsaf
 ENV
 sh deploy/dev-refresh.sh                                   # first copy of the data
 docker compose -f docker-compose.dev.yml up -d --build
-crontab -e   # add:
-#   */2 * * * * sh /opt/deercam-dev/deploy/dev-update.sh >> /var/log/deercam-dev.log 2>&1
-#   30 4 * * *  sh /opt/deercam-dev/deploy/dev-refresh.sh >> /var/log/deercam-dev.log 2>&1
+cat > /etc/cron.d/deercam-dev <<'CRON'
+*/2 * * * * root sh /opt/deercam-dev/deploy/dev-update.sh >> /var/log/deercam-dev.log 2>&1
+30 4 * * * root sh /opt/deercam-dev/deploy/dev-refresh.sh >> /var/log/deercam-dev.log 2>&1
+CRON
 ```
 
 Then a DNS A record for `dev` pointing at the server, and on the real site

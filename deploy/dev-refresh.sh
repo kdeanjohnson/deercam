@@ -45,10 +45,12 @@ for ranch in sorted(p for p in (prod / "ranches").iterdir() if p.is_dir()):
     out.mkdir(parents=True, exist_ok=True)
     copy_db(ranch / "deercam.db", out / "deercam.db").close()
     settings = out / "settings.json"
-    s = json.loads(settings.read_text()) if settings.exists() else {
-        k: v for k, v in json.loads((ranch / "settings.json").read_text()).items() if k not in SECRETS}
+    if settings.exists():
+        s = json.loads(settings.read_text())
+    else:
+        s = {k: v for k, v in json.loads((ranch / "settings.json").read_text()).items() if k not in SECRETS}
+        s["ai_monthly_limit"] = 10
     s["sync_interval_hours"] = 0
-    s.setdefault("ai_monthly_limit", 10)
     settings.write_text(json.dumps(s, indent=2))
     print("copied", ranch.name)
 EOF

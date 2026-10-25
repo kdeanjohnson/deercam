@@ -8,3 +8,10 @@
 www.{$DEERCAM_DOMAIN} {
 	redir https://{$DEERCAM_DOMAIN}{uri} permanent
 }
+
+# The shared dev site (docker-compose.dev.yml, deploy/README.md). Needs a dev DNS record; until the dev
+# container runs, only this name answers with an error.
+dev.{$DEERCAM_DOMAIN} {
+	encode gzip
+	reverse_proxy deercam-dev:8600
+}

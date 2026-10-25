@@ -106,7 +106,7 @@ def visits(sightings: list[dict]) -> list[dict]:
             "hour": first["local"].hour if first["local"] else None,
             "minutes": round((v[-1]["utc"] - first["utc"]).total_seconds() / 60),
             "light": best["light"], "light_label": best["light_label"], "approx": first["approx"],
-            "photos": len(v), "detection_id": rep["id"], "crop": rep["crop"], "photo": rep["photo"],
+            "photos": len(v), "detection_id": rep["id"], "ids": [s["id"] for s in v], "crop": rep["crop"], "photo": rep["photo"],
             "wind": first["wind"], "temp": first["temp"], "moon": first["moon"], "pressure": first["pressure"],
         })
     result.sort(key=lambda v: v["start"], reverse=True)

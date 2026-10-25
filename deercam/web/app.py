@@ -9,7 +9,7 @@ import logging
 import queue
 import threading
 import time
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
 import numpy as np
@@ -1157,7 +1157,59 @@ def home(season: str | None = None):
                   "photo": f"/media/{best['photo_path']}" if best else None,
                   "rack": json.loads(best["analysis_json"] or "{}").get("rack") if best else None}
     recent = [v for v in feed(season=season, limit=400) if v["buck_id"] is not None and not v["generic"]]
-    return {"bucks": named, "recent": recent[:6]}
+    with db.session() as conn:
+        unusual = _unusual_wildlife(conn)
+    return {"bucks": named, "recent": recent[:6], "unusual": unusual, "wildlife": wildlife.listing()}
+
+
+RARE_SHARE = 0.10  # an animal is unusual here when it's at most this share of all the non-deer visits
+
+
+def _unusual_wildlife(conn, days: int = 14, limit: int = 6) -> list[dict]:
+    """Recent visits by animals other than deer that seldom show up here, rarest first. Rarity is how
+    few of all the non-deer visits ever (one animal at one camera, gaps under half an hour) were that
+    kind of animal: a bobcat seen 3 times beats the turkeys seen 200 times."""
+    rows = conn.execute(
+        """SELECT d.id, NULL AS buck_id, d.crop_path, d.x1, d.y1, d.x2, d.y2, d.animal, d.analysis_json, p.photo_id,
+                  p.path AS photo_path, p.taken_utc, season(p.taken_utc) AS season, p.meta_json, p.weather_json,
+                  p.camera_id, c.name AS camera, c.lat, c.lon
+           FROM detections d JOIN photos p USING(photo_id) LEFT JOIN cameras c USING(camera_id)
+           WHERE d.species='other' AND d.status <> 'too_small'""").fetchall()
+    fallback = patterns._fallback_location(conn)
+    sightings, labels = [], {}
+    for r in rows:
+        name = (json.loads(r["analysis_json"] or "{}").get("other_species") or "").strip()
+        key = r["animal"] or wildlife.classify(name)
+        if key == "other":  # not on the list: tell them apart by the AI's name, if it gave one
+            if not name or "unknown" in name.lower():
+                continue
+            key = f"other:{name.lower()}"
+            labels[key] = name[:1].upper() + name[1:]
+        s = patterns.annotate(r, fallback)
+        s["buck_id"] = key  # visits() groups by this
+        sightings.append(s)
+    vs = patterns.visits(sightings)
+    if not vs:
+        return []
+    counts = {}
+    for v in vs:
+        counts[v["buck_id"]] = counts.get(v["buck_id"], 0) + 1
+    kinds = {k["key"]: k["label"] for k in wildlife.listing()}
+    since = datetime.fromisoformat(max(v["start"] for v in vs)) - timedelta(days=days)
+    out, recent = {}, {}
+    for v in vs:  # newest first: each animal's latest visit, and how many it made lately
+        key, n = v["buck_id"], counts[v["buck_id"]]
+        if datetime.fromisoformat(v["start"]) < since or n / len(vs) > RARE_SHARE:
+            continue
+        recent[key] = recent.get(key, 0) + 1
+        if key in out:
+            continue
+        before = [w for w in vs if w["buck_id"] == key and w["start"] < v["start"]]
+        out[key] = v | {"key": key, "label": labels.get(key) or kinds.get(key, key), "seen": n, "of": len(vs),
+                        "nth": len(before) + 1, "prev": before[0]["local"] if before else None}
+    out = [v | {"recent": recent[k]} for k, v in out.items()]
+    out.sort(key=lambda v: (v["seen"], -datetime.fromisoformat(v["start"]).timestamp()))
+    return out[:limit]
 
 
 @app.get("/api/detections/{det_id}/candidates")

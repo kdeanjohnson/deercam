@@ -103,6 +103,10 @@
   .who img { width:28px; height:28px; border-radius:50%; object-fit:cover; }
   .who.unk { padding-left:12px; color:var(--accent); }
   .who.grp { color:var(--ink2); }
+  .who.rare { color:#0f7a5c; font-size:13px; font-weight:700; cursor:default; }
+  .post .info.rare-how { padding-top:2px; font-size:12.5px; align-items:center; }
+  .rare-fix { font-size:12px; color:var(--ink2); border:0; background:var(--soft); border-radius:12px; padding:3px 8px; max-width:130px; }
+  body.role-viewer .rare-fix { display:none; }
   .count-pill { position:absolute; right:12px; bottom:12px; background:rgba(0,0,0,.6); color:#fff; font-size:12px; border-radius:10px; padding:2px 8px; }
   .post .info { display:flex; justify-content:space-between; gap:10px; padding:8px 16px 0; font-size:13px; color:var(--ink2); }
 
@@ -917,7 +921,11 @@ const hr = h => `${h % 12 || 12} ${h < 12 ? 'AM' : 'PM'}`;
 const hourRange = (a, b) => hr(a).slice(-2) === hr(b).slice(-2) ? `${hr(a).slice(0, -3)}–${hr(b)}` : `${hr(a)}–${hr(b)}`;
 
 async function showHome() {
-  const [{ bucks: named, recent }, st] = await Promise.all([api(`/api/home?season=${season()}`), refreshCounts()]);
+  const [{ bucks: named, recent, unusual, wildlife: kinds }, st] = await Promise.all([api(`/api/home?season=${season()}`), refreshCounts()]);
+  rareKinds = kinds || [];
+  const rare = unusual?.length ? `<div class="pad"><h3>Unusual visitors</h3>
+      <div class="meta" style="margin:-4px 0 12px">The last two weeks’ animals other than deer that seldom show up here, rarest first.</div></div>
+    <div class="feed">${unusual.map(rarePost).join('')}</div>` : '';
   const targets = named.filter(b => b.tag === 'target');
   // Hit list bucks lead; until there are some, every named buck that isn't a let-walk does.
   const lead = targets.length ? targets : named.filter(b => b.tag !== 'pass' && !b.absent);
@@ -926,8 +934,8 @@ async function showHome() {
   if (!named.length) {
     $('#main').innerHTML = `<h1 class="title">Your bucks</h1>
       <div class="pad"><div class="hint">No named bucks yet. Name the ones you're after in Review, tag them ★ Hit list, and this page will follow them.</div></div>
-      ${nudge}<button class="link morelink" data-go="feed">All sightings ›</button>`;
-    return;
+      ${nudge}${rare}<button class="link morelink" data-go="feed">All sightings ›</button>`;
+    return bindRareFix();
   }
   $('#main').innerHTML = `<h1 class="title">${targets.length ? 'Hit list' : 'Your bucks'}</h1>
     ${targets.length ? '' : `<div class="pad"><div class="hint" style="margin-top:0">Tag the bucks you're after ★ Hit list on their page and they'll lead here.</div></div>`}
@@ -939,7 +947,33 @@ async function showHome() {
         <small>${b.absent ? 'Not seen yet' : b.tag ? TAGS[b.tag] : `${b.daylight} daylight`}</small></button>`).join('')}</div></div>` : ''}
     <button class="link morelink" data-go="bucks">All bucks and auto-groups ›</button>
     ${recent.length ? `<div class="pad"><h3>Latest from your bucks</h3></div><div class="feed">${recent.map(post_).join('')}</div>` : ''}
+    ${rare}
     <button class="link morelink" data-go="feed">All sightings ›</button>`;
+  bindRareFix();
+}
+function bindRareFix() {
+  $$('.rare-fix').forEach(sel => sel.onchange = async () => {
+    if (!sel.value) return;
+    sel.disabled = true;
+    try { for (const id of sel.dataset.ids.split(',')) await post(`/api/detections/${id}/animal`, { animal: sel.value }); }
+    catch (err) { sel.disabled = false; toast(err.detail || 'Not saved'); return; }
+    toast('Fixed'); showHome();
+  });
+}
+
+// A rare visitor: what it is, how seldom it comes, and when the one before was. A rare one is where a
+// wrong call shows, so it can be fixed right here (all the visit's photos at once).
+let rareKinds = [];
+function rarePost(v) {
+  const fix = `<select class="rare-fix" data-ids="${v.ids.join(',')}" title="Fix what it is"><option value="">Wrong animal?</option>
+    ${[{ key: 'deer', label: 'Deer' }, ...rareKinds].map(w => `<option value="${w.key}">${esc(w.label)}</option>`).join('')}</select>`;
+  const how = v.seen === 1 ? 'The only one seen here'
+    : v.recent > 1 ? `${v.recent} visits lately, ${v.seen} ever` : `${v.seen} visits ever${v.prev ? ` · the one before: ${esc(when(v.prev))}` : ''}`;
+  const length = v.photos > 1 ? `${v.photos} photos${v.minutes ? ` · ${v.minutes} min` : ''}` : '';
+  return `<article class="post"><div class="ph">${zoomImg(v.crop, v.photo)}<span class="who unk rare">${esc(v.label)}</span>
+      ${length ? `<span class="count-pill">${length}</span>` : ''}</div>
+    <div class="info"><span>${esc(v.camera)} · ${esc(when(v.local))}</span>${lightTag(v.light, v.light_label)}</div>
+    <div class="info rare-how"><span>${how}</span>${fix}</div></article>`;
 }
 
 function huntCard(b) {

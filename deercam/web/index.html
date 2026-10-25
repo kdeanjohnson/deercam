@@ -143,6 +143,18 @@
   .hside { background:var(--soft); border-radius:var(--radius); padding:12px 14px; }
   .hside-h { font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink2); margin-bottom:8px; }
   .hside .link { margin-top:6px; }
+  /* the radar */
+  .radar .hside-h { display:flex; align-items:center; } .radar .hside-h .r { margin-left:auto; }
+  .rr { display:inline-flex; gap:2px; background:var(--soft2); border-radius:9px; padding:2px; }
+  .rr button { border:0; background:none; color:var(--ink2); font:inherit; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:7px; cursor:pointer; text-transform:none; letter-spacing:0; }
+  .rr button.on { background:var(--ink); color:var(--on-ink); }
+  .radar-box { position:relative; aspect-ratio:1; border-radius:50%; overflow:hidden; background:radial-gradient(circle, #16251d 0%, #0d1512 70%, #0a0f0d 100%); box-shadow:0 0 0 1px rgba(90,165,120,.25) inset, 0 0 40px rgba(90,165,120,.08); }
+  .radar-box svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .radar-sweep { position:absolute; inset:1%; border-radius:50%; background:conic-gradient(from 0deg, rgba(90,220,140,.55) 0deg, rgba(90,220,140,.12) 40deg, transparent 90deg); animation:radar-spin var(--period, 8s) linear infinite; mix-blend-mode:screen; }
+  @keyframes radar-spin { to { transform:rotate(360deg); } }
+  .blip { animation:blip-pulse var(--period, 8s) linear infinite; }
+  @keyframes blip-pulse { 0% { filter:drop-shadow(0 0 4px var(--k)) brightness(1.6); } 12% { filter:drop-shadow(0 0 0 transparent) brightness(1); } 100% { filter:none; } }
+  .radar-key { display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:8px; font-size:12px; } .radar-key span { display:inline-flex; align-items:center; gap:4px; } .radar-key svg { width:15px; height:15px; } .radar-key b { color:var(--ink); }
   .hcam { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; font-weight:600; }
   .hcam > svg { width:13px; height:16px; flex:none; color:var(--ink); }
   .hcam > span:first-of-type { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -930,6 +942,7 @@
     /* Home */
     .home { padding:4px 10px 0; gap:10px; } .spot-ph img { max-height:230px; } .spot-side { padding:12px 14px; } .spot-when b { font-size:22px; }
     .hunt { grid-template-columns:1fr; } .home-h { margin:10px 0 6px; }
+    .home-side { order:-1; } .radar-box { max-width:360px; margin:0 auto; }
     /* Intel */
     .intel { padding:6px 10px 16px; gap:10px; }
     .in-list { display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; padding:5px; } .in-list::-webkit-scrollbar { display:none; }
@@ -1383,6 +1396,54 @@ function huntStrip(name, tl) {
     ${axis}${marks}
     <line x1="${X(t1)}" y1="${top - 2}" x2="${X(t1)}" y2="${top + bh + 2}" stroke="#fff" stroke-width="1.5"/></svg>`;
 }
+// The radar: every animal the cameras saw lately, as a blip. Direction is the camera's real bearing
+// from the middle of the cameras; distance is how long ago (rings at now, 1 h, 6 h, 12 h and the edge of
+// the range). A green sweep goes round and lights each blip as it passes. Sightings at one camera within
+// ten minutes share a blip, with a count.
+const RADAR_BANDS = { 12: [0, 1, 3, 6, 12], 24: [0, 1, 6, 12, 24], 48: [0, 6, 12, 24, 48] };
+let radarRange = Number(localStorage.getItem('radarRange')) || 24;
+function homeRadar(tl) {
+  if (!tl || !tl.animals?.length) return '';
+  const placed = tl.cameras.map((c, i) => ({ ...c, i })).filter(c => c.lat != null);
+  if (!placed.length) return '';
+  const cx = placed.reduce((a, c) => a + c.lat, 0) / placed.length, cy = placed.reduce((a, c) => a + c.lon, 0) / placed.length;
+  const ang = {}; placed.forEach(c => { ang[c.i] = bearing(cx, cy, c.lat, c.lon); });
+  // several cameras can share a bearing from the middle: spread any within 25° of each other
+  const order = placed.map(c => c.i).sort((a, b) => ang[a] - ang[b]);
+  for (let k = 1; k < order.length; k++) { const d = ang[order[k]] - ang[order[k - 1]]; if (d < 25) ang[order[k]] = ang[order[k - 1]] + 25; }
+  const bands = RADAR_BANDS[radarRange], now = Date.now(), R = 100, rings = bands.length - 1;
+  const rOf = hAgo => { let i = 0; while (i < rings && hAgo > bands[i + 1]) i++; if (i >= rings) return R; const a = bands[i], b = bands[i + 1]; return (i + (hAgo - a) / (b - a)) / rings * R; };
+  const blips = [];
+  // only animals we can name a kind for; the not-yet-labeled ones would swamp the screen
+  const recent = tl.animals.filter(a => a.cam != null && ang[a.cam] != null && now - a.t <= radarRange * 3600e3 && a.kind !== 'animal').sort((a, b) => b.t - a.t);
+  for (const a of recent) {
+    const b = blips.find(x => x.cam === a.cam && Math.abs(x.t - a.t) < 10 * 60e3);
+    if (b) { b.n++; if (TL_KINDS[a.kind].rank > TL_KINDS[b.kind].rank) { b.kind = a.kind; b.name = a.buck || ''; } continue; }
+    blips.push({ cam: a.cam, t: a.t, kind: a.kind, n: 1, name: a.buck || '' });
+  }
+  const pt = (deg, r) => { const th = (deg - 90) * Math.PI / 180; return [R + r * Math.cos(th), R + r * Math.sin(th)]; };
+  const period = 8;  // seconds per sweep
+  // each camera's blips fan across a 36° wedge so they don't stack into a line
+  const perCam = {}; blips.forEach(b => (perCam[b.cam] ??= []).push(b));
+  for (const list of Object.values(perCam)) list.forEach((b, i) => { b.off = list.length === 1 ? 0 : -18 + 36 * i / (list.length - 1); });
+  const blipSvg = blips.map(b => {
+    const h = (now - b.t) / 3600e3, r = Math.min(R - 6, 8 + rOf(h) * .9), [x, y] = pt(ang[b.cam] + b.off, r), k = TL_KINDS[b.kind];
+    const delay = -((360 - ang[b.cam]) % 360) / 360 * period;  // lit when the sweep comes round to it
+    return `<g class="blip" style="--k:${k.color};animation-delay:${delay.toFixed(2)}s" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})">
+      <title>${esc(b.name || k.label)}${b.n > 1 ? ` ×${b.n}` : ''} · ${esc(tl.cameras[b.cam].name || '')} · ${h < 1 ? `${Math.max(1, Math.round(h * 60))} min` : `${h.toFixed(h < 10 ? 1 : 0)} h`} ago</title>
+      <circle r="5.2" fill="${k.color}" opacity=".95"/><g transform="translate(-3.4 -3.4) scale(.28)" color="#0f1312">${TL_SVG[b.kind].replace('<svg', '<svg width="24" height="24"')}</g>
+      ${b.n > 1 ? `<text x="6" y="-5" font-size="5.5" font-weight="800" fill="#fff">${b.n > 9 ? '9+' : b.n}</text>` : ''}</g>`;
+  }).join('');
+  const labels = placed.map(c => { const [x, y] = pt(ang[c.i], R); const [lx, ly] = pt(ang[c.i], R - 9); const anchor = lx < R - 8 ? 'start' : lx > R + 8 ? 'end' : 'middle';
+    return `<line x1="${R}" y1="${R}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="rgba(90,165,120,.16)" stroke-width=".6"/><text x="${lx.toFixed(1)}" y="${(ly + 2).toFixed(1)}" font-size="5.2" font-weight="700" letter-spacing=".04em" fill="rgba(255,255,255,.6)" text-anchor="${anchor}">${esc((c.name || c.camera_id).toUpperCase())}</text>`; }).join('');
+  const ringSvg = bands.slice(1).map((h, i) => { const r = (i + 1) / rings * R; return `<circle cx="${R}" cy="${R}" r="${r.toFixed(1)}" fill="none" stroke="rgba(90,165,120,${i === rings - 1 ? .45 : .22})" stroke-width=".8"/><text x="${R + 2}" y="${(R - r + 6).toFixed(1)}" font-size="5" fill="rgba(90,165,120,.8)">${h}h</text>`; }).join('');
+  const kinds = {}; for (const b of blips) kinds[b.kind] = (kinds[b.kind] || 0) + b.n;
+  return `<div class="hside radar"><div class="hside-h">Radar <span class="r"><span class="rr">${[12, 24, 48].map(h => `<button class="${h === radarRange ? 'on' : ''}" data-radar="${h}">${h}h</button>`).join('')}</span></span></div>
+    <div class="radar-box" style="--period:${period}s"><div class="radar-sweep"></div>
+      <svg viewBox="-2 -2 ${R * 2 + 4} ${R * 2 + 4}"><circle cx="${R}" cy="${R}" r="${R}" fill="rgba(20,40,30,.55)" stroke="rgba(90,165,120,.5)" stroke-width="1"/>
+        ${ringSvg}${labels}<circle cx="${R}" cy="${R}" r="2.2" fill="#5aa578"/>${blipSvg}</svg></div>
+    <div class="radar-key">${Object.entries(kinds).sort((a, b) => TL_KINDS[b[0]].rank - TL_KINDS[a[0]].rank).map(([k, n]) => `<span style="color:${TL_KINDS[k].color}">${TL_SVG[k]}<b>${n}</b></span>`).join('') || '<span class="meta">Nothing in range</span>'}</div></div>`;
+}
 // The cameras on the Home page: each one's last photo, signal and battery.
 function homeCams(tl, health) {
   if (!tl || !tl.cameras?.length) return '';
@@ -1441,6 +1502,7 @@ async function showHome() {
       <div class="home-h">${targets.length ? 'Hit list' : 'Your bucks'}${targets.length ? '' : ' <span class="meta">tag the bucks you’re after ★ on their page</span>'}</div>
       <div class="hunt">${lead.slice(0, 3).map(b => huntCard(b, cams, tl)).join('')}</div>
     </div><aside class="home-side">
+      ${homeRadar(tl)}
       ${homeCams(tl, health?.cameras)}
       ${pick && tl ? `<div class="hside"><div class="hside-h">${esc(pick.buck)} · last 48 hours</div>${huntStrip(pick.buck, tl)}</div>` : ''}
       ${rare}
@@ -1449,6 +1511,7 @@ async function showHome() {
         <button class="link" data-go="bucks">All bucks ›</button></div>` : ''}
     </aside></div>`;
   bindRareFix();
+  $('#main').addEventListener('click', e => { const b = e.target.closest('[data-radar]'); if (!b) return; radarRange = Number(b.dataset.radar); localStorage.setItem('radarRange', radarRange); $('.radar').outerHTML = homeRadar(tl); });
 }
 function bindRareFix() {
   $$('.rare-fix').forEach(sel => sel.onchange = async () => {

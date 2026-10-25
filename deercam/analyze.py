@@ -23,6 +23,13 @@ def local_time(meta_json: str | None) -> str:
     return datetime.strptime(ts, "%m%d%Y%H%M%S").strftime("%b %d %Y %I:%M %p")
 
 
+def _passing(e: Exception) -> bool:
+    """A provider error that's no fault of the crop (no credit left, rate limit, outage, timeout), so it's
+    worth trying again on the next run."""
+    status = getattr(e, "status_code", None)
+    return status in (408, 409, 429) or (status or 0) >= 500 or type(e).__name__ in ("APIConnectionError", "APITimeoutError")
+
+
 def analyze(limit: int | None = None, workers: int = 6) -> int:
     """The first look at every new crop, with the cheaper model: species, sex, rack."""
     provider = get_provider(fast=True)
@@ -52,6 +59,8 @@ def analyze(limit: int | None = None, workers: int = 6) -> int:
                 continue
             except Exception as e:
                 log.warning("detection %s failed: %s", row["id"], e)
+                if _passing(e):  # left 'new' too: out of credit, rate limited or the service is down
+                    continue
                 conn.execute("UPDATE detections SET status='error', analysis_json=? WHERE id=?",
                              (db.dumps({"error": str(e)}), row["id"]))
                 continue

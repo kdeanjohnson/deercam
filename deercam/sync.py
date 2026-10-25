@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -61,21 +62,23 @@ def _pull(conn, client, photos, full: bool, cutoff: datetime | None, zips: dict)
     """Save the new photos from one newest-first stream."""
     added = 0
     known_streak = 0
-    offset = None  # camera clock minus UTC, from the newest photo that has both
+    offsets = {}  # camera id -> its clock minus UTC, from its newest photo that has both
     for p in photos:
         # Some camera models omit photoDateUtc. They still send their own clock (photoTimestamp, local
-        # time), so convert that with the UTC offset seen on photos that do carry UTC. The upload time
-        # is only a last resort: these cameras can upload in batches hours after capture.
+        # time). A camera's clock offset is its own: it's taken from that camera's photos that do carry
+        # UTC. Otherwise the upload time stands in for now, and fix_times() works the camera's offset
+        # out from its fastest uploads once the photos are saved.
         local = camera_clock(p)
+        p["uploaded"] = p.get("createdTimestamp")
         if z := place.zip_of(p.get("weatherRecordId")):
             zips[z] = zips.get(z, 0) + 1
         if p.get("photoDateUtc"):
             taken = datetime.fromisoformat(p["photoDateUtc"].replace("Z", "+00:00"))
             p["utcSource"] = "reveal"
             if local:
-                offset = local - taken
-        elif local and offset is not None:
-            taken, p["utcSource"] = local - offset, "camera_clock"
+                offsets[p["cameraId"]] = local - taken
+        elif local and p["cameraId"] in offsets:
+            taken, p["utcSource"] = local - offsets[p["cameraId"]], "camera_clock"
         else:
             taken = datetime.fromtimestamp(p["createdTimestamp"] / 1000, timezone.utc)
             p["utcSource"] = "upload"
@@ -84,7 +87,12 @@ def _pull(conn, client, photos, full: bool, cutoff: datetime | None, zips: dict)
             break
         if p.get("photoType", "photo") != "photo":
             continue  # videos etc.
-        if conn.execute("SELECT 1 FROM photos WHERE photo_id=?", (p["photoId"],)).fetchone():
+        if known := conn.execute("SELECT meta_json FROM photos WHERE photo_id=?", (p["photoId"],)).fetchone():
+            # Photos saved before upload times were kept get theirs now (fix_times() reads them).
+            meta = json.loads(known["meta_json"] or "{}")
+            if meta.get("uploaded") is None and p.get("uploaded") is not None:
+                meta["uploaded"] = p["uploaded"]
+                conn.execute("UPDATE photos SET meta_json=? WHERE photo_id=?", (db.dumps(meta), p["photoId"]))
             known_streak += 1
             if not full and known_streak >= 100:
                 break
@@ -106,7 +114,7 @@ def _pull(conn, client, photos, full: bool, cutoff: datetime | None, zips: dict)
                 p["photoId"], p["cameraId"], p["photoDateUtc"], p.get("minutesSinceMidnight"),
                 dest.relative_to(settings.data_dir).as_posix(),
                 db.dumps(p.get("weatherRecord")),
-                db.dumps({k: p.get(k) for k in ("metadata", "hdPhoto", "hardwareVersion", "photoTimestamp", "utcSource", "weatherRecordId")}),
+                db.dumps({k: p.get(k) for k in ("metadata", "hdPhoto", "hardwareVersion", "photoTimestamp", "utcSource", "weatherRecordId", "uploaded")}),
             ),
         )
         added += 1
@@ -126,46 +134,86 @@ def camera_clock(meta: dict) -> datetime | None:
 
 
 def fix_times(conn) -> int:
-    """Re-time photos whose UTC came from the upload time, using the camera clock and the UTC offset of
-    the nearest-in-time photo that had a real UTC from Reveal (so daylight-saving changes are followed).
-    Idempotent. Photos saved before utcSource existed count as real UTC when camera clock minus UTC is
-    an exact multiple of 15 minutes, which an upload time essentially never is."""
+    """Re-time photos that came without a UTC time from Reveal, from their camera's own clock and that
+    camera's own clock offset (camera clock minus UTC), worked out in this order:
+
+    1. The camera's photos that do carry UTC: the nearest one in time, so daylight saving is followed.
+    2. The camera's upload times: a photo is uploaded after it's taken, so camera clock minus upload
+       time is at most the offset, and the camera's fastest uploads (within 3 days, again for daylight
+       saving) pin it down. Used when that bound sits within 10 minutes of a whole quarter hour.
+    3. Another camera's offset, nearest in time, as a last resort (marked "camera_clock_shared").
+
+    Idempotent; returns how many photos changed. Photos saved before utcSource existed count as real
+    UTC when camera clock minus UTC is a whole number of quarter hours within an hour (one DST shift)
+    of the usual offset, which an upload time almost never is."""
     import bisect
     import json
-    exact, todo = [], []
-    for r in conn.execute("SELECT photo_id, taken_utc, meta_json FROM photos").fetchall():
+    from collections import defaultdict
+    rows = []
+    for r in conn.execute("SELECT photo_id, camera_id, taken_utc, meta_json FROM photos").fetchall():
         meta = json.loads(r["meta_json"]) if r["meta_json"] else {}
         local = camera_clock(meta)
-        if local is None:
-            continue
-        taken = datetime.fromisoformat(r["taken_utc"].replace("Z", "+00:00"))
+        if local is not None:
+            taken = datetime.fromisoformat(r["taken_utc"].replace("Z", "+00:00"))
+            rows.append((r["photo_id"], r["camera_id"], local, taken, meta))
+    if not rows:
+        return 0
+    legacy = [(local - taken).total_seconds() for _, _, local, taken, meta in rows
+              if meta.get("utcSource") is None and (local - taken).total_seconds() % 900 == 0]
+    typical = sorted(legacy)[len(legacy) // 2] if legacy else None
+    exact = defaultdict(list)    # camera -> [(utc seconds, offset seconds)] from Reveal's UTC
+    bounds = defaultdict(list)   # camera -> [(camera clock seconds, clock minus upload seconds)]
+    todo = []
+    for photo_id, cam, local, taken, meta in rows:
         diff = (local - taken).total_seconds()
         src = meta.get("utcSource")
-        if src == "reveal" or (src is None and diff % 900 == 0):
-            exact.append((taken.timestamp(), diff, r["photo_id"], local, meta, src))
-        elif src != "camera_clock":
-            todo.append((r["photo_id"], local, meta))
-    if not exact:
-        return 0
-    # An upload time can land on a whole quarter hour by chance (about 1 in 900). Keep legacy rows only
-    # when they sit within an hour (one DST shift) of the usual offset.
-    typical = sorted(e[1] for e in exact)[len(exact) // 2]
-    todo += [(e[2], e[3], e[4]) for e in exact if e[5] is None and abs(e[1] - typical) > 3600]
-    exact = [e[:2] for e in exact if e[5] is not None or abs(e[1] - typical) <= 3600]
-    if not todo:
-        return 0
-    exact.sort()
-    times = [e[0] for e in exact]
-    for photo_id, local, meta in todo:
-        guess = local.timestamp() - typical
-        i = bisect.bisect_left(times, guess)
-        near = min((j for j in (i - 1, i) if 0 <= j < len(exact)), key=lambda j: abs(times[j] - guess))
-        taken = local - timedelta(seconds=exact[near][1])
-        meta["utcSource"] = "camera_clock"
-        conn.execute("UPDATE photos SET taken_utc=?, meta_json=? WHERE photo_id=?",
-                     (taken.strftime("%Y-%m-%dT%H:%M:%S.000Z"), db.dumps(meta), photo_id))
+        if src == "reveal" or (src is None and diff % 900 == 0 and typical is not None and abs(diff - typical) <= 3600):
+            exact[cam].append((taken.timestamp(), diff))
+        else:
+            todo.append((photo_id, cam, local, taken, meta))
+        if meta.get("uploaded"):
+            bounds[cam].append((local.timestamp(), local.timestamp() - meta["uploaded"] / 1000))
+    for v in (*exact.values(), *bounds.values()):
+        v.sort()
+    every = sorted(e for v in exact.values() for e in v)
+    # rough offset, only to look up the right moment in the UTC-keyed lists below
+    rough = sorted(e[1] for e in every)[len(every) // 2] if every else (typical or 0)
+
+    def nearest(series, at):
+        i = bisect.bisect_left(series, (at,))
+        return min((series[j] for j in (i - 1, i) if 0 <= j < len(series)), key=lambda e: abs(e[0] - at), default=None)
+
+    def from_uploads(cam, at):
+        b = bounds.get(cam)
+        if not b:
+            return None
+        lo, hi = bisect.bisect_left(b, (at - 3 * 86400,)), bisect.bisect_right(b, (at + 3 * 86400, float("inf")))
+        best = max((x[1] for x in b[lo:hi]), default=None)
+        if best is None:
+            return None
+        q = -(-(best - 60) // 900) * 900  # the whole quarter hour at or just above the bound
+        return q if q - best <= 600 else None
+
+    changed = 0
+    for photo_id, cam, local, taken, meta in todo:
+        at = local.timestamp()
+        own = nearest(exact.get(cam, []), at - rough)
+        if own:
+            off, src = own[1], "camera_clock"
+        elif (off := from_uploads(cam, at)) is not None:
+            src = "camera_clock_upload"
+        elif other := nearest(every, at - rough):
+            off, src = other[1], "camera_clock_shared"
+        else:
+            continue
+        new = local - timedelta(seconds=off)
+        if new != taken or meta.get("utcSource") != src:
+            meta["utcSource"] = src
+            conn.execute("UPDATE photos SET taken_utc=?, meta_json=? WHERE photo_id=?",
+                         (new.strftime("%Y-%m-%dT%H:%M:%S.000Z"), db.dumps(meta), photo_id))
+            changed += 1
     conn.commit()
-    return len(todo)
+    return changed
 
 
 def store_gps(conn, cams: list[dict]) -> None:

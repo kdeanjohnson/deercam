@@ -78,6 +78,7 @@ MIGRATIONS = [
     ("bucks", "status_note", "TEXT"),
     ("bucks", "tag", "TEXT"),
     ("cameras", "lat", "REAL"),
+    ("cameras", "heading", "REAL"),  # which way the camera faces, degrees clockwise from north; null = unknown
     ("cameras", "lon", "REAL"),
     ("cameras", "location_source", "TEXT"),
     ("detections", "animal", "TEXT"),

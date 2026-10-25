@@ -15,6 +15,7 @@ from typing import Literal
 import numpy as np
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from PIL import Image
 from pydantic import BaseModel
 
@@ -1288,7 +1289,7 @@ def sightings_map(season: str | None = None, buck_id: int | None = None):
     """Cameras with their location and who's been seen there (named bucks only)."""
     with db.session() as conn:
         cams = {r["camera_id"]: dict(r) | {"visits": 0, "daylight": 0, "bucks": {}}
-                for r in conn.execute("SELECT camera_id, name, lat, lon, location_source FROM cameras ORDER BY name")}
+                for r in conn.execute("SELECT camera_id, name, lat, lon, heading, location_source FROM cameras ORDER BY name")}
         names = {r["id"]: (r["name"], r["tag"]) for r in conn.execute("SELECT id, name, tag FROM bucks WHERE generic=0")}
         vs = [v for v in patterns.load_visits(conn, buck_id=buck_id, season=_season(season)) if v["buck_id"] in names]
     for v in vs:
@@ -1325,6 +1326,23 @@ def set_location(camera_id: str, body: Location):
             raise HTTPException(404, "no such camera")
         db.save_pins(conn)
     place.refresh_region_soon()
+    return {"ok": True}
+
+
+class Heading(BaseModel):
+    heading: float | None = None  # degrees clockwise from north; None: unknown
+
+
+@app.post("/api/cameras/{camera_id}/heading")
+@needs("owner")
+def set_heading(camera_id: str, body: Heading):
+    """Which way the camera faces, for the view cone on the map."""
+    h = None if body.heading is None else body.heading % 360
+    with db.session() as conn:
+        n = conn.execute("UPDATE cameras SET heading=? WHERE camera_id=?", (h, camera_id)).rowcount
+        if not n:
+            raise HTTPException(404, "no such camera")
+        db.save_pins(conn)
     return {"ok": True}
 
 
@@ -1386,6 +1404,38 @@ def _camera_local_ms(meta: dict) -> int | None:
         return None
 
 
+@app.get("/api/camera-health")
+@needs("viewer")
+def camera_health(days: int = 30):
+    """How each camera is doing, photo by photo, for the Timeline's camera cards: battery %, signal bars
+    and how long the photo took to reach Reveal (cameras that batch their uploads show up here), plus
+    the camera's hardware version. Same window as /api/timeline. Rows are [taken ms, battery, signal,
+    upload delay in seconds]; Reveal leaves any of the last three out sometimes, so they can be null."""
+    def num(v):
+        try:
+            return int(float(v))
+        except (TypeError, ValueError):
+            return None
+
+    with db.session() as conn:
+        latest = conn.execute("SELECT MAX(taken_utc) FROM photos").fetchone()[0]
+        if not latest:
+            return {"cameras": {}}
+        since = datetime.fromtimestamp(_epoch_ms(latest) / 1000 - days * 86_400, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+        rows = conn.execute("SELECT camera_id, taken_utc, meta_json FROM photos WHERE taken_utc >= ? ORDER BY taken_utc",
+                            (since,)).fetchall()
+    cams = {}
+    for r in rows:
+        meta = json.loads(r["meta_json"]) if r["meta_json"] else {}
+        md, t = meta.get("metadata") or {}, _epoch_ms(r["taken_utc"])
+        up = meta.get("uploaded")
+        c = cams.setdefault(r["camera_id"], {"hardware": None, "photos": []})
+        c["hardware"] = meta.get("hardwareVersion") or c["hardware"]
+        c["photos"].append([t, num(md.get("batteryLevel")), num(md.get("signal")),
+                            max(0, round((up - t) / 1000)) if isinstance(up, (int, float)) else None])
+    return {"cameras": cams}
+
+
 @app.get("/api/timeline")
 @needs("viewer")
 def timeline(days: int = 30):
@@ -1394,7 +1444,7 @@ def timeline(days: int = 30):
     UTC offset over time (so times read in the cameras' own time zone, DST included)."""
     with db.session() as conn:
         latest = conn.execute("SELECT MAX(taken_utc) FROM photos").fetchone()[0]
-        cams = [dict(r) for r in conn.execute("SELECT camera_id, name, lat, lon, location_source FROM cameras ORDER BY name")]
+        cams = [dict(r) for r in conn.execute("SELECT camera_id, name, lat, lon, heading, location_source FROM cameras ORDER BY name")]
         if not latest:
             return {"cameras": cams, "photos": [], "weather": [], "animals": [], "offsets": [], "start": None, "end": None}
         end = _epoch_ms(latest)
@@ -1521,3 +1571,7 @@ def engine_room():
         d["noon_ms"] = int(datetime(y, m, dd, 12, tzinfo=timezone.utc).timestamp() * 1000) - off
     return {"cameras": cams, "days": out, "totals": totals | {
         "photos": len(photos), "detected": sum(r["detected"] for r in photos), "days": len(out)}}
+
+
+# Brand art (logo, map markers, icons): plain files, no sign-in needed.
+app.mount("/static", StaticFiles(directory=__file__.replace("app.py", "static")), name="static")

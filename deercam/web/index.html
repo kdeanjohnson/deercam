@@ -232,6 +232,12 @@
   /* ---- buck page */
   .bp-hero { position:relative; background:#111; }
   .bp-hero img { width:100%; height:min(46vh, 420px); object-fit:cover; cursor:zoom-in; }
+  .bp-3d { position:absolute; top:12px; right:12px; border:0; background:rgba(17,21,25,.82); color:#fff; border-radius:20px; padding:6px 14px; font-weight:800; font-size:13px; letter-spacing:.04em;
+           backdrop-filter:blur(10px); box-shadow:0 0 0 1px rgba(255,255,255,.12) inset; cursor:pointer; }
+  .bp-3d:disabled { opacity:.6; }
+  .bp-hero.is3d img { display:none; }
+  .bp-hero model-viewer, .in-model model-viewer { width:100%; height:min(46vh, 420px); background:radial-gradient(circle at 50% 30%, #1d2a22 0%, #0f1312 70%); display:block; --poster-color:transparent; }
+  @media (min-width: 1000px) { .bp-hero model-viewer { height:min(78vh, 720px); } }
   .back { position:absolute; top:12px; left:12px; border:0; background:rgba(255,255,255,.94); border-radius:20px; padding:6px 14px; font-weight:600; font-size:14px; }
   .sheet { position:relative; margin-top:-26px; background:var(--bg); border-radius:24px 24px 0 0; padding:10px 16px 0; }
   .grab { width:40px; height:5px; background:var(--line); border-radius:3px; margin:0 auto 10px; }
@@ -882,6 +888,7 @@
   .in-days i b { font-size:12px; font-weight:800; line-height:1; } .in-days i span { font-size:9px; color:var(--ink2); margin-top:2px; } .in-days i.on span { color:rgba(255,255,255,.75); }
   .in-grid { display:grid; grid-template-columns:repeat(12, minmax(0, 1fr)); gap:12px; }
   .in-card { background:var(--soft); border-radius:var(--radius); padding:12px 14px; min-width:0; }
+  .in-model { grid-column:span 12; } .in-model model-viewer { height:min(52vh, 480px); border-radius:12px; }
   .in-best { grid-column:span 4; } .in-chart { grid-column:span 8; } .in-day { grid-column:span 4; } .in-where { grid-column:span 3; } .in-conds { grid-column:span 5; }
   .in-h { font-size:14px; font-weight:750; letter-spacing:-.01em; margin-bottom:8px; display:flex; align-items:baseline; gap:8px; }
   .in-h span { font-size:11.5px; color:var(--ink2); font-weight:600; }
@@ -1630,6 +1637,18 @@ function buckCard(b) {
   </button>`;
 }
 
+async function offerBuck3D(name) {
+  const btn = $('#bp-3d');
+  if (!btn || !await buckHasModel(name) || !$('#bp-3d')) return;
+  btn.hidden = false;
+  btn.onclick = async () => {
+    const hero = $('#bp-hero');
+    if (hero.classList.contains('is3d')) { hero.classList.remove('is3d'); hero.querySelector('model-viewer')?.remove(); btn.textContent = '3D'; return; }
+    btn.disabled = true; btn.textContent = '…';
+    if (!await loadModelViewer()) { btn.textContent = '3D'; btn.disabled = false; toast('The 3D viewer needs an internet connection'); return; }
+    hero.classList.add('is3d'); hero.insertAdjacentHTML('afterbegin', modelTag(name, 'bp-model')); btn.textContent = 'Photo'; btn.disabled = false;
+  };
+}
 async function showBuck(id) {
   const [{ buck: b, sightings }, list, everyone] = await Promise.all([api(`/api/bucks/${id}`), api(`/api/bucks?season=${season()}`),
                                                                     api('/api/bucks?season=all')]);
@@ -1645,7 +1664,7 @@ async function showBuck(id) {
   const hero = sightings.length ? sightings.slice().sort((x, y) => (y.match_status === 'confirmed') - (x.match_status === 'confirmed') || y.size_pct - x.size_pct)[0] : null;
   const curNotes = b.seasons.find(s => String(s.season) === season())?.notes || b.seasons[0]?.notes;
   $('#main').innerHTML = `<div class="buckpage" data-buck="${id}">
-    <div class="bp-hero">${hero ? zoomImg(hero.crop, hero.photo) : '<div style="height:200px"></div>'}<button class="back" data-back>‹ Bucks</button></div>
+    <div class="bp-hero" id="bp-hero">${hero ? zoomImg(hero.crop, hero.photo) : '<div style="height:200px"></div>'}<button class="back" data-back>‹ Bucks</button><button class="bp-3d" id="bp-3d" hidden>3D</button></div>
     <div class="sheet"><div class="grab"></div>
       <h2>${esc(b.name)}${star(b)}</h2>
       <div class="meta">${badges(b)} ${esc(curNotes || (hero ? rackLine(hero.rack) : ''))}</div>
@@ -1692,6 +1711,7 @@ async function showBuck(id) {
         <div class="row"><button class="btn small" data-act="save-status">Save</button><span class="meta" id="status-saved"></span></div></div>`}
     </div></div>`;
   loadPatterns(id);
+  offerBuck3D(b.name);
 }
 
 function columnPath(x, y, w, h, r) {
@@ -2201,6 +2221,27 @@ document.addEventListener('input', e => {
 let lmap = null, placing = null, aiming = null, mapBuck = '';
 // The map library loads from the internet only when the Map is opened, so the rest works offline.
 let leaflet = null;
+// A buck's 3D model (built in Blender, exported as glTF) lives at /static/models/<name>.glb. The viewer
+// is Google's <model-viewer>: drag to turn, pinch or scroll to zoom, slow auto-rotate.
+const buckModelUrl = name => `/static/models/${String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.glb`;
+const modelKnown = {};
+async function buckHasModel(name) {
+  const u = buckModelUrl(name);
+  if (modelKnown[u] == null) modelKnown[u] = await fetch(u, { method: 'HEAD' }).then(r => r.ok && /gltf|octet|model/.test(r.headers.get('content-type') || '')).catch(() => false);
+  return modelKnown[u];
+}
+let modelViewer = null;
+function loadModelViewer() {
+  if (customElements.get('model-viewer')) return Promise.resolve(true);
+  modelViewer ??= new Promise(resolve => {
+    const js = Object.assign(document.createElement('script'), { type: 'module', src: 'https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js' });
+    js.onload = () => resolve(true); js.onerror = () => { modelViewer = null; resolve(false); };
+    document.head.append(js);
+  });
+  return modelViewer;
+}
+const modelTag = (name, cls = '') => `<model-viewer class="${cls}" src="${buckModelUrl(name)}" alt="${esc(name)} in 3D" camera-controls auto-rotate auto-rotate-delay="1500" rotation-per-second="12deg"
+  shadow-intensity="1.2" shadow-softness=".8" exposure="1.05" environment-image="neutral" camera-orbit="35deg 78deg 105%" min-camera-orbit="auto auto 55%" max-camera-orbit="auto auto 180%" interaction-prompt="none" loading="eager"></model-viewer>`;
 function loadLeaflet() {
   if (window.L) return Promise.resolve(true);
   leaflet ??= new Promise(resolve => {
@@ -3824,6 +3865,12 @@ function renderIntel() {
           ${m.cond.length ? `<div class="in-reasons">${m.cond.map(c => `<div class="${c.f >= 1 ? 'good' : 'bad'}"><b>${c.k} ${esc(c.now)}</b> ${esc(c.note)} <em>×${c.f.toFixed(2)}</em></div>`).join('')}</div>` : ''}</section>
       </div></div></div>`;
   $$('[data-buck-pick]').forEach(el => el.onclick = () => { intel.buck = Number(el.dataset.buckPick); renderIntel(); });
+  intel3D(b);
+}
+async function intel3D(b) {
+  if (!await buckHasModel(b.name) || intel?.buck !== b.id || !$('.in-grid') || $('.in-model')) return;
+  if (!await loadModelViewer() || intel?.buck !== b.id || !$('.in-grid')) return;
+  $('.in-grid').insertAdjacentHTML('afterbegin', `<section class="in-card in-model"><div class="in-h">${esc(b.name)} in 3D <span>drag to turn · pinch to zoom</span></div>${modelTag(b.name)}</section>`);
 }
 
 // ------------------------------------------------------------------ engine room (calendar of what came in)

@@ -4,18 +4,35 @@
 <meta charset="utf-8">
 <title>DeerDar</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#0f1312">
 <link rel="icon" href="/static/brand/icons/logo-mark-black.svg">
 <link rel="preload" as="image" href="/static/brand/loader.gif">
+<script>
+  // Dark unless chosen in Settings; System follows the device. Set before the first paint so nothing flashes.
+  function setTheme(t) {
+    const light = t === 'light' || t === 'system' && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.dataset.theme = light ? 'light' : 'dark';
+    document.querySelector('meta[name=theme-color]').content = light ? '#ffffff' : '#0f1312';
+    const logo = document.querySelector('.brand img');
+    if (logo) logo.src = `/static/brand/icons/logo-mark-signal-${light ? 'black' : 'white'}.svg`;
+  }
+  setTheme(localStorage.getItem('theme'));
+  matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => setTheme(localStorage.getItem('theme')));
+</script>
 <style>
-  /* one look: warm charcoal with a forest-green accent */
+  /* dark by default: warm charcoal with a forest-green accent; light is the same with the earlier bright palette */
   :root {
     --bg:#0f1312; --soft:#171c1a; --soft2:#212826; --ink:#e9ece9; --ink2:#8e9893; --line:#242b28; --card:#141918; --on-ink:#0f1312;
     --hdr:rgba(15,19,18,.86); --accent:#5aa578; --tint:rgba(90,165,120,.16); --shadow:0 12px 36px rgba(0,0,0,.5);
-    --blaze:#f0742a; --good:#5cb882; --bad:#e06b6b; --warn:#dca24e; color-scheme:dark;
+    --blaze:#f0742a; --good:#5cb882; --bad:#e06b6b; --warn:#dca24e; --amber:#f2a65a; color-scheme:dark;
     /* light categories: one ordinal blue ramp, lightest = daylight; always shown with a legend or label */
     --day:#9ec5f4; --shooting:#3987e5; --night:#184f95; --unknown:#4a5450;
     --radius:16px; --nav-h:64px;
+  }
+  :root[data-theme=light] {
+    --bg:#fff; --soft:#f2f3f5; --soft2:#e9ebee; --ink:#15171a; --ink2:#6a7079; --line:#e6e8eb; --card:#fff; --on-ink:#fff;
+    --hdr:rgba(255,255,255,.86); --accent:#2e8052; --tint:rgba(46,128,82,.1); --shadow:0 12px 36px rgba(21,23,26,.14);
+    --blaze:#e8590c; --good:#2f8a3e; --bad:#c92a2a; --warn:#a86a00; --amber:#c0660e; --unknown:#c3c7cd; color-scheme:light;
   }
   * { box-sizing:border-box; }
   html { -webkit-text-size-adjust:100%; }
@@ -271,7 +288,7 @@
   .pgrid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px; }
   .ptile { position:relative; }
   .ptile img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; cursor:zoom-in; background:var(--soft); }
-  .ptile .auto { position:absolute; left:6px; top:6px; background:rgba(255,255,255,.94); border-radius:8px; font-size:11px; font-weight:700; padding:1px 6px; }
+  .ptile .auto { position:absolute; left:6px; top:6px; background:rgba(255,255,255,.94); color:#15171a; border-radius:8px; font-size:11px; font-weight:700; padding:1px 6px; }
   .ptile .acts { display:flex; gap:4px; margin-top:4px; }
   .ptile .acts button { flex:1; border:0; border-radius:8px; background:var(--soft); font-size:12px; font-weight:600; padding:5px 0; }
   .ptile .acts button.yes { background:var(--ink); color:var(--on-ink); }
@@ -437,7 +454,7 @@
   .tlf-side .chip.sel { background:var(--soft); color:var(--ink); }
   .tlf-side .chip i { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--c); flex:none; }
   .tlf-side .chip > span:last-child { margin-left:auto; color:var(--ink2); font-weight:600; font-variant-numeric:tabular-nums; font-size:12px; }
-  .tlf-side .chip .chip-ico { display:inline-flex; width:18px; justify-content:center; flex:none; color:#f2a65a; }
+  .tlf-side .chip .chip-ico { display:inline-flex; width:18px; justify-content:center; flex:none; color:var(--amber); }
   .tlf-side .chip .chip-ico svg { margin:0; width:16px; height:13px; } .tlf-side .chip .chip-ico.dim { color:var(--ink2); opacity:.7; }
   .tlf-sel { display:none; gap:8px; padding:4px 0 8px; } .tlf-sel select { flex:1; min-width:0; padding:8px 10px; font-size:14px; }
   @media (max-width: 760px) {
@@ -856,14 +873,14 @@
   .intel { display:grid; grid-template-columns:214px minmax(0, 1fr); gap:14px; padding:6px 16px 16px; }
   .in-list { background:var(--g-bg); color:var(--g-ink); border-radius:var(--radius); padding:5px; align-self:start; box-shadow:0 0 0 1px var(--g-line) inset; }
   .in-list .tlm-k img { width:30px; height:34px; border-radius:8px; object-fit:cover; flex:none; background:#000; box-shadow:0 0 0 1.5px rgba(255,255,255,.18); }
-  .in-list .tlm-k { padding:3px 7px; } .in-list .tlm-k small { color:#f2a65a; font-size:11px; } .in-list .tlm-k b { color:var(--g-dim); font-size:11.5px; font-weight:650; }
+  .in-list .tlm-k { padding:3px 7px; } .in-list .tlm-k small { color:var(--amber); font-size:11px; } .in-list .tlm-k b { color:var(--g-dim); font-size:11.5px; font-weight:650; }
   .in-list .tlm-k.on { background:rgba(255,255,255,.12); } .in-list .tlm-k::before { display:none; }
   .in-main { min-width:0; display:flex; flex-direction:column; gap:12px; }
   .in-card { display:flex; flex-direction:column; }
   .in-heat { display:flex; flex-direction:column; gap:4px; }
   .in-hrow { display:grid; grid-template-columns:118px 1fr; gap:10px; align-items:center; font-size:12.5px; font-weight:600; }
   .in-hrow > span { display:flex; align-items:center; gap:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .in-hcells { display:grid; grid-template-columns:repeat(48, 1fr); gap:1px; height:26px; border-radius:6px; overflow:hidden; background:rgba(255,255,255,.04); }
+  .in-hcells { display:grid; grid-template-columns:repeat(48, 1fr); gap:1px; height:26px; border-radius:6px; overflow:hidden; background:color-mix(in srgb, var(--ink) 4%, transparent); }
   .in-hcells i { display:block; } .in-hcells i.n { box-shadow:0 0 0 100px rgba(0,0,0,.28) inset; }
   .in-hrow.ax .in-hcells { height:14px; background:none; overflow:visible; } .in-hrow.ax b { position:relative; font-size:10px; color:var(--ink2); font-weight:600; white-space:nowrap; }
   .in-hrow.ax b em { font-style:normal; color:var(--ink); font-weight:700; }
@@ -874,13 +891,13 @@
   .in-clock-ax { display:flex; justify-content:space-between; font-size:10.5px; color:var(--ink2); margin-top:4px; }
   .in-light { display:flex; gap:14px; margin-top:12px; font-size:12px; color:var(--ink2); } .in-light i { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:-1px; } .in-light b { color:var(--ink); }
   .in-cl-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px 18px; }
-  .in-cl-h { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink2); margin:4px 0 2px; display:flex; justify-content:space-between; } .in-cl-h span { text-transform:none; letter-spacing:0; color:#f2a65a; }
-  .in-row.now > span, .in-row.now em { color:#f2a65a; } .in-row.now > i b { background:#f2a65a; }
+  .in-cl-h { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink2); margin:4px 0 2px; display:flex; justify-content:space-between; } .in-cl-h span { text-transform:none; letter-spacing:0; color:var(--amber); }
+  .in-row.now > span, .in-row.now em { color:var(--amber); } .in-row.now > i b { background:var(--amber); }
   .in-cl .in-row { grid-template-columns:88px minmax(0, 1fr) 22px; gap:6px; font-size:12px; }
   .in-top { display:flex; align-items:center; gap:18px; }
   .in-name { display:flex; align-items:center; gap:12px; min-width:0; }
   .in-name img { width:48px; height:48px; border-radius:50%; object-fit:cover; background:#000; box-shadow:0 0 0 2px var(--line); }
-  .in-name b { display:block; font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.05; } .in-name b i { color:#f2a65a; font-style:normal; font-size:18px; }
+  .in-name b { display:block; font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.05; } .in-name b i { color:var(--amber); font-style:normal; font-size:18px; }
   .in-name span { font-size:12.5px; color:var(--ink2); }
   .in-days { margin-left:auto; display:flex; gap:3px; }
   .in-days i { width:26px; height:34px; border-radius:6px; background:var(--soft); display:flex; flex-direction:column; align-items:center; justify-content:center; font-style:normal; position:relative; }
@@ -901,19 +918,19 @@
   .in-axis { position:relative; height:16px; font-size:10.5px; color:var(--ink2); } .in-axis span { position:absolute; top:2px; transform:translateX(-50%); white-space:nowrap; } .in-axis span.d { color:var(--ink); font-weight:700; }
   .in-legend { display:flex; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--ink2); margin-top:4px; } .in-legend i { display:inline-block; width:10px; height:3px; border-radius:2px; vertical-align:middle; margin-right:5px; }
   .in-sun { margin-bottom:8px; } .in-sun:last-child { margin-bottom:0; } .in-sun-h { display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:4px; } .in-sun-h span { color:var(--ink2); font-size:11.5px; }
-  .in-sun-bar { position:relative; height:18px; border-radius:5px; background:rgba(255,255,255,.08); overflow:hidden; }
+  .in-sun-bar { position:relative; height:18px; border-radius:5px; background:color-mix(in srgb, var(--ink) 8%, transparent); overflow:hidden; }
   .in-sun-bar .dark { position:absolute; top:0; bottom:0; background:rgba(0,0,0,.4); } .in-sun-bar .legal { position:absolute; top:0; bottom:0; background:rgba(242,166,90,.35); }
   .in-sun-bar em { position:absolute; top:0; bottom:0; width:1px; background:#ffd65a; }
   .in-sun-bar u { position:absolute; top:4px; width:10px; height:10px; margin-left:-5px; border-radius:50%; box-shadow:0 0 0 2px rgba(0,0,0,.55); }
   .in-sun-ax { display:flex; justify-content:space-between; font-size:10px; color:var(--ink2); margin-top:2px; }
   .in-row { display:grid; grid-template-columns:minmax(0, 1fr) 70px 54px; gap:8px; align-items:center; font-size:12.5px; padding:3px 0; }
   .in-row > span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:6px; } .dot { width:8px; height:8px; border-radius:50%; flex:none; display:inline-block; }
-  .in-row > i { height:7px; border-radius:4px; background:rgba(255,255,255,.08); overflow:hidden; display:block; } .in-row > i b { display:block; height:100%; background:var(--accent); border-radius:4px; }
+  .in-row > i { height:7px; border-radius:4px; background:color-mix(in srgb, var(--ink) 8%, transparent); overflow:hidden; display:block; } .in-row > i b { display:block; height:100%; background:var(--accent); border-radius:4px; }
   .in-row em { font-style:normal; text-align:right; font-variant-numeric:tabular-nums; font-weight:700; } .in-row em small { color:var(--ink2); font-weight:600; font-size:11px; }
   .in-seg-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; }
-  .in-seg-h { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink2); margin-bottom:4px; display:flex; justify-content:space-between; } .in-seg-h span { text-transform:none; letter-spacing:0; color:#f2a65a; }
-  .in-seg-bar { display:flex; height:9px; border-radius:5px; overflow:hidden; gap:1px; } .in-seg-bar i { background:var(--accent); } .in-seg-bar i.now { background:#f2a65a; opacity:1 !important; }
-  .in-seg-k { display:flex; flex-wrap:wrap; gap:2px 10px; font-size:11px; color:var(--ink2); margin-top:4px; } .in-seg-k b { color:var(--ink); } .in-seg-k .now { color:#f2a65a; }
+  .in-seg-h { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink2); margin-bottom:4px; display:flex; justify-content:space-between; } .in-seg-h span { text-transform:none; letter-spacing:0; color:var(--amber); }
+  .in-seg-bar { display:flex; height:9px; border-radius:5px; overflow:hidden; gap:1px; } .in-seg-bar i { background:var(--accent); } .in-seg-bar i.now { background:var(--amber); opacity:1 !important; }
+  .in-seg-k { display:flex; flex-wrap:wrap; gap:2px 10px; font-size:11px; color:var(--ink2); margin-top:4px; } .in-seg-k b { color:var(--ink); } .in-seg-k .now { color:var(--amber); }
   .in-reasons { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
   .in-reasons div { font-size:11.5px; background:var(--card); border-radius:9px; padding:4px 9px; color:var(--ink2); } .in-reasons b { color:var(--ink); } .in-reasons em { font-style:normal; font-weight:700; margin-left:4px; }
   .in-reasons .good em { color:var(--good); } .in-reasons .bad em { color:var(--warn); }
@@ -1100,6 +1117,20 @@
     #map { height:calc(100vh - 170px); border-radius:var(--radius); }
     .mapside { padding:0; max-height:calc(100vh - 170px); overflow:auto; }
   }
+  /* ---- light: what the variables don't reach. Captions on photos and the glass over the satellite map stay dark. */
+  @media (max-width: 759px) {
+    :root[data-theme=light] #tabs { background:rgba(255,255,255,.94); box-shadow:0 0 0 1px var(--line), 0 8px 30px rgba(21,23,26,.14); }
+    :root[data-theme=light] #tabs button { color:var(--ink2); } :root[data-theme=light] #tabs button.on { background:var(--ink); color:var(--on-ink); }
+  }
+  /* phones: the Map tab's panels leave the map and sit on the page, still dark, so solid rather than see-through */
+  @media (max-width: 760px) { :root[data-theme=light] #tl { --g-bg:#1b201e; } }
+  :root[data-theme=light] .bp-hero model-viewer, :root[data-theme=light] .in-model model-viewer { background:radial-gradient(circle at 50% 30%, #f7f9f7 0%, #dfe5e1 70%); }
+  :root[data-theme=light] .er-hc .pic { color:var(--ink); }
+  :root[data-theme=light] .in-list .tlm-k { color:var(--ink); } :root[data-theme=light] .in-list .tlm-k.on { background:var(--soft); }
+  :root[data-theme=light] .in-list .tlm-k img { box-shadow:0 0 0 1.5px var(--line); }
+  /* the loader gif is drawn on near-black: inverted (hue kept) it sits on white the same way */
+  :root[data-theme=light] .loader img { filter:invert(1) hue-rotate(180deg) brightness(1.07); mix-blend-mode:darken; }
+  :root[data-theme=light] .loader.page { background:#fff; }
 </style>
 </head>
 <body>
@@ -1126,6 +1157,7 @@
 <div id="tip"></div>
 
 <script>
+setTheme(localStorage.getItem('theme'));  // again, for the header's logo
 const $ = (sel, el = document) => el.querySelector(sel);
 const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 // Demo mode (a static copy made by `python -m deercam export-demo`): answers come from saved JSON
@@ -1349,10 +1381,10 @@ function sunArc(iso, cam) {
   const t = new Date(iso).getTime(), s = sunPos(t, cam.lat, cam.lon);
   const x = 10 + Math.max(0, Math.min(1, ((s.az - 90 + 360) % 360) / 180)) * 100, y = 34 - Math.max(-1, Math.min(1, s.alt / 90)) * 26;
   const night = s.alt < -6, dusk = !night && s.alt < 2;
-  return `<svg class="sunarc" viewBox="0 0 120 44" aria-label="Sun position"><path d="M10 34A50 30 0 0 1 110 34" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1.5" stroke-dasharray="2 3"/>
-    <line x1="4" y1="34" x2="116" y2="34" stroke="rgba(255,255,255,.28)" stroke-width="1"/>
+  return `<svg class="sunarc" viewBox="0 0 120 44" aria-label="Sun position"><path d="M10 34A50 30 0 0 1 110 34" fill="none" stroke="currentColor" stroke-opacity=".14" stroke-width="1.5" stroke-dasharray="2 3"/>
+    <line x1="4" y1="34" x2="116" y2="34" stroke="currentColor" stroke-opacity=".28" stroke-width="1"/>
     <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${night ? 3 : 4.5}" fill="${night ? '#9aa6b2' : dusk ? '#f2a65a' : '#ffd65a'}" ${night ? 'opacity=".7"' : `style="filter:drop-shadow(0 0 4px ${dusk ? '#f2a65a' : '#ffd65a'})"`}/>
-    <text x="6" y="42" font-size="6.5" fill="rgba(255,255,255,.45)">E</text><text x="110" y="42" font-size="6.5" fill="rgba(255,255,255,.45)">W</text></svg>`;
+    <text x="6" y="42" font-size="6.5" fill="currentColor" fill-opacity=".45">E</text><text x="110" y="42" font-size="6.5" fill="currentColor" fill-opacity=".45">W</text></svg>`;
 }
 // A buck's last 48 hours in one strip: night and day with the legal-light half hours at dawn and dusk,
 // sunrise and sunset times, the temperature, and a mark for every visit he made. `tl` is /api/timeline.
@@ -1393,20 +1425,20 @@ function huntStrip(name, tl) {
   const d0 = local(t0), firstMid = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), d0.getUTCDate() + 1) - offAt(t0) * 60e3;
   for (let m = firstMid; m < t1; m += 864e5) {
     const x = X(m);
-    axis += `<line x1="${x.toFixed(1)}" y1="${top}" x2="${x.toFixed(1)}" y2="${top + bh}" stroke="rgba(255,255,255,.25)" stroke-width="1"/>
-      <text x="${(x + 4).toFixed(1)}" y="${H - 3}" font-size="9.5" font-weight="700" fill="rgba(255,255,255,.75)">${local(m).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}</text>`;
+    axis += `<line x1="${x.toFixed(1)}" y1="${top}" x2="${x.toFixed(1)}" y2="${top + bh}" stroke="currentColor" stroke-opacity=".25" stroke-width="1"/>
+      <text x="${(x + 4).toFixed(1)}" y="${H - 3}" font-size="9.5" font-weight="700" fill="currentColor" fill-opacity=".75">${local(m).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}</text>`;
   }
   const sunGlyph = (x, y) => `<g transform="translate(${x.toFixed(1)} ${y})"><circle r="2.6" fill="#ffd65a"/>${[0, 45, 90, 135].map(a => `<line x1="0" y1="-4.2" x2="0" y2="-5.6" transform="rotate(${a})" stroke="#ffd65a" stroke-width="1"/><line x1="0" y1="4.2" x2="0" y2="5.6" transform="rotate(${a})" stroke="#ffd65a" stroke-width="1"/>`).join('')}</g>`;
-  for (const t of rises) axis += `${sunGlyph(X(t), top + bh + 7)}<text x="${(X(t) + 8).toFixed(1)}" y="${top + bh + 10}" font-size="8.5" fill="rgba(255,255,255,.6)">${hm(t)}</text>`;
-  for (const t of sets) axis += `<g transform="translate(${X(t).toFixed(1)} ${top + bh + 7})"><circle r="3" fill="#c9d1dc"/><circle r="3" cx="-1.6" cy="-.6" fill="#15171a"/></g><text x="${(X(t) + 8).toFixed(1)}" y="${top + bh + 10}" font-size="8.5" fill="rgba(255,255,255,.6)">${hm(t)}</text>`;
+  for (const t of rises) axis += `${sunGlyph(X(t), top + bh + 7)}<text x="${(X(t) + 8).toFixed(1)}" y="${top + bh + 10}" font-size="8.5" fill="currentColor" fill-opacity=".6">${hm(t)}</text>`;
+  for (const t of sets) axis += `<g transform="translate(${X(t).toFixed(1)} ${top + bh + 7})"><circle r="3" fill="#c9d1dc"/><circle r="3" cx="-1.6" cy="-.6" fill="#15171a"/></g><text x="${(X(t) + 8).toFixed(1)}" y="${top + bh + 10}" font-size="8.5" fill="currentColor" fill-opacity=".6">${hm(t)}</text>`;
   const marks = visits.map(v => { const x0 = X(v.t0), x1 = Math.max(X(v.t1), x0 + 5);
     return `<rect x="${(x0 - 2).toFixed(1)}" y="${top + bh / 2 - 6}" width="${(x1 - x0 + 4).toFixed(1)}" height="12" rx="6" fill="#f2a65a" stroke="#15171a" stroke-width="1.5"><title>${v.n} photo${v.n === 1 ? '' : 's'} · ${hm(v.t0)}${v.n > 1 ? `–${hm(v.t1)}` : ''}</title></rect>`; }).join('');
   return `<svg class="hstrip" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="${esc(name)}'s last 48 hours">
-    <rect x="0" y="${top}" width="${W}" height="${bh}" rx="6" fill="rgba(255,255,255,.04)"/>
+    <rect x="0" y="${top}" width="${W}" height="${bh}" rx="6" fill="currentColor" fill-opacity=".04"/>
     <clipPath id="hs-${esc(name).replace(/\W/g, '')}"><rect x="0" y="${top}" width="${W}" height="${bh}" rx="6"/></clipPath>
     <g clip-path="url(#hs-${esc(name).replace(/\W/g, '')})">${bands.map(([a, b, k]) => `<rect x="${a.toFixed(1)}" y="${top}" width="${Math.max(0, b - a).toFixed(1)}" height="${bh}" fill="${fill[k] || 'none'}"/>`).join('')}${temp}</g>
     ${axis}${marks}
-    <line x1="${X(t1)}" y1="${top - 2}" x2="${X(t1)}" y2="${top + bh + 2}" stroke="#fff" stroke-width="1.5"/></svg>`;
+    <line x1="${X(t1)}" y1="${top - 2}" x2="${X(t1)}" y2="${top + bh + 2}" stroke="currentColor" stroke-width="1.5"/></svg>`;
 }
 // The radar: every animal the cameras saw lately, as a blip. Direction is the camera's real bearing
 // from the middle of the cameras; distance is how long ago (rings at now, 1 h, 6 h, 12 h and the edge of
@@ -1452,7 +1484,7 @@ function homeRadar(tl) {
   const dividers = order.map((i, k) => { const [x, y] = pt(k * sector, R); return `<line x1="${R}" y1="${R}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="rgba(90,165,120,.5)" stroke-width=".9"/>`; }).join('');
   // names outside the rim; the lower half's arcs run the other way so the words read upright
   const labels = order.map((i, k) => { const mid = k * sector + sector / 2, lower = mid > 90 && mid < 270, a0 = lower ? mid + 40 : mid - 40, a1 = lower ? mid - 40 : mid + 40, rr = lower ? R + 10 : R + 6, [x0, y0] = pt(a0, rr), [x1, y1] = pt(a1, rr), c = tl.cameras[i];
-    return `<path id="rl${k}" d="M${x0.toFixed(1)} ${y0.toFixed(1)}A${rr} ${rr} 0 0 ${lower ? 0 : 1} ${x1.toFixed(1)} ${y1.toFixed(1)}" fill="none"/><text font-size="5.6" font-weight="800" letter-spacing=".14em" fill="rgba(255,255,255,.8)"><textPath href="#rl${k}" startOffset="50%" text-anchor="middle">${esc((c.name || c.camera_id).toUpperCase())}</textPath></text>`; }).join('');
+    return `<path id="rl${k}" d="M${x0.toFixed(1)} ${y0.toFixed(1)}A${rr} ${rr} 0 0 ${lower ? 0 : 1} ${x1.toFixed(1)} ${y1.toFixed(1)}" fill="none"/><text font-size="5.6" font-weight="800" letter-spacing=".14em" fill="currentColor" fill-opacity=".8"><textPath href="#rl${k}" startOffset="50%" text-anchor="middle">${esc((c.name || c.camera_id).toUpperCase())}</textPath></text>`; }).join('');
   const ringSvg = bands.slice(1).map((h, i) => { const r = (i + 1) / rings * R; return `<circle cx="${R}" cy="${R}" r="${r.toFixed(1)}" fill="none" stroke="rgba(90,165,120,${i === rings - 1 ? .45 : .22})" stroke-width=".8"/><text x="${R + 2}" y="${(R - r + 6).toFixed(1)}" font-size="5" fill="rgba(90,165,120,.8)">${h}h</text>`; }).join('');
   const kinds = {}; for (const b of blips) kinds[b.kind] = (kinds[b.kind] || 0) + b.n;
   return `<div class="hside radar"><div class="hside-h">Radar <span class="r"><button class="rbucks${radarBucks ? ' on' : ''}" data-radar-bucks="1">${RACK_SVG}Bucks only</button><span class="rr">${[24, 48, 72].map(h => `<button class="${h === radarRange ? 'on' : ''}" data-radar="${h}">${h}h</button>`).join('')}</span></span></div>
@@ -3836,7 +3868,7 @@ function renderIntel() {
   const sunToday = sunTimes(now, intel.where.lat, intel.where.lon);
   const hourOf = t => { const d = local(t); return d.getUTCHours() + d.getUTCMinutes() / 60; };
   const hrs = (pat.hours || []).map(h => h.day + h.shooting + h.night + h.unknown), hmax = Math.max(1, ...hrs);
-  const dayBar = `<div class="in-clock">${hrs.map((n, h) => `<i style="background:${n ? `rgba(90,165,120,${(.25 + .75 * n / hmax).toFixed(2)})` : 'rgba(255,255,255,.05)'}" title="${(h % 12) || 12}${h < 12 ? ' AM' : ' PM'}: ${n} visit${n === 1 ? '' : 's'}"><b>${n || ''}</b></i>`).join('')}
+  const dayBar = `<div class="in-clock">${hrs.map((n, h) => `<i style="background:${n ? `rgba(90,165,120,${(.25 + .75 * n / hmax).toFixed(2)})` : 'color-mix(in srgb, var(--ink) 5%, transparent)'}" title="${(h % 12) || 12}${h < 12 ? ' AM' : ' PM'}: ${n} visit${n === 1 ? '' : 's'}"><b>${n || ''}</b></i>`).join('')}
     ${sunToday ? `<u class="rise" style="left:${hourOf(sunToday.rise) / 24 * 100}%" title="Sunrise ${hm(sunToday.rise)}"></u><u class="set" style="left:${hourOf(sunToday.set) / 24 * 100}%" title="Sunset ${hm(sunToday.set)}"></u>` : ''}</div>
     <div class="in-clock-ax"><span>12a</span><span>6a</span><span>noon</span><span>6p</span><span>12a</span></div>`;
   const lightSplit = `<div class="in-light">${[['Daylight', m.light.day, '#9ec5f4'], ['Shooting light', m.light.shooting, '#f0a35e'], ['Night', m.light.night, '#5a6fb0']].map(([k, n, col]) => `<span><i style="background:${col}"></i>${k} <b>${n}</b></span>`).join('')}</div>`;
@@ -4111,6 +4143,8 @@ function accountSection() {
         <div class="row"><label>New password</label><input id="acc-new" type="password" autocomplete="new-password" placeholder="at least 8 characters"></div>
         <div class="row"><label></label><button class="act" id="acc-pass">Change password</button></div>
       </details>
+      <div class="row"><label>Theme</label><select id="acc-theme">${[['dark', 'Dark'], ['light', 'Light'], ['system', 'System']].map(([v, l]) =>
+        `<option value="${v}"${(localStorage.getItem('theme') || 'dark') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></div>
       <div class="row"><label></label><button class="act" id="acc-out">Sign out</button><span id="acc-msg" class="meta"></span></div>
     </section>`;
 }
@@ -4337,6 +4371,7 @@ async function settingsClick(e) {
 
 document.addEventListener('change', async e => {
   if (e.target.id === 'ai-provider') fillProvider();
+  if (e.target.id === 'acc-theme') { localStorage.setItem('theme', e.target.value); setTheme(e.target.value); }
   if (e.target.id === 'merge-into') {
     const btn = $('[data-act="merge-buck"]');
     btn.disabled = !e.target.value;

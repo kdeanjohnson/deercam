@@ -181,7 +181,9 @@ MATCH_SYSTEM = (
     "big it looks in the picture; a young buck with a small rack is not the same deer as a mature one with "
     "a big rack even if both are 8 points. Pick a candidate "
     "only when specific features line up; if unsure, answer 'none' with low confidence. If the NEW PHOTO "
-    "shows no antlers, or too little of them to compare, answer 'none'."
+    "shows no antlers, or too little of them to compare, answer 'none'. When there are several views of the "
+    "NEW PHOTO, they're one buck on one visit: use them together, since a tine hidden in one view often "
+    "shows in another."
 )
 
 

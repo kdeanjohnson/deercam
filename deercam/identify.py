@@ -3,9 +3,13 @@
 1. Embed every buck crop locally (DINOv2) - cheap similarity for shortlisting.
 2. Bursts: photos from one camera a few minutes apart, one buck per frame, are the same buck.
    They're matched as one unit, and a burst with a confirmed photo carries the others along.
-3. Shortlist known bucks by embedding similarity, nudged by rack point-count agreement.
-4. Show the vision LLM the new crop next to reference crops of each candidate and ask which
-   (if any) is the same buck.
+3. Shortlist known bucks by embedding similarity, every frame of the unit voting, nudged by rack
+   point-count agreement.
+4. Show the vision LLM up to three different views of the new buck next to reference crops of
+   each candidate, plus every hit-list buck, and ask which (if any) is the same buck. The embedding
+   tells individual bucks apart poorly (2026-10-25, on 43 labeled crops: the right buck ranked first
+   for 3 of 19, and the nearest crop came from the same camera twice as often as chance), so the
+   hit list isn't left to it.
 
 Racks regrow every year, so all of this happens within one season (antler year): a photo is
 only compared with references from its own season, and a harvested or dead buck isn't a
@@ -39,6 +43,9 @@ QUALITY_RANK = {"good": 0, "fair": 1, "poor": 2}
 # Match-query columns; queries using them join photos p.
 QUERY_COLS = ("d.id, d.crop_path, d.embedding, d.analysis_json, d.x1, d.y1, d.x2, d.y2, p.taken_utc, "
               "season(p.taken_utc) AS season")
+VOTING_FRAMES = 8  # a unit's frames (largest first) whose similarities vote in the shortlist
+NEW_VIEWS = 3  # frames of the new buck the vision LLM sees
+SAME_VIEW = 0.95  # frames this alike are the same view (a buck standing still), not another angle
 
 
 class Embedder:
@@ -86,7 +93,7 @@ def _area(r) -> float:
 def _gallery(conn, season: int) -> dict[int, list]:
     """Reference crops per buck from one season. notes are that season's rack notes."""
     rows = conn.execute(
-        """SELECT d.id, d.buck_id, d.crop_path, d.embedding, d.analysis_json, b.name, bs.notes, b.generic,
+        """SELECT d.id, d.buck_id, d.crop_path, d.embedding, d.analysis_json, b.name, bs.notes, b.generic, b.tag,
                   b.notes AS general_notes,
                   b.status, b.status_date, c.name AS camera
            FROM detections d JOIN bucks b ON b.id = d.buck_id JOIN photos p USING(photo_id)
@@ -118,32 +125,59 @@ class Galleries(dict):
                 if refs[0]["status"] == "alive" or not refs[0]["status_date"] or refs[0]["status_date"] >= day}
 
 
-def _shortlist(query, gallery: dict[int, list]) -> list[tuple[int, float, list]]:
-    """Returns [(buck_id, score, refs_most_similar_first)] best first."""
-    qvec = np.frombuffer(query["embedding"], dtype=np.float32)
-    qpts = _points(query["analysis_json"])
+def _vec(r) -> np.ndarray:
+    return np.frombuffer(r["embedding"], dtype=np.float32)
+
+
+def _shortlist(unit, gallery: dict[int, list], limit: int | None = None) -> list[tuple[int, float, list]]:
+    """Returns [(buck_id, score, refs_most_similar_first)] best first. unit is one crop or a burst's
+    crops, largest first. Every frame votes: a buck's score is his best similarity to each frame,
+    averaged over the frames, so one odd angle or a blurry frame can't decide it."""
+    frames = (unit if isinstance(unit, list) else [unit])[:VOTING_FRAMES]
+    qvecs = np.stack([_vec(r) for r in frames])
+    qpts = _points(frames[0]["analysis_json"])
     scored = []
     for buck_id, refs in gallery.items():
-        sims = [float(np.dot(qvec, np.frombuffer(r["embedding"], dtype=np.float32))) for r in refs]
+        sim = qvecs @ np.stack([_vec(r) for r in refs]).T  # frames x refs
+        sims = sim.max(axis=0)  # each reference's best frame
         order = sorted(range(len(refs)), key=lambda i: (
             -sims[i], QUALITY_RANK.get(json.loads(refs[i]["analysis_json"]).get("image_quality"), 3)))
-        score = max(sims)
+        score = float(sim.max(axis=1).mean())
         ref_pts = [p for p in (_points(r["analysis_json"]) for r in refs) if p is not None]
         if qpts is not None and ref_pts:
             score -= 0.03 * min(abs(qpts - p) for p in ref_pts)
         scored.append((buck_id, score, [refs[i] for i in order]))
     scored.sort(key=lambda s: -s[1])
-    return scored[:settings.match_candidates]
+    return scored[:limit or settings.match_candidates]
 
 
-def _match_request(q, gallery) -> tuple[list[ImagePart], str, dict[str, int]]:
+def _views(unit: list) -> list:
+    """The frames of a unit the vision LLM sees: largest first, skipping any that's the same view as
+    one already picked."""
+    picked = []
+    for r in unit:
+        if all(float(np.dot(_vec(r), _vec(p))) < SAME_VIEW for p in picked):
+            picked.append(r)
+        if len(picked) == NEW_VIEWS:
+            break
+    return picked
+
+
+def _match_request(unit, gallery) -> tuple[list[ImagePart], str, dict[str, int]]:
     # Images only, no written notes. The AI's own per-photo rack estimates are noisy at 1024x768 and
     # the model anchors on them. The owner's notes did harm both ways: used as evidence, Grok "saw"
     # the noted feature in every crop, does included; used only to rule out, it rejected the buck's
     # own photos whenever the feature was out of view (2026-10-21: Harry's 14 found in 1 of 6 tries
     # of his own burst with his note, 4 of 6 without).
-    candidates = _shortlist(q, gallery)
-    images = [ImagePart("NEW PHOTO:", settings.data_dir / q["crop_path"])]
+    unit = unit if isinstance(unit, list) else [unit]
+    candidates = _shortlist(unit, gallery)
+    shown = {c[0] for c in candidates}
+    targets = {b: refs for b, refs in gallery.items() if refs[0]["tag"] == "target"}
+    hit_list = [c for c in _shortlist(unit, targets, limit=len(LABELS)) if c[0] not in shown]
+    candidates = (candidates + hit_list)[:len(LABELS)]
+    views = _views(unit)
+    images = [ImagePart("NEW PHOTO:" if len(views) == 1 else f"NEW PHOTO, view {n} of {len(views)} (one buck, one visit):",
+                        settings.data_dir / r["crop_path"]) for n, r in enumerate(views, 1)]
     label_to_buck = {}
     for label, (buck_id, _, refs) in zip(LABELS, candidates):
         label_to_buck[label] = buck_id
@@ -253,7 +287,7 @@ def identify(recheck: bool = False, limit: int | None = None, workers: int = 6,
                 LIMIT ?""", (limit or -1,)).fetchall()
         units = [(u, galleries.for_query(u[0])) for u in _units(queue, bursts(conn))]
         if only_for_buck is not None:
-            units = [(u, g) for u, g in units if only_for_buck in {c[0] for c in _shortlist(u[0], g)}]
+            units = [(u, g) for u, g in units if only_for_buck in {c[0] for c in _shortlist(u, g)}]
         conn.commit()
         if not units:
             return counts
@@ -265,7 +299,7 @@ def identify(recheck: bool = False, limit: int | None = None, workers: int = 6,
         def work(unit, gallery):
             if not gallery:
                 return None, {}
-            images, prompt, label_to_buck = _match_request(unit[0], gallery)
+            images, prompt, label_to_buck = _match_request(unit, gallery)
             return provider.structured(MATCH_SYSTEM, images, prompt, MatchDecision), label_to_buck
 
         out_of_budget = None
@@ -312,14 +346,14 @@ def merge_generic_into(buck_id: int, workers: int = 6) -> int:
         groups = [r["id"] for r in conn.execute("SELECT id FROM bucks WHERE generic=1 AND id<>?", (buck_id,))]
         reps = {}
         for g in groups:
-            rep = conn.execute(f"""SELECT {QUERY_COLS} FROM detections d JOIN photos p USING(photo_id)
-                                   WHERE d.buck_id=? AND d.embedding IS NOT NULL
-                                   ORDER BY (d.x2-d.x1)*(d.y2-d.y1) DESC LIMIT 1""", (g,)).fetchone()
-            if rep is None:
+            unit = conn.execute(f"""SELECT {QUERY_COLS} FROM detections d JOIN photos p USING(photo_id)
+                                    WHERE d.buck_id=? AND d.embedding IS NOT NULL
+                                    ORDER BY (d.x2-d.x1)*(d.y2-d.y1) DESC LIMIT ?""", (g, VOTING_FRAMES)).fetchall()
+            if not unit:
                 continue
-            others = {k: v for k, v in galleries.for_query(rep).items() if k != g}
-            if buck_id in others and buck_id in {c[0] for c in _shortlist(rep, others)}:
-                reps[g] = (rep, others)
+            others = {k: v for k, v in galleries.for_query(unit[0]).items() if k != g}
+            if buck_id in others and buck_id in {c[0] for c in _shortlist(unit, others)}:
+                reps[g] = (unit, others)
     if not reps:
         return 0
     provider = get_provider()

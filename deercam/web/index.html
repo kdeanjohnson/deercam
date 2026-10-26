@@ -4516,8 +4516,6 @@ async function watchJob() {
       st = await api('/api/identify');
       if (!st.running) break;
       worked = true;
-      $('#job').className = 'busy';
-      $('#job').textContent = (st.current ? st.current[0].toUpperCase() + st.current.slice(1) : 'Working') + (st.pending ? ` (+${st.pending} queued)` : '') + '…';
       await new Promise(r => setTimeout(r, 3000));
     }
   } finally {

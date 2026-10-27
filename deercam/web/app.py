@@ -1191,6 +1191,9 @@ def home(season: str | None = None):
             vs = patterns.load_visits(conn, buck_id=b["id"], season=shown)
             best = _best_detection(conn, b["id"], shown)
             b |= {"last_visit": vs[0] if vs else None, "best": patterns.best_bet(vs),
+                  # every visit's camera-local minute of the day, and when it was: his day on the card
+                  "times": [[t.hour * 60 + t.minute, v["start"]] for v in vs if v["local"]
+                            for t in [datetime.strptime(v["local"], "%b %d %Y %I:%M %p")]],
                   "photo": f"/media/{best['photo_path']}" if best else None,
                   "rack": json.loads(best["analysis_json"] or "{}").get("rack") if best else None}
     recent = [v for v in feed(season=season, limit=400) if v["buck_id"] is not None and not v["generic"]]
@@ -1363,6 +1366,25 @@ def set_location(camera_id: str, body: Location):
         db.save_pins(conn)
     place.refresh_region_soon()
     return {"ok": True}
+
+
+class CameraName(BaseModel):
+    name: str
+
+
+@app.post("/api/cameras/{camera_id}/name")
+@needs("owner")
+def rename_camera(camera_id: str, body: CameraName):
+    """Our own name for a camera. Syncing never renames a camera it already knows, so this sticks."""
+    name = " ".join(body.name.split())[:40]
+    if not name:
+        raise HTTPException(400, "give the camera a name")
+    with db.session() as conn:
+        n = conn.execute("UPDATE cameras SET name=? WHERE camera_id=?", (name, camera_id)).rowcount
+        if not n:
+            raise HTTPException(404, "no such camera")
+        db.save_pins(conn)
+    return {"ok": True, "name": name}
 
 
 class Heading(BaseModel):

@@ -212,6 +212,10 @@
   .hcard dd b { font-weight:700; }
   .spot .btn { align-self:flex-start; margin-top:auto; }
   .hstrip { display:block; width:100%; height:60px; }
+  .hday { display:block; width:100%; height:auto; }
+  .hday-cap { display:flex; gap:10px; align-items:center; font-size:10.5px; color:var(--ink2); margin-top:2px; }
+  .hday-cap b { font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--ink); margin-right:auto; }
+  .hday-cap i { display:inline-block; width:7px; height:7px; border-radius:50%; background:#f2a65a; margin-right:4px; vertical-align:-.5px; } .hday-cap i.old { opacity:.35; }
   .hstrip-wrap { padding:8px 12px 0; }
   .hunt { grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:12px; padding:0; }
   .hcard .ph img, .hcard .ph .noimg { aspect-ratio:16/8; }
@@ -1122,6 +1126,7 @@
   .er-hc .place-row { display:flex; gap:4px; margin-top:7px; }
   .er-hc .place { border:0; background:var(--card); color:var(--ink2); font-size:11.5px; font-weight:650; padding:3px 9px; border-radius:10px; }
   .er-hc .place:hover { color:var(--ink); }
+  .er-hc .er-rename { width:100%; font-size:14px; font-weight:700; padding:3px 7px; border-radius:7px; }
   .er-col { display:flex; flex-direction:column; gap:10px; align-self:start; min-width:0; }
   .er-col .er-hcs { grid-template-columns:1fr; margin:0; }
   .er-hc .pic { width:58px; height:66px; flex:none; display:grid; place-items:center; color:#dfe4e8; background:var(--card); border-radius:14px; box-shadow:0 0 0 1px var(--line) inset; }
@@ -1565,6 +1570,47 @@ function huntStrip(name, tl) {
     ${axis}${marks}
     <line x1="${X(t1)}" y1="${top - 2}" x2="${X(t1)}" y2="${top + bh + 2}" stroke="currentColor" stroke-width="1.5"/></svg>`;
 }
+// A buck's day: every visit he's made this season at its time of day, over night, legal light and daylight (today's
+// sun at the cameras). The last 48 hours are the bright marks with their times; older visits fade with age. His
+// best-bet window is bracketed. So each card shows his own pattern: a night owl, a dawn buck, a midday wanderer.
+function buckDay(b, tl) {
+  const times = b.times || [];
+  if (!times.length) return '';
+  const W = 420, H = 64, top = 14, bh = 24, X = m => m / 1440 * W, now = Date.now();
+  const off = (tl?.offsets || []).at(-1)?.[1] ?? -new Date().getTimezoneOffset();
+  const hhmm = m => `${(Math.floor(m / 60) % 12) || 12}:${String(m % 60).padStart(2, '0')}${m < 720 ? 'a' : 'p'}`;
+  // today's sun, from the cameras on the map
+  const placed = (tl?.cameras || []).filter(c => c.lat != null);
+  let bands = `<rect x="0" y="${top}" width="${W}" height="${bh}" fill="rgba(255,255,255,.05)"/>`;
+  if (placed.length) {
+    const lat = placed.reduce((a, c) => a + c.lat, 0) / placed.length, lon = placed.reduce((a, c) => a + c.lon, 0) / placed.length;
+    const l = new Date(now + off * 60e3), mid = Date.UTC(l.getUTCFullYear(), l.getUTCMonth(), l.getUTCDate()) - off * 60e3;
+    let rise = null, set = null;
+    for (let m = 0, was = sunPos(mid, lat, lon).alt > -0.833; m <= 1440; m += 5) {
+      const up = sunPos(mid + m * 60e3, lat, lon).alt > -0.833;
+      if (up && !was) rise = m; if (!up && was) set = m; was = up;
+    }
+    if (rise != null && set != null) {
+      const fill = { night: 'rgba(8,12,20,.55)', legal: 'rgba(242,166,90,.3)', day: 'rgba(255,255,255,.07)' };
+      bands = [[0, rise - 30, 'night'], [rise - 30, rise, 'legal'], [rise, set, 'day'], [set, set + 30, 'legal'], [set + 30, 1440, 'night']]
+        .map(([a, z, k]) => `<rect x="${X(a).toFixed(1)}" y="${top}" width="${Math.max(0, X(z) - X(a)).toFixed(1)}" height="${bh}" fill="${fill[k]}"/>`).join('');
+    }
+  }
+  const best = b.best ? [[b.best.from * 60, Math.min(1440, b.best.from * 60 + 120)], ...(b.best.to < b.best.from ? [[0, b.best.to * 60]] : [])]
+    .map(([a, z]) => `<rect x="${X(a).toFixed(1)}" y="${top - 3}" width="${(X(z) - X(a)).toFixed(1)}" height="${bh + 6}" rx="4" fill="rgba(92,184,130,.12)" stroke="#5cb882" stroke-width="1.2" stroke-dasharray="3 2"/>`).join('')
+    + `<text x="${(X(b.best.from * 60 + 60)).toFixed(1)}" y="${H - 2}" font-size="9" font-weight="700" fill="#5cb882" text-anchor="middle">best bet</text>` : '';
+  const age = t => (now - Date.parse(t)) / 864e5;
+  const old = times.filter(([, t]) => age(t) > 2), fresh = times.filter(([, t]) => age(t) <= 2);
+  const ticks = old.map(([m, t]) => `<rect x="${(X(m) - 1.25).toFixed(1)}" y="${top + 4}" width="2.5" height="${bh - 8}" rx="1" fill="#f2a65a" opacity="${Math.max(.18, .75 - age(t) / 40).toFixed(2)}"/>`).join('');
+  const pills = fresh.map(([m]) => `<rect x="${(X(m) - 3.5).toFixed(1)}" y="${top - 2}" width="7" height="${bh + 4}" rx="3.5" fill="#f2a65a" stroke="#15171a" stroke-width="1.5"/>
+      <text x="${X(m).toFixed(1)}" y="${top - 5}" font-size="9" font-weight="700" fill="#f2a65a" text-anchor="${m < 90 ? 'start' : m > 1350 ? 'end' : 'middle'}">${hhmm(m)}</text>`).join('');
+  const axis = [[0, '12a'], [360, '6a'], [720, 'noon'], [1080, '6p'], [1440, '12a']].map(([m, s]) =>
+    `<text x="${X(m).toFixed(1)}" y="${top + bh + 11}" font-size="9" fill="currentColor" fill-opacity=".5" text-anchor="${m === 0 ? 'start' : m === 1440 ? 'end' : 'middle'}">${s}</text>`).join('');
+  return `<svg class="hday" viewBox="0 0 ${W} ${H}" aria-label="When ${esc(b.name)} shows up">
+      <clipPath id="hd-${b.id}"><rect x="0" y="${top}" width="${W}" height="${bh}" rx="5"/></clipPath>
+      <g clip-path="url(#hd-${b.id})">${bands}</g>${best}${ticks}${pills}${axis}</svg>
+    <div class="hday-cap"><b>His day</b><span><i></i>last 48 h</span><span><i class="old"></i>${old.length} earlier this season</span></div>`;
+}
 // The radar: every animal the cameras saw lately, as a blip. Direction is the camera's real bearing
 // from the middle of the cameras; distance is how long ago (rings at now, 1 h, 6 h, 12 h and the edge of
 // the range). A green sweep goes round and lights each blip as it passes. Sightings at one camera within
@@ -1735,7 +1781,7 @@ function huntCard(b, cams = {}, tl = null) {
   return `<button class="hcard ${b.absent ? 'absent' : ''}" data-buck="${b.id}">
     <div class="ph">${b.thumb ? `<img src="${b.thumb}" alt="" loading="lazy">` : '<div class="noimg"></div>'}
       <div class="cap"><b>${esc(b.name)}${star(b)}</b><span>${b.rack ? esc(rackLine(b.rack)) : ''}${b.tag && b.tag !== 'target' ? ` · ${TAGS[b.tag]}` : ''}</span></div></div>
-    ${tl ? `<div class="hstrip-wrap">${huntStrip(b.name, tl)}</div>` : ''}
+    ${b.absent ? '' : `<div class="hstrip-wrap">${buckDay(b, tl)}</div>`}
     <dl>${rows.map(([k, val]) => `<dt>${k}</dt><dd>${val}</dd>`).join('')}</dl></button>`;
 }
 
@@ -4257,14 +4303,14 @@ function erCams() {
   const now = Date.now();
   const med = xs => { const a = xs.filter(x => x != null).sort((p, q) => p - q); return a.length ? a[(a.length - 1) >> 1] : null; };
   const stat = (cls, icon, val, label) => `<div class="${cls}">${icon}<b>${val}</b>${label}</div>`;
-  const canPlace = !DEMO && can('member');
+  const canPlace = !DEMO && can('member'), canName = !DEMO && can('owner');
   return `<div class="er-h2">Cameras <span>as of each one's last photo</span></div><div class="er-hcs">${cams.map((c, i) => {
     const d = h[c.camera_id], ps = d?.photos || [], last = ps.at(-1), color = TL_CAM_COLORS[i % TL_CAM_COLORS.length];
     const day = ps.filter(p => last && p[0] > last[0] - DAY), late = med(day.map(p => p[3])), bat = last?.[1], sig = last?.[2];
     const ago = last ? (now - last[0]) / 1000 : null, per = ps.length ? ps.length / Math.max(1, (ps.at(-1)[0] - ps[0][0]) / DAY) : 0;
     const hw = d?.hardware ? `Reveal ${d.hardware}` : 'Reveal';
     const on = er.data.placed?.[c.camera_id];
-    const placeRow = canPlace ? `<span class="place-row"><button class="place" data-go="place" data-cam="${esc(c.camera_id)}" title="${on ? 'Move this camera on the map' : 'Put this camera on the map'}">${on ? 'Move' : 'Place on map'}</button>${on ? `<button class="place" data-go="place" data-cam="${esc(c.camera_id)}~aim" title="Which way it faces">${on.heading != null ? `Facing ${cardinal(on.heading)}` : 'Aim'}</button>` : ''}</span>` : '';
+    const placeRow = canPlace ? `<span class="place-row"><button class="place" data-go="place" data-cam="${esc(c.camera_id)}" title="${on ? 'Move this camera on the map' : 'Put this camera on the map'}">${on ? 'Move' : 'Place on map'}</button>${on ? `<button class="place" data-go="place" data-cam="${esc(c.camera_id)}~aim" title="Which way it faces">${on.heading != null ? `Facing ${cardinal(on.heading)}` : 'Aim'}</button>` : ''}${canName ? `<button class="place" data-rename="${esc(c.camera_id)}" title="Give this camera a new name">Rename</button>` : ''}</span>` : '';
     return `<div class="er-hc"><div class="pic">${ER_CAM_SVG}</div><div class="er-hwho"><b><i style="background:${color}"></i>${esc(c.name || c.camera_id)}</b>
       <small>${hw} · ${last ? `last photo ${ago < 3600 ? `${Math.max(1, Math.round(ago / 60))} min` : tlDur(ago)} ago` : 'no photos in 30 days'}</small>
       <div class="stats">
@@ -4306,6 +4352,22 @@ function renderEngine() {
   renderCalendar();
   renderDay();
   $('#er-sync').onclick = () => $('#sync').click();
+  $$('[data-rename]').forEach(btn => btn.onclick = () => {  // the name becomes a text box: Enter saves, Esc puts it back
+    const who = btn.closest('.er-hc').querySelector('.er-hwho b'), was = who.innerHTML, id = btn.dataset.rename;
+    const cam = er.data.cameras.find(c => c.camera_id === id);
+    who.innerHTML = `<input class="er-rename" maxlength="40" value="${esc(cam?.name || '')}">`;
+    const box = who.querySelector('input'); box.focus(); box.select();
+    let done = false;
+    const save = async keep => {
+      if (done) return; done = true;
+      const name = box.value.trim();
+      if (!keep || !name || name === cam?.name) { who.innerHTML = was; return; }
+      try { await post(`/api/cameras/${encodeURIComponent(id)}/name`, { name }); toast(`Renamed to ${esc(name)}`); showEngine(); }
+      catch (e) { who.innerHTML = was; toast(`Couldn’t rename: ${esc(e.detail || e.message)}`); }
+    };
+    box.onkeydown = e => { if (e.key === 'Enter') save(true); if (e.key === 'Escape') save(false); };
+    box.onblur = () => save(true);
+  });
 }
 
 function renderCalendar() {

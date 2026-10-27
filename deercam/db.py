@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS detections (
     analysis_json TEXT,
     embedding BLOB,
     buck_id INTEGER REFERENCES bucks(id),
-    match_status TEXT,                       -- auto | confirmed | review | rejected
+    match_status TEXT,                       -- auto | confirmed | review | rejected | untracked (a buck nobody's naming)
     match_confidence REAL,
     match_reason TEXT
 );

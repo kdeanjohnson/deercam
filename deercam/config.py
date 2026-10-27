@@ -36,7 +36,7 @@ def _flag(name: str, default: str) -> bool:
 EDITABLE = {
     "vision_provider", "vision_model", "vision_fast_model", "custom_base_url", "ai_monthly_limit",
     "xai_api_key", "anthropic_api_key", "openai_api_key", "gemini_api_key", "custom_api_key",
-    "region", "region_auto", "region_auto_key", "region_center", "season_start", "sync_interval_hours", "shooting_minutes", "visit_gap_minutes", "setup_done",
+    "region", "region_auto", "region_auto_key", "region_center", "season_start", "sync_interval_hours", "shooting_minutes", "visit_gap_minutes", "review_days", "setup_done",
 }
 
 
@@ -101,6 +101,9 @@ class Settings:
     shooting_minutes: int = field(default_factory=lambda: int(_env("SHOOTING_MINUTES", "30")))
     # Photos of one buck at one camera with no gap longer than this many minutes are one visit
     visit_gap_minutes: int = field(default_factory=lambda: int(_env("VISIT_GAP_MINUTES", "30")))
+    # Review asks only about photos from this many days back; older ones nobody decided on drop out of the
+    # queue, unnamed but kept (0 = keep them all in the queue)
+    review_days: int = field(default_factory=lambda: int(_env("REVIEW_DAYS", "14")))
     setup_done: bool = False
 
     def __post_init__(self):

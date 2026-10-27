@@ -476,7 +476,8 @@ def get_settings(request: Request):
     login and AI setup are for owners."""
     season = {
         "setup_done": settings.setup_done, "season_start": settings.season_start,
-        "shooting_minutes": settings.shooting_minutes, "visit_gap_minutes": settings.visit_gap_minutes, "current_season": settings.current_season(),
+        "shooting_minutes": settings.shooting_minutes, "visit_gap_minutes": settings.visit_gap_minutes,
+        "review_days": settings.review_days, "current_season": settings.current_season(),
         "current_season_start": settings.season_start_date(settings.current_season()).isoformat(),
     }
     if not _is(request, "owner"):
@@ -504,6 +505,7 @@ class SettingsUpdate(BaseModel):
     sync_interval_hours: float | None = None
     shooting_minutes: int | None = None
     visit_gap_minutes: int | None = None
+    review_days: int | None = None
     setup_done: bool | None = None
 
 
@@ -531,6 +533,8 @@ def save_settings(body: SettingsUpdate, request: Request):
     for k in ("vision_model", "vision_fast_model", "custom_base_url"):
         if k in changes and not (changes[k] or "").strip():
             changes[k] = None  # back to the provider default
+    if "review_days" in changes:
+        changes["review_days"] = max(0, changes["review_days"] or 0)
     if "ai_monthly_limit" in changes and not (changes["ai_monthly_limit"] or 0) > 0:
         changes["ai_monthly_limit"] = None
     settings.save(changes)
@@ -668,8 +672,8 @@ def start_import(body: ImportRequest, request: Request):
 def seasons():
     with db.session() as conn:
         rows = {r["season"]: dict(r) for r in conn.execute(
-            """SELECT season(p.taken_utc) AS season, COUNT(DISTINCT p.photo_id) AS photos,
-                      COUNT(DISTINCT CASE WHEN d.match_status='review' THEN d.id END) AS review
+            f"""SELECT season(p.taken_utc) AS season, COUNT(DISTINCT p.photo_id) AS photos,
+                      COUNT(DISTINCT CASE WHEN d.match_status='review' {_fresh()} THEN d.id END) AS review
                FROM photos p LEFT JOIN detections d USING(photo_id) GROUP BY 1""")}
     current = settings.current_season()
     rows.setdefault(current, {"season": current, "photos": 0, "review": 0})
@@ -694,7 +698,7 @@ def stats(season: str | None = None):
             "animals": q(f"SELECT COUNT(*) {det}"),
             "deer": q(f"SELECT COUNT(*) {det} AND d.species='deer'"),
             "buck_detections": q(f"SELECT COUNT(*) {det} AND d.sex='buck'"),
-            "review": q(f"SELECT COUNT(*) {det} AND d.match_status='review'"),
+            "review": q(f"SELECT COUNT(*) {det} AND d.match_status='review' {_fresh()}"),
             "bucks": q(f"SELECT COUNT(DISTINCT d.buck_id) {det} AND d.match_status IN ('confirmed','auto') "
                        "AND d.buck_id IN (SELECT id FROM bucks WHERE generic=0)"),
             "groups": q(f"SELECT COUNT(DISTINCT d.buck_id) {det} AND d.match_status='auto' "
@@ -937,6 +941,19 @@ def reject_many(body: Picked, request: Request):
     with db.session() as conn:
         conn.executemany("UPDATE detections SET buck_id=NULL, match_status='rejected' WHERE id=?",
                          [(i,) for i in body.ids])
+        _mark_reviewed(conn, body.ids, _reviewer(request))
+        _drop_empty_groups(conn)
+        return {"ok": True}
+
+
+@app.post("/api/detections/untrack")
+@needs("member")
+def untrack(body: Picked, request: Request):
+    """A buck nobody's going to name (a young one, not one we're tracking): out of the review queue for good.
+    He's still a buck everywhere else (activity, the radar, the timeline), just without a name."""
+    with db.session() as conn:
+        conn.executemany("UPDATE detections SET buck_id=NULL, match_status='untracked', match_confidence=NULL, "
+                         "match_reason=NULL WHERE id=?", [(i,) for i in body.ids])
         _mark_reviewed(conn, body.ids, _reviewer(request))
         _drop_empty_groups(conn)
         return {"ok": True}
@@ -1377,14 +1394,61 @@ def detection(det_id: int):
     return _row(r)
 
 
+def _fresh() -> str:
+    """SQL (on photos p) for what Review still asks about: photos from the last settings.review_days days.
+    Older ones nobody decided on drop out of the queue quietly, unnamed but kept; they stay 'review', so
+    re-matching can still name them."""
+    if not settings.review_days:
+        return ""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.review_days)
+    return f"AND p.taken_utc >= '{cutoff:%Y-%m-%dT%H:%M:%S}'"
+
+
+def _review_visits(conn, rows: list) -> list:
+    """The queue a visit at a time, so one decision covers them all: photos at one camera with no gap longer
+    than settings.visit_gap_minutes. A stretch where one photo has two waiting deer stays photo by photo (they
+    may be different bucks). Visits the AI thinks may be a hit-list buck come first, then ones that may be any
+    named buck, then the rest; newest first within each. Each visit's biggest photo leads it."""
+    bucks = {b["id"]: b for b in conn.execute("SELECT id, generic, tag FROM bucks")}
+    gap = settings.visit_gap_minutes * 60
+    stamp = lambda r: datetime.fromisoformat(r["taken_utc"].replace("Z", "+00:00"))
+    runs: list[list] = []
+    for r in sorted(rows, key=lambda r: (r["camera"] or "", r["taken_utc"])):
+        last = runs[-1][-1] if runs else None
+        if last is not None and last["camera"] == r["camera"] and (stamp(r) - stamp(last)).total_seconds() <= gap:
+            runs[-1].append(r)
+        else:
+            runs.append([r])
+    visits = []
+    for run in runs:
+        crowded = len({r["photo_id"] for r in run}) < len(run)
+        visits += [[r] for r in run] if crowded else [run]
+
+    def rank(v):
+        guesses = [bucks.get(r["buck_id"]) for r in v if r["buck_id"]]
+        hit = any(b and b["tag"] == "target" for b in guesses)
+        named = any(b and not b["generic"] for b in guesses)
+        return (0 if hit else 1 if named else 2, -max(stamp(r).timestamp() for r in v))
+
+    out = []
+    for v in sorted(visits, key=rank):
+        v = sorted(v, key=lambda r: -(r["x2"] - r["x1"]) * (r["y2"] - r["y1"]))
+        out += [_row(r) | {"visit": v[0]["id"], "visit_size": len(v)} for r in v]
+    return out
+
+
 @app.get("/api/review")
 @needs("viewer")
-def review(sort: Literal["similar", "size", "newest"] = "similar", season: str | None = None):
+def review(sort: Literal["visits", "similar", "size", "newest"] = "similar", season: str | None = None):
+    """Buck photos waiting for a name. sort=visits gives them a visit at a time, the likeliest hit-list
+    bucks first (the lineup); the others are photo by photo, for the grid."""
     s = _season(season)
     with db.session() as conn:
-        rows = conn.execute(DETECTION_SQL + f"""WHERE d.match_status='review'
+        rows = conn.execute(DETECTION_SQL + f"""WHERE d.match_status='review' {_fresh()}
                             {'' if s is None else f'AND season(p.taken_utc)={s}'}
                             ORDER BY p.taken_utc DESC""").fetchall()
+        if sort == "visits":
+            return _review_visits(conn, rows)
         if sort == "similar":
             rows = _similarity_order(rows)
         elif sort == "size":
@@ -1403,7 +1467,7 @@ def review_stats(request: Request, tz: int = -300, season: str | None = None):
     since = day0.isoformat(timespec="seconds")
     me = _reviewer(request)
     with db.session() as conn:
-        waiting = conn.execute(f"""SELECT COUNT(*) FROM detections d JOIN photos p USING(photo_id) WHERE d.match_status='review'
+        waiting = conn.execute(f"""SELECT COUNT(*) FROM detections d JOIN photos p USING(photo_id) WHERE d.match_status='review' {_fresh()}
                                    {'' if s is None else f'AND season(p.taken_utc)={s}'}""").fetchone()[0]
         today, mine = conn.execute("SELECT COUNT(*), COALESCE(SUM(reviewed_by=?), 0) FROM detections WHERE reviewed_at>=?",
                                    (me, since)).fetchone()

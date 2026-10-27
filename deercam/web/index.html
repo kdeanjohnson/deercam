@@ -1010,12 +1010,18 @@
   .sw-stamp { position:absolute; top:22px; left:22px; padding:6px 14px; border:3px solid #fff; border-radius:10px; color:#fff; font-size:22px; font-weight:900; letter-spacing:.04em; text-transform:uppercase; transform:rotate(-10deg); opacity:0; transition:opacity .12s; background:rgba(0,0,0,.25); }
   .sw-card.stamping .sw-stamp { opacity:1; } .sw-card.yes .sw-stamp { border-color:var(--accent); color:#c9f0d6; }
   .sw-ai { padding:10px 16px 12px; font-size:13px; line-height:1.4; } .sw-ai em { font-style:normal; font-size:10px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--accent); margin-right:8px; } .sw-ai small { display:block; color:var(--ink2); font-size:11.5px; margin-top:2px; }
-  .sw-act { display:grid; grid-template-columns:1.4fr 1fr; gap:10px; margin-top:16px; } .sw-other { margin-top:10px; }
+  .sw-act { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:10px; margin-top:16px; } .sw-other { margin-top:10px; }
   .sw-act button { display:flex; align-items:center; justify-content:center; gap:10px; height:58px; border:0; border-radius:29px; font-size:16px; font-weight:800; cursor:pointer; transition:transform .12s, opacity .12s; white-space:nowrap; overflow:hidden; }
   .sw-act button span { width:30px; height:30px; border-radius:50%; display:grid; place-items:center; font-size:16px; flex:none; }
   .sw-yes { background:var(--accent); color:#0c120f; box-shadow:0 10px 30px rgba(90,165,120,.3); } .sw-yes span { background:rgba(0,0,0,.15); }
   .sw-yes:disabled { background:var(--soft); color:var(--ink2); box-shadow:0 0 0 1.5px var(--line) inset; cursor:default; } .sw-yes:disabled span { background:rgba(255,255,255,.06); }
   .sw-no { background:var(--soft); color:var(--ink); box-shadow:0 0 0 1.5px var(--line) inset; } .sw-no span { background:rgba(240,120,100,.18); color:#f0a49a; } .sw-no.on { box-shadow:0 0 0 2px #f0a49a inset; }
+  .sw-young { background:var(--soft); color:var(--ink); box-shadow:0 0 0 1.5px var(--line) inset; } .sw-young span { background:rgba(214,170,90,.18); color:var(--amber); } .sw-act b { font-weight:inherit; } .sw-act em { font-style:normal; }
+  .sw-visit { padding:10px 16px 0; } .sw-visit .lbl { display:flex; align-items:baseline; gap:10px; font-size:12px; color:var(--ink2); }
+  .sw-visit .lbl b { font-size:10px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--accent); }
+  .sw-visit .lbl button { margin-left:auto; border:0; background:none; padding:0; color:var(--ink2); font-size:12px; text-decoration:underline; cursor:pointer; }
+  .sw-thumbs { display:flex; gap:6px; overflow-x:auto; padding:8px 0 2px; } .sw-thumbs img { width:52px; height:52px; object-fit:cover; border-radius:8px; flex:none; cursor:pointer; opacity:.6; outline:2px solid transparent; }
+  .sw-thumbs img.on { opacity:1; outline-color:var(--accent); }
   .sw-act button:not(:disabled):hover { transform:translateY(-2px); } .sw-act button:not(:disabled):active { transform:scale(.97); }
   .sw-other { display:none; flex-wrap:wrap; gap:6px; } .sw-other.open { display:flex; }
   .sw-o { border:0; border-radius:14px; padding:9px 14px; background:var(--soft); color:var(--ink); font-size:13px; font-weight:650; cursor:pointer; } .sw-o:hover { background:var(--card); } .sw-o.bad { color:#f0a49a; }
@@ -1088,7 +1094,7 @@
     .sw-deck { order:0; gap:6px; } .sw-stat { grid-template-columns:1fr; justify-items:center; text-align:center; padding:8px 6px; row-gap:4px; } .sw-stack { grid-row:auto; width:40px; height:46px; } .sw-stack b { font-size:13px; } .sw-stat span { font-size:11px; } .sw-stat small { display:none; }
     .sw-right { order:2; } .sw-other { margin-top:0; } .sw-lineup { grid-template-columns:1fr 1fr; gap:10px; } .sw-ln { opacity:1; }
     .sw-act { position:fixed; left:10px; right:10px; bottom:calc(86px + env(safe-area-inset-bottom)); z-index:25; order:3; padding:8px; border-radius:36px; background:rgba(15,19,18,.88); backdrop-filter:blur(14px); box-shadow:0 10px 30px rgba(0,0,0,.5); }
-    .sw-act { grid-template-columns:1fr 1fr; gap:8px; } .sw-act button { height:52px; font-size:14.5px; gap:7px; } .sw-act button span { width:26px; height:26px; font-size:14px; } .sw-other { order:4; }
+    .sw-act { grid-template-columns:1.3fr 1fr 1fr; gap:6px; } .sw-act button { height:52px; font-size:14px; gap:6px; } .sw-act .long { display:none; } .sw-act button span { width:26px; height:26px; font-size:14px; } .sw-other { order:4; }
     #tabs .lg { display:none; } #tabs .sm { display:inline; } #tabs .beta { display:none; }
     #tabs button { padding:9px 8px; font-size:12.5px; } #tabs .count:not(:empty) { min-width:15px; height:15px; font-size:9px; padding:0 4px; margin-left:3px; }
     .swr { padding-bottom:110px; }
@@ -2049,7 +2055,8 @@ function renderBar() {
   $('.rg').classList.toggle('picking', n > 0);
   if (!n) { bar.innerHTML = ''; return; }
   const present = bucks.filter(b => !b.absent && b.status === 'alive'), past = bucks.filter(b => b.absent);
-  bar.innerHTML = `<div class="rg-top"><b>${n} selected</b><button class="link" id="rg-reject">Not a buck / can't tell</button>
+  bar.innerHTML = `<div class="rg-top"><b>${n} selected</b><button class="link" id="rg-young" title="Young bucks nobody’s going to name: out of Review for good, still counted as bucks">Young buck${n === 1 ? '' : 's'}, not tracking</button>
+      <button class="link" id="rg-reject">Not a buck / can't tell</button>
       <button class="link" id="rg-clear">Clear</button></div>
     <div class="cands">${present.map(b => cand(b, {})).join('')}${past.map(b => cand(b, {}, true)).join('')}
       <button class="cand" data-new><div class="plus">+</div><b>New buck</b><small>&nbsp;</small></button></div>
@@ -2081,6 +2088,12 @@ async function gridClick(e) {
   if (t.dataset.new !== undefined) { rg.pick = 'new'; $('#rg-new').style.display = ''; refreshBar(); return $('#rg-name').focus(); }
   if (t.id === 'rg-clear') { rg.sel.clear(); $$('.rgt.sel').forEach(x => x.classList.remove('sel')); return renderBar(); }
   if (t.id === 'rematch') { try { await post('/api/identify'); } catch { /* already running */ } return watchJob(); }
+  if (t.id === 'rg-young') {
+    const ids = [...rg.sel];
+    try { await post('/api/detections/untrack', { ids }); } catch { return; }
+    toast(`${ids.length} left unnamed as young buck${ids.length === 1 ? '' : 's'}`);
+    return afterGrid();
+  }
   if (t.id === 'rg-reject') {
     const ids = [...rg.sel];
     try { await post('/api/detections/reject', { ids }); } catch { return; }
@@ -2143,6 +2156,7 @@ async function renderReview() {
         <div class="meta" id="rv-old-notes"></div></details>
       <div class="form" style="margin-top:12px"><div class="row"><button class="btn blue" id="rv-save" style="flex:1">Save</button></div></div>
       <div class="rv-links">
+        <button class="link" id="rv-young" title="A young buck nobody’s going to name: out of Review for good, still counted as a buck">Young buck, not tracking</button>
         <button class="link" id="rv-reject" title="Not a buck, or antlers not visible enough to ID">Not a buck / can't tell</button>
         ${solo ? '' : '<button class="link" id="rv-skip">Skip</button>'}
         <button class="link" id="rv-full">Full photo</button>
@@ -2213,6 +2227,11 @@ async function reviewClick(e) {
   if (t.id === 'rv-full') { $('#lightbox img').src = d.photo; $('#lightbox').style.display = 'flex'; return; }
   if (t.id === 'rv-skip') { rv.i = (rv.i + 1) % rv.items.length; return renderReview(); }
   if (t.id === 'rematch') { try { await post('/api/identify'); } catch { /* already running */ } return watchJob(); }
+  if (t.id === 'rv-young') {
+    await post('/api/detections/untrack', { ids: [d.id] });
+    toast('Left unnamed as a young buck');
+    return afterReview();
+  }
   if (t.id === 'rv-reject') {
     await post(`/api/detections/${d.id}/reject`);
     toast('Marked as not usable');
@@ -4080,16 +4099,19 @@ function renderIntel() {
 }
 
 // ------------------------------------------------------------------ review as flashcards (experimental)
-// One photo at a time, big, beside a lineup of every named buck (same size, alphabetical, nothing marked as the
+// One visit at a time (a buck's photos at one camera, close together; hit-list look-alikes first), big, beside a lineup of every named buck (same size, alphabetical, nothing marked as the
 // likely one, so the pick isn't nudged; flip through each buck's photos). Tap the buck, then It's him: the photo
-// drops on his pile. Or None of these: what else it is, a bad photo, or skip it. The deck on the side counts
+// drops on his pile. Young buck: one nobody's naming, out of Review for good, still counted as a buck. Or None of
+// these: what else it is, a bad photo, or skip it. Every choice covers the whole visit. The deck on the side counts
 // everyone's decisions: waiting, decided today, decided in all.
 let sw = null;
 const SW_OTHER = [['doe', 'Doe'], ['fawn', 'Fawn'], ['turkey', 'Turkey'], ['hog', 'Hog'], ['coyote', 'Coyote'], ['raccoon', 'Raccoon'], ['bobcat', 'Bobcat'], ['other', 'Other animal']];
 async function showSwipe() {
-  const [items, list, stats] = await Promise.all([api(`/api/review?sort=newest&season=${season()}`), api(`/api/bucks?season=${season()}`),
+  const [rows, list, stats] = await Promise.all([api(`/api/review?sort=visits&season=${season()}`), api(`/api/bucks?season=${season()}`),
     api(`/api/review/stats?tz=${-new Date().getTimezoneOffset()}&season=${season()}`).catch(() => null)]);
   if (view !== 'swipe') return;
+  const items = [];  // one card per visit, led by its biggest photo
+  for (const d of rows) { const c = items.at(-1); if (c && d.visit != null && c.visit === d.visit) c.group.push(d); else items.push({ ...d, group: [d] }); }
   const named = list.filter(b => !b.generic && b.status === 'alive').sort((a, b) => (b.tag === 'target') - (a.tag === 'target') || b.visits - a.visits);
   // counts that don't know about this queue came from somewhere else (the local mirror's own database): don't show them
   sw = { items, named, stats: stats && !(stats.waiting === 0 && items.length) ? stats : null, cands: {}, cmp: {}, piles: {}, saved: 0, done: 0, preview: false, busy: false };
@@ -4103,10 +4125,12 @@ function swDeck() {  // three little card piles: waiting, decided today, decided
   const st = sw.stats, n = v => v == null ? '—' : v.toLocaleString();
   const today = st ? st.today + sw.saved : null, total = st ? st.total + sw.saved : null, mine = st ? st.mine_today + sw.saved : null;
   const pile = (cls, num, label, sub, layers) => `<div class="sw-stat ${cls}"><div class="sw-stack">${'<i></i>'.repeat(layers)}<b>${num}</b></div><span>${label}</span><small>${sub}</small></div>`;
-  return `<div class="sw-deck">${pile('wait', n(sw.items.length), 'To review', sw.items.length ? 'buck photos waiting' : 'all caught up', Math.min(2, Math.ceil(sw.items.length / 40)))}
+  const photos = swPhotos();
+  return `<div class="sw-deck">${pile('wait', n(sw.items.length), 'To review', sw.items.length ? `visit${sw.items.length === 1 ? '' : 's'} · ${n(photos)} photo${photos === 1 ? '' : 's'}` : 'all caught up', Math.min(2, Math.ceil(sw.items.length / 20)))}
     ${pile('today', n(today), 'Reviewed today', !st ? 'after the server update' : mine ? `${mine} by you` : 'everyone', 2)}
     ${pile('total', n(total), 'Total reviewed', !st ? 'after the server update' : 'all of you', 2)}</div>`;
 }
+const swPhotos = () => sw.items.reduce((n, d) => n + d.group.length, 0);
 function swStats() {
   return `<div class="sw-strip">${sw.done ? `<span class="sess"><b>${sw.done}</b>reviewed this session${sw.preview ? ' · preview, not saved' : ''}</span>` : ''}<a class="sw-grid" data-go="review">Grid view</a></div>`;
 }
@@ -4120,7 +4144,13 @@ async function swRender() {
   if (sw.card !== d.id) { sw.card = d.id; sw.pick = null; sw.ri = {}; sw.none = false; }
   const next = sw.items[1]; if (next) { new Image().src = next.crop; bucks.forEach(b => swCompare(next, b)); }
   const t = Date.parse(d.taken_utc), rack = d.rack ? rackLine(d.rack) : '', pick = bucks.find(b => b.id === sw.pick);
-  const when = ms => `${new Date(ms).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+  const clock = ms => new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const when = ms => `${new Date(ms).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${clock(ms)}`;
+  const g = d.group, times = g.map(x => Date.parse(x.taken_utc)), t0 = Math.min(...times), t1 = Math.max(...times);
+  const span = g.length > 1 ? `${when(t0)}${clock(t1) !== clock(t0) ? `–${clock(t1)}` : ''}` : when(t);
+  const visit = g.length > 1 ? `<div class="sw-visit"><div class="lbl"><b>One visit</b>${g.length} photos${t1 - t0 >= 60000 ? ` over ${Math.round((t1 - t0) / 60000)} min` : ''}
+      <button data-sw-split title="Decide on these photos one at a time">Not all the same buck?</button></div>
+      <div class="sw-thumbs">${g.map((x, i) => `<img src="${x.crop}" data-crop="${x.crop}" data-full="${x.photo}" class="${i ? '' : 'on'}" loading="lazy" alt="">`).join('')}</div></div>` : '';
   const lineup = bucks.map((b, i) => { const rs = refs[i], ri = (sw.ri[b.id] || 0) % Math.max(1, rs.length), r = rs[ri];
     return `<div class="sw-l${sw.pick === b.id ? ' on' : ''}" data-bid="${b.id}"><div class="sw-lph">${r ? `<img src="${r.crop}" alt="" loading="lazy">` : b.thumb ? `<img src="${b.thumb}" alt="">` : ''}
         ${rs.length > 1 ? `<button class="sw-ln prev" data-flip="${b.id}" data-d="-1" aria-label="Previous photo">‹</button><button class="sw-ln next" data-flip="${b.id}" data-d="1" aria-label="Next photo">›</button><span class="sw-lc">${ri + 1}/${rs.length}</span>` : ''}
@@ -4130,27 +4160,37 @@ async function swRender() {
     <div class="sw-main">
       <div class="sw-left">
         <div class="sw-card" id="sw-card"><div class="sw-ph" style="--bg:url('${d.crop}')"><img src="${d.crop}" data-crop="${d.crop}" data-full="${d.photo}" alt="" draggable="false">
-          <button class="sw-flip">Full photo</button><div class="sw-cap"><b>${esc(d.camera)}</b><span>${when(t)}</span></div><div class="sw-stamp"></div></div>
-          ${d.summary || rack ? `<div class="sw-ai"><em>AI read</em>${esc(d.summary || '')}${rack ? `<small>${esc(rack)}</small>` : ''}</div>` : ''}</div>
+          <button class="sw-flip">Full photo</button><div class="sw-cap"><b>${esc(d.camera)}</b><span>${span}</span></div><div class="sw-stamp"></div></div>
+          ${visit}${d.summary || rack ? `<div class="sw-ai"><em>AI read</em>${esc(d.summary || '')}${rack ? `<small>${esc(rack)}</small>` : ''}</div>` : ''}</div>
         ${swDeck()}
       </div>
       <div class="sw-right"><div class="sw-h">The lineup<span>tap the buck it is · flip through his photos</span></div><div class="sw-lineup">${lineup}</div>
         <div class="sw-act">
           <button class="sw-yes" data-sw-yes ${pick ? '' : 'disabled'}><span>✓</span>${pick ? `It’s ${esc(pick.name)}` : 'Pick a buck'}</button>
-          <button class="sw-no${sw.none ? ' on' : ''}" data-sw-none><span>✕</span>None of these</button>
+          <button class="sw-young" data-sw-young title="A young buck nobody’s going to name: out of Review for good, still counted as a buck"><span>↓</span><b>Young<em class="long"> buck</em></b></button>
+          <button class="sw-no${sw.none ? ' on' : ''}" data-sw-none><span>✕</span><b>None<em class="long"> of these</em></b></button>
         </div>
         <div class="sw-other${sw.none ? ' open' : ''}">${SW_OTHER.map(([k, l]) => `<button class="sw-o" data-sw-animal="${k}">${l}</button>`).join('')}
           <button class="sw-o bad" data-sw-bad>Bad photo</button><button class="sw-o" data-sw-skip>Skip for now</button></div>
       </div>
     </div></div>`;
   const card = $('#sw-card'), img = card.querySelector('img');
+  const ids = g.map(x => x.id);
+  card.querySelectorAll('.sw-thumbs img').forEach(th => th.onclick = e => {  // look at another photo of the visit
+    e.stopPropagation(); card.querySelectorAll('.sw-thumbs img').forEach(x => x.classList.toggle('on', x === th));
+    const full = card.classList.contains('full'); img.dataset.crop = th.dataset.crop; img.dataset.full = th.dataset.full;
+    img.src = full ? th.dataset.full : th.dataset.crop; card.querySelector('.sw-ph').style.setProperty('--bg', `url('${th.dataset.crop}')`);
+  });
+  const split = $('[data-sw-split]');
+  if (split) split.onclick = () => { sw.items.splice(0, 1, ...g.map(x => ({ ...x, visit: null, group: [x] }))); swRender(); };
   card.querySelector('.sw-flip').onclick = e => { e.stopPropagation(); const full = img.src.endsWith(img.dataset.full); img.src = full ? img.dataset.crop : img.dataset.full; e.target.textContent = full ? 'Full photo' : 'Close-up'; card.classList.toggle('full', !full); };
   $$('[data-flip]').forEach(el => el.onclick = e => { e.stopPropagation(); const id = Number(el.dataset.flip), n = refs[bucks.findIndex(b => b.id === id)].length; sw.ri[id] = ((sw.ri[id] || 0) + Number(el.dataset.d) + n) % n; swRender(); });
   $$('.sw-l').forEach(el => el.onclick = () => { const id = Number(el.dataset.bid); sw.pick = sw.pick === id ? null : id; sw.none = false; swRender(); });
-  $('[data-sw-yes]').onclick = () => pick && swDecide(pick.name, 'pile', () => post(`/api/detections/${d.id}/assign`, { buck_id: pick.id }), pick.id);
+  $('[data-sw-yes]').onclick = () => pick && swDecide(pick.name, 'pile', () => post('/api/detections/assign', { ids, buck_id: pick.id }), pick.id);
+  $('[data-sw-young]').onclick = () => swDecide('Young buck', 'right', () => post('/api/detections/untrack', { ids }));
   $('[data-sw-none]').onclick = () => { sw.none = !sw.none; sw.pick = null; swRender(); };
-  $$('[data-sw-animal]').forEach(el => el.onclick = () => swDecide(el.textContent, 'right', () => post(`/api/detections/${d.id}/animal`, { animal: el.dataset.swAnimal })));
-  $('[data-sw-bad]').onclick = () => swDecide('Bad photo', 'left', () => post(`/api/detections/${d.id}/reject`));
+  $$('[data-sw-animal]').forEach(el => el.onclick = () => swDecide(el.textContent, 'right', () => Promise.all(ids.map(id => post(`/api/detections/${id}/animal`, { animal: el.dataset.swAnimal })))));
+  $('[data-sw-bad]').onclick = () => swDecide('Bad photo', 'left', () => post('/api/detections/reject', { ids }));
   $('[data-sw-skip]').onclick = () => swSkip('left');
 }
 function swFly(label, dir, buckId) {
@@ -4173,13 +4213,13 @@ async function swSkip(dir) {
 }
 async function swDecide(label, dir, save, buckId) {
   if (sw.busy || !sw.items.length) return; sw.busy = true;
-  const d = sw.items.shift(), saving = save().then(() => { sw.saved++; }).catch(e => {
+  const d = sw.items.shift(), saving = save().then(() => { sw.saved += d.group.length; }).catch(e => {
     if (e.status === 403 && /read-only/i.test(e.detail || '')) { if (!sw.preview) toast('Preview only: this is the read-only copy of deerdar.com, so choices aren’t saved.', 6000); sw.preview = true; return; }
     sw.items.unshift(d); toast(`Couldn’t save that: ${esc(e.detail || e.message)}`);
   });
-  await swFly(label, dir, buckId); sw.done++; if (buckId) sw.piles[buckId] = (sw.piles[buckId] || 0) + 1;
+  await swFly(label, dir, buckId); sw.done += d.group.length; if (buckId) sw.piles[buckId] = (sw.piles[buckId] || 0) + d.group.length;
   await saving; sw.busy = false;
-  $('#rcount').textContent = sw.items.length || ''; swRender();
+  $('#rcount').textContent = swPhotos() || ''; swRender();
 }
 
 // ------------------------------------------------------------------ engine room (calendar of what came in)
@@ -4392,6 +4432,8 @@ async function showSettings(firstRun = false) {
         <span class="meta">minutes before sunrise and after sunset; counts as daylight</span></div>
       <div class="row"><label>One visit</label><input id="ss-gap" type="number" min="5" max="240" value="${cfg.visit_gap_minutes ?? 30}" style="flex:0 0 76px">
         <span class="meta">minutes; closer photos of a buck at one camera are one visit</span></div>
+      <div class="row"><label>Review</label><input id="ss-review" type="number" min="0" max="365" value="${cfg.review_days ?? 14}" style="flex:0 0 76px">
+        <span class="meta">days back; older buck photos nobody named leave the queue, still kept (0 = never)</span></div>
       <div class="row"><label>Region</label><input id="ss-region" value="${esc(cfg.region || '')}" placeholder="${esc(cfg.region_auto ? 'Automatic: ' + cfg.region_auto : 'Automatic, from where your cameras are on the Map')}" title="Told to the AI as context. Leave blank to use where your cameras are."></div>
       <div class="row"><label>Check for photos</label><select id="ss-interval" style="flex:0 0 auto">
         ${[[0, 'Only when I tap ↻'], [1, 'Every hour'], [3, 'Every 3 hours'], [6, 'Every 6 hours'], [12, 'Every 12 hours'], [24, 'Once a day']].map(([v, l]) =>
@@ -4633,7 +4675,8 @@ async function settingsClick(e) {
     try {
       cfg = await post('/api/settings', { season_start: start, region: $('#ss-region').value.trim() || null,
                                           sync_interval_hours: Number($('#ss-interval').value),
-                                          shooting_minutes: Number($('#ss-shoot').value), visit_gap_minutes: Number($('#ss-gap').value) });
+                                          shooting_minutes: Number($('#ss-shoot').value), visit_gap_minutes: Number($('#ss-gap').value),
+                                          review_days: Number($('#ss-review').value) });
       $('#ss-msg').className = 'ok'; $('#ss-msg').textContent = 'Saved';
       $('#season').value = ''; await loadSeasons();
     } catch (err) { $('#ss-msg').className = 'bad'; $('#ss-msg').textContent = err.detail || 'Save failed'; }

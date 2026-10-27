@@ -245,6 +245,14 @@
   .bcard .nm { font-weight:700; font-size:16px; margin-top:7px; }
   .bcard .meta { font-size:12px; }
   .bcard.generic .nm { color:var(--ink2); }
+  /* the AI's auto-groups: their own section under the named bucks, smaller */
+  .bsec { margin-top:28px; padding-top:4px; border-top:1px solid var(--line); }
+  .bsec h3 { display:flex; align-items:baseline; gap:8px; } .bsec h3 small { font-size:13px; font-weight:600; color:var(--ink2); }
+  .bsec .meta { margin:-4px 0 12px; }
+  .bgrid.groups { grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
+  .bgrid.groups .bcard img, .bgrid.groups .bcard .noimg { border-radius:12px; opacity:.9; }
+  .bgrid.groups .bcard .nm { font-size:13.5px; margin-top:5px; }
+  .bgrid.groups .bcard .meta { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   /* ---- buck page */
   .bp-hero { position:relative; background:#111; }
@@ -1211,6 +1219,7 @@
     .post .ph, .post .ph img { border-radius:var(--radius); }
     .post .info { padding:8px 2px 0; }
     .bgrid { grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); }
+    .bgrid.groups { grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); }
     .pgrid { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
   }
   @media (min-width: 1000px) {
@@ -1462,7 +1471,7 @@ async function loadSeasons() {
   const keep = $('#season').value;
   seasons = await api('/api/seasons');
   $('#season').innerHTML = seasons.map(s =>
-    `<option value="${s.season}">${s.label}${s.current ? '' : ' (archived)'}</option>`).join('') + '<option value="all">All seasons</option>';
+    `<option value="${s.season}" title="${s.label}">${s.current ? 'This season' : `${s.label} (archived)`}</option>`).join('') + '<option value="all">All seasons</option>';
   $('#season').value = keep || String(seasons.find(s => s.current).season);
 }
 
@@ -1756,11 +1765,16 @@ async function showBucks() {
   bucks = await api(`/api/bucks?season=${season()}`);
   const shown = bucksFilter === 'all' ? bucks : bucks.filter(b => b.tag === bucksFilter);
   const present = shown.filter(b => !b.absent), absent = shown.filter(b => b.absent);
+  const named = present.filter(b => !b.generic), groups = present.filter(b => b.generic);
   const chips = [['all', 'All'], ['target', '★ Hit list'], ['watch', 'Watch'], ['pass', 'Let walk']].map(([k, l]) =>
     `<button class="chip ${bucksFilter === k ? 'sel' : ''}" data-filter="${k}">${l}${k === 'all' ? '' : ` ${bucks.filter(b => b.tag === k).length}`}</button>`).join('');
   $('#main').innerHTML = `<h1 class="title title-ico">${RACK_SVG}Bucks</h1><div class="chips">${chips}</div>
-    ${present.length ? `<div class="bgrid">${present.map(buckCard).join('')}</div>`
-      : `<div class="empty">${bucks.length ? 'None here.' : 'No bucks yet. Name some in Review.'}</div>`}
+    ${named.length ? `<div class="bgrid">${named.map(buckCard).join('')}</div>`
+      : `<div class="empty">${bucks.length ? 'No named bucks here.' : 'No bucks yet. Name some in Review.'}</div>`}
+    ${groups.length ? `<div class="pad bsec"><h3>Not named yet <small>${groups.length} auto-group${groups.length === 1 ? '' : 's'}</small></h3>
+      <div class="meta">The AI put these photos together because they came in one burst or looked alike. Open one to name him,
+        or to move his photos to a buck you've named.</div></div>
+      <div class="bgrid groups">${groups.map(buckCard).join('')}</div>` : ''}
     ${absent.length ? `<div class="pad"><h3>Not seen yet this season</h3>
       <div class="meta" style="margin:-4px 0 12px">From earlier seasons. When one shows up again, pick him in Review to tie this season to his history.</div></div>
       <div class="bgrid">${absent.map(buckCard).join('')}</div>` : ''}`;
@@ -1772,7 +1786,7 @@ function buckCard(b) {
   const ld = !b.absent && b.last_daylight;
   return `<button class="bcard ${b.generic ? 'generic' : ''} ${b.absent ? 'absent' : ''}" data-buck="${b.id}">
     ${b.thumb ? `<img src="${b.thumb}" alt="" loading="lazy">` : '<div class="noimg"></div>'}
-    <div class="nm">${esc(b.name)}${star(b)}${badges(b)}</div>
+    <div class="nm">${esc(b.name)}${star(b)}${b.generic ? '' : badges(b)}</div>
     <div class="meta">${line}</div>
     ${ld ? `<div class="meta">${lightTag(ld.light, `${when(ld.local)} · ${ld.camera}`)}</div>` : ''}
     ${b.season_notes ? `<div class="meta">${esc(b.season_notes)}</div>` : ''}

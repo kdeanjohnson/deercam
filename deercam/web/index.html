@@ -960,7 +960,7 @@
   .pd-sum { font-size:13.5px; line-height:1.45; margin:-2px 2px 10px; color:var(--ink); }
   .pd-cams { display:flex; flex-wrap:wrap; gap:4px; margin:2px 0 6px; } .pd-cams button { border:0; border-radius:10px; padding:3px 9px; font-size:11px; font-weight:650; background:rgba(255,255,255,.05); color:var(--ink2); cursor:pointer; } .pd-cams button.on { background:rgba(90,165,120,.2); color:var(--ink); }
   .pd-row em.st { font-weight:800; font-size:11px; text-transform:uppercase; letter-spacing:.05em; } .pd-row em.st.strong { color:var(--accent); } .pd-row em.st.fair { color:var(--amber); } .pd-row em.st.low { color:var(--ink2); }
-  .pd-c.weak { opacity:.5; }
+  .pd-c.weak { opacity:.5; } .pd-c.big { background:color-mix(in srgb, var(--h, #5aa578) 0%, rgba(255,255,255,.07)); box-shadow:0 0 0 1px rgba(255,255,255,.12) inset; } .pd-c.big b { color:#fff; }
   .dl { font-style:normal; font-size:9.5px; font-weight:750; letter-spacing:.03em; padding:1px 6px; border-radius:6px; margin-right:4px; white-space:nowrap; }
   .dl.n { background:rgba(141,159,224,.18); color:#aab6ea; } .dl.m { background:rgba(242,181,68,.14); color:#e9c27a; } .dl.d { background:rgba(90,165,120,.18); color:#8fd3a8; }
   .in-info { cursor:help; margin-left:4px; color:var(--ink2); } .in-story .none { font-size:11px; color:var(--ink2); } .pd-none { font-size:12.5px; color:var(--ink2); padding:6px 0; }
@@ -978,7 +978,6 @@
   .pd-c em { grid-column:1 / -1; font-style:normal; font-size:9.5px; font-weight:750; text-transform:uppercase; letter-spacing:.05em; color:var(--ink2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .pd-c b { font-size:12.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .pd-c small { font-size:11px; color:var(--ink2); font-weight:650; }
   .pd-c u { grid-column:1 / -1; display:block; height:3px; border-radius:2px; background:rgba(255,255,255,.08); overflow:hidden; margin-top:3px; } .pd-c u s { display:block; height:100%; background:var(--h); border-radius:2px; }
-  .pd-c.rec { background:rgba(90,165,120,.08); }
   .pd-body.blur { filter:blur(7px) saturate(.6); opacity:.55; pointer-events:none; user-select:none; }
   .pd-lock { position:absolute; inset:96px 0 0; display:grid; place-items:center; padding:20px; }
   .pd-lockc { display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; background:rgba(15,19,18,.82); border-radius:20px; padding:20px 26px; box-shadow:0 0 0 1px rgba(255,255,255,.08) inset, 0 20px 50px rgba(0,0,0,.5); max-width:320px; }
@@ -4025,10 +4024,9 @@ function renderIntel() {
     const ago = ts.length ? agoTxt(Math.max(...ts))[0] : '';
     const body = `<div class="pd-sum">${esc(summary(b, xs, p))}</div>
       <div class="pd-sec pd-fc" id="pd-fc">${forecastBox(b, xs, '')}</div>
-      <div class="pd-sec"><div class="pd-k">Favorite conditions<span>bar = how much more than usual</span></div>
-        <div class="pd-conds">${p.rows.map(r => `<div class="pd-c${r.clear ? '' : ' weak'}" title="${esc(GROUP[r.k])}: ${esc(r.key)} on ${r.t} of ${r.kn} visits; that comes up ${pct(r.usual)} of the time the cameras are running"><em>${GROUP[r.k]}</em><b>${esc(opt(r.key))}</b><small>${r.t}/${r.kn}</small><u><s style="width:${pct(r.edge)};--h:${SHOW[r.k]}"></s></u></div>`).join('')}
-        <div class="pd-c rec"><em>Data</em><b>${xs.length} visit${xs.length === 1 ? '' : 's'}</b><small>${pct(p.conf)}</small><u><s style="width:${pct(p.conf)};--h:var(--accent)"></s></u></div>
-        <div class="pd-c rec"><em>Recency</em><b>${ago} ago</b><small>${pct(p.fresh)}</small><u><s style="width:${pct(p.fresh)};--h:var(--accent)"></s></u></div></div>
+      <div class="pd-sec"><div class="pd-k">Favorite conditions<span>bar = how often he's in it</span></div>
+        <div class="pd-conds">${p.rows.slice().sort((a, c) => c.t / c.kn - a.t / a.kn || c.t - a.t).map(r => { const big = r.t >= 3 && r.t / r.kn >= .5;  // at least half his visits: he keeps coming back to it
+          return `<div class="pd-c${big ? ' big' : ' weak'}" title="${esc(GROUP[r.k])}: ${esc(r.key)} on ${r.t} of ${r.kn} visits; that comes up ${pct(r.usual)} of the time the cameras are running"><em>${GROUP[r.k]}</em><b>${esc(opt(r.key))}</b><small>${r.t}/${r.kn}</small><u><s style="width:${pct(r.t / r.kn)};--h:${SHOW[r.k]}"></s></u></div>`; }).join('')}</div>
         <div class="pd-math">Pattern <b>${pct(p.cons)}</b> × data <b>${pct(p.conf)}</b> × recency <b>${pct(p.fresh)}</b> = <b class="tot">${p.v}%</b> predictable</div></div>`;
     document.body.insertAdjacentHTML('beforeend', `<div class="pd-wrap"><div class="pd" role="dialog" aria-label="${esc(b.name)}">
       <button class="pd-x" aria-label="Close">×</button>

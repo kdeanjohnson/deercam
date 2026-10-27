@@ -36,7 +36,7 @@ def _flag(name: str, default: str) -> bool:
 EDITABLE = {
     "vision_provider", "vision_model", "vision_fast_model", "custom_base_url", "ai_monthly_limit",
     "xai_api_key", "anthropic_api_key", "openai_api_key", "gemini_api_key", "custom_api_key",
-    "region", "region_auto", "region_auto_key", "region_center", "season_start", "sync_interval_hours", "shooting_minutes", "setup_done",
+    "region", "region_auto", "region_auto_key", "region_center", "season_start", "sync_interval_hours", "shooting_minutes", "visit_gap_minutes", "setup_done",
 }
 
 
@@ -99,6 +99,8 @@ class Settings:
     sync_interval_hours: float = field(default_factory=lambda: float(_env("SYNC_INTERVAL_HOURS", "0")))
     # Legal shooting light extends this many minutes before sunrise and after sunset (30 in most states)
     shooting_minutes: int = field(default_factory=lambda: int(_env("SHOOTING_MINUTES", "30")))
+    # Photos of one buck at one camera with no gap longer than this many minutes are one visit
+    visit_gap_minutes: int = field(default_factory=lambda: int(_env("VISIT_GAP_MINUTES", "30")))
     setup_done: bool = False
 
     def __post_init__(self):

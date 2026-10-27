@@ -1,7 +1,7 @@
 """When and where bucks show up: visits, daylight, time of day, cameras, and the conditions
 during daylight visits.
 
-A visit is one buck at one camera with no gap longer than VISIT_GAP_MINUTES between photos, so a
+A visit is one buck at one camera with no gap longer than settings.visit_gap_minutes between photos, so a
 buck standing at the feeder for 40 frames counts once. Daylight is worked out from sunrise/sunset
 at the camera (or the average of the placed cameras) rather than Reveal's sunPhase, which comes
 from a weather observation up to two hours older than the photo."""
@@ -12,8 +12,6 @@ from datetime import datetime
 from . import place
 from .config import settings
 from .sun import light
-
-VISIT_GAP_MINUTES = 30
 
 # Reveal's labels, used only when no camera has a location yet
 PHASE_LIGHT = {"Sunrise": "day", "Daytime": "day", "Sunset": "day", "Dawn": "shooting", "Dusk": "shooting",
@@ -89,7 +87,7 @@ def visits(sightings: list[dict]) -> list[dict]:
     for group in by_key.values():
         cur = [group[0]]
         for s in group[1:]:
-            if (s["utc"] - cur[-1]["utc"]).total_seconds() > VISIT_GAP_MINUTES * 60:
+            if (s["utc"] - cur[-1]["utc"]).total_seconds() > settings.visit_gap_minutes * 60:
                 out.append(cur)
                 cur = []
             cur.append(s)

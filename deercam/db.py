@@ -82,6 +82,8 @@ MIGRATIONS = [
     ("cameras", "lon", "REAL"),
     ("cameras", "location_source", "TEXT"),
     ("detections", "animal", "TEXT"),
+    ("detections", "reviewed_at", "TEXT"),  # when a person last decided what this animal is (UTC ISO)
+    ("detections", "reviewed_by", "INTEGER"),  # and which user
 ]
 
 

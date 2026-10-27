@@ -71,7 +71,7 @@
   body.demo #map-search, body.demo #map-go { display:none; }
   body.signed-out .hdr-actions, body.signed-out #tabs, body.signed-out #job { display:none; }
   /* What a role can't do is hidden; the server refuses it anyway */
-  body.role-viewer #sync, body.role-viewer [data-go="review"], body.role-viewer .tagrow, body.role-viewer .season-notes,
+  body.role-viewer #sync, body.role-viewer [data-go="review"], body.role-viewer [data-go="swipe"], body.role-viewer .tagrow, body.role-viewer .season-notes,
   body.role-viewer .ptile .acts, body.role-viewer .edit-h, body.role-viewer #buck-edit, body.role-viewer #status-edit,
   body.role-viewer [data-act="group-returning"], body.role-viewer .nudge, body.role-viewer .notbuck, body.role-viewer #merge-row { display:none; }
   body:not(.role-owner) [data-place], body:not(.role-owner) [data-unplace] { display:none; }
@@ -863,71 +863,181 @@
   body.tl-float .tlm-k b { margin:0; }
   body.tl-float .tlm-k.all { display:none; }
 
-  /* ---- intel: the most-wanted list on the left, his pattern and the best windows in a grid that fits one screen */
-  .intel { display:grid; grid-template-columns:214px minmax(0, 1fr); gap:14px; padding:6px 16px 16px; }
-  .in-list { background:var(--g-bg); color:var(--g-ink); border-radius:var(--radius); padding:5px; align-self:start; box-shadow:0 0 0 1px var(--g-line) inset; }
-  .in-list .tlm-k img { width:30px; height:34px; border-radius:8px; object-fit:cover; flex:none; background:#000; box-shadow:0 0 0 1.5px rgba(255,255,255,.18); }
-  .in-list .tlm-k { padding:3px 7px; } .in-list .tlm-k small { color:var(--amber); font-size:11px; } .in-list .tlm-k b { color:var(--g-dim); font-size:11.5px; font-weight:650; }
-  .in-list .tlm-k.on { background:rgba(255,255,255,.12); } .in-list .tlm-k::before { display:none; }
-  .in-main { min-width:0; display:flex; flex-direction:column; gap:12px; }
-  .in-card { display:flex; flex-direction:column; }
-  .in-heat { display:flex; flex-direction:column; gap:4px; }
-  .in-hrow { display:grid; grid-template-columns:118px 1fr; gap:10px; align-items:center; font-size:12.5px; font-weight:600; }
-  .in-hrow > span { display:flex; align-items:center; gap:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .in-hcells { display:grid; grid-template-columns:repeat(48, 1fr); gap:1px; height:26px; border-radius:6px; overflow:hidden; background:color-mix(in srgb, var(--ink) 4%, transparent); }
-  .in-hcells i { display:block; } .in-hcells i.n { box-shadow:0 0 0 100px rgba(0,0,0,.28) inset; }
-  .in-hrow.ax .in-hcells { height:14px; background:none; overflow:visible; } .in-hrow.ax b { position:relative; font-size:10px; color:var(--ink2); font-weight:600; white-space:nowrap; }
-  .in-hrow.ax b em { font-style:normal; color:var(--ink); font-weight:700; }
-  .in-clock { position:relative; display:grid; grid-template-columns:repeat(24, 1fr); gap:2px; height:40px; margin-top:4px; }
-  .in-clock i { border-radius:4px; display:flex; align-items:center; justify-content:center; font-style:normal; } .in-clock i b { font-size:11px; font-weight:800; }
-  .in-clock u { position:absolute; top:-7px; width:12px; height:12px; margin-left:-6px; border-radius:50%; background:#ffd65a; box-shadow:0 0 6px #ffd65a; }
-  .in-clock u.set { background:#c9d1dc; box-shadow:none; }
-  .in-clock-ax { display:flex; justify-content:space-between; font-size:10.5px; color:var(--ink2); margin-top:4px; }
-  .in-light { display:flex; gap:14px; margin-top:12px; font-size:12px; color:var(--ink2); } .in-light i { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:-1px; } .in-light b { color:var(--ink); }
-  .in-cl-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px 18px; }
-  .in-cl-h { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink2); margin:4px 0 2px; display:flex; justify-content:space-between; } .in-cl-h span { text-transform:none; letter-spacing:0; color:var(--amber); }
-  .in-row.now > span, .in-row.now em { color:var(--amber); } .in-row.now > i b { background:var(--amber); }
-  .in-cl .in-row { grid-template-columns:88px minmax(0, 1fr) 22px; gap:6px; font-size:12px; }
-  .in-top { display:flex; align-items:center; gap:18px; }
-  .in-name { display:flex; align-items:center; gap:12px; min-width:0; }
-  .in-name img { width:48px; height:48px; border-radius:50%; object-fit:cover; background:#000; box-shadow:0 0 0 2px var(--line); }
-  .in-name b { display:block; font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1.05; } .in-name b i { color:var(--amber); font-style:normal; font-size:18px; }
-  .in-name span { font-size:12.5px; color:var(--ink2); }
-  .in-days { margin-left:auto; display:flex; gap:3px; }
-  .in-days i { width:26px; height:34px; border-radius:6px; background:var(--soft); display:flex; flex-direction:column; align-items:center; justify-content:center; font-style:normal; position:relative; }
-  .in-days i.on { background:color-mix(in srgb, var(--accent) calc(var(--v) * 85%), var(--soft)); }
-  .in-days i b { font-size:12px; font-weight:800; line-height:1; } .in-days i span { font-size:9px; color:var(--ink2); margin-top:2px; } .in-days i.on span { color:rgba(255,255,255,.75); }
-  .in-grid { display:grid; grid-template-columns:repeat(12, minmax(0, 1fr)); gap:12px; }
+  /* ---- intel: one compact table (a row per buck, a narrow column per option, grouped by data point) and every visit */
+  .intel { display:flex; flex-direction:column; gap:12px; padding:6px 16px 20px; width:min(1600px, 100vw); margin-left:50%; transform:translateX(-50%); }
   .in-card { background:var(--soft); border-radius:var(--radius); padding:12px 14px; min-width:0; }
-  .in-best { grid-column:span 4; } .in-chart { grid-column:span 8; } .in-day { grid-column:span 4; } .in-where { grid-column:span 3; } .in-conds { grid-column:span 5; }
-  .in-h { font-size:14px; font-weight:750; letter-spacing:-.01em; margin-bottom:8px; display:flex; align-items:baseline; gap:8px; }
-  .in-h span { font-size:11.5px; color:var(--ink2); font-weight:600; }
-  .in-wins { display:flex; flex-direction:column; gap:6px; }
-  .in-win { display:flex; gap:12px; align-items:center; background:var(--card); border-radius:12px; padding:8px 10px; }
-  .in-win.top { box-shadow:0 0 0 1.5px var(--accent) inset; }
-  .in-pct { text-align:center; min-width:52px; } .in-pct b { display:block; font-size:22px; font-weight:800; letter-spacing:-.02em; color:var(--accent); line-height:1; } .in-pct span { font-size:9.5px; color:var(--ink2); text-transform:uppercase; letter-spacing:.06em; }
-  .in-wbody { min-width:0; } .in-wbody b { font-size:13px; display:flex; align-items:center; gap:6px; } .in-when { font-size:12.5px; } .in-wbody .meta { font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .in-svg { display:block; width:100%; height:118px; }
-  .in-axis { position:relative; height:16px; font-size:10.5px; color:var(--ink2); } .in-axis span { position:absolute; top:2px; transform:translateX(-50%); white-space:nowrap; } .in-axis span.d { color:var(--ink); font-weight:700; }
-  .in-legend { display:flex; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--ink2); margin-top:4px; } .in-legend i { display:inline-block; width:10px; height:3px; border-radius:2px; vertical-align:middle; margin-right:5px; }
-  .in-sun { margin-bottom:8px; } .in-sun:last-child { margin-bottom:0; } .in-sun-h { display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:4px; } .in-sun-h span { color:var(--ink2); font-size:11.5px; }
-  .in-sun-bar { position:relative; height:18px; border-radius:5px; background:color-mix(in srgb, var(--ink) 8%, transparent); overflow:hidden; }
-  .in-sun-bar .dark { position:absolute; top:0; bottom:0; background:rgba(0,0,0,.4); } .in-sun-bar .legal { position:absolute; top:0; bottom:0; background:rgba(242,166,90,.35); }
-  .in-sun-bar em { position:absolute; top:0; bottom:0; width:1px; background:#ffd65a; }
-  .in-sun-bar u { position:absolute; top:4px; width:10px; height:10px; margin-left:-5px; border-radius:50%; box-shadow:0 0 0 2px rgba(0,0,0,.55); }
-  .in-sun-ax { display:flex; justify-content:space-between; font-size:10px; color:var(--ink2); margin-top:2px; }
-  .in-row { display:grid; grid-template-columns:minmax(0, 1fr) 70px 54px; gap:8px; align-items:center; font-size:12.5px; padding:3px 0; }
-  .in-row > span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:6px; } .dot { width:8px; height:8px; border-radius:50%; flex:none; display:inline-block; }
-  .in-row > i { height:7px; border-radius:4px; background:color-mix(in srgb, var(--ink) 8%, transparent); overflow:hidden; display:block; } .in-row > i b { display:block; height:100%; background:var(--accent); border-radius:4px; }
-  .in-row em { font-style:normal; text-align:right; font-variant-numeric:tabular-nums; font-weight:700; } .in-row em small { color:var(--ink2); font-weight:600; font-size:11px; }
-  .in-seg-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; }
-  .in-seg-h { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink2); margin-bottom:4px; display:flex; justify-content:space-between; } .in-seg-h span { text-transform:none; letter-spacing:0; color:var(--amber); }
-  .in-seg-bar { display:flex; height:9px; border-radius:5px; overflow:hidden; gap:1px; } .in-seg-bar i { background:var(--accent); } .in-seg-bar i.now { background:var(--amber); opacity:1 !important; }
-  .in-seg-k { display:flex; flex-wrap:wrap; gap:2px 10px; font-size:11px; color:var(--ink2); margin-top:4px; } .in-seg-k b { color:var(--ink); } .in-seg-k .now { color:var(--amber); }
-  .in-reasons { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
-  .in-reasons div { font-size:11.5px; background:var(--card); border-radius:9px; padding:4px 9px; color:var(--ink2); } .in-reasons b { color:var(--ink); } .in-reasons em { font-style:normal; font-weight:700; margin-left:4px; }
-  .in-reasons .good em { color:var(--good); } .in-reasons .bad em { color:var(--warn); }
-  @media (max-width: 1000px) { .intel { grid-template-columns:1fr; } .in-card, .in-best, .in-chart, .in-day, .in-where, .in-conds { grid-column:span 12; } .in-days { display:none; } }
+  .in-allbtn { margin-left:auto; border:0; background:var(--card); color:var(--ink2); font-size:11.5px; font-weight:650; padding:3px 10px; border-radius:10px; cursor:pointer; }
+  .in-tablewrap { overflow-x:auto; }
+  .in-pred { padding:16px 18px 14px; }
+  .in-log { padding:16px 18px 14px; } .in-log .in-allbtn { align-self:center; }
+  .in-top { display:flex; align-items:flex-end; gap:12px 28px; flex-wrap:wrap; margin-bottom:18px; }
+  .in-title b { display:block; font-size:22px; font-weight:800; letter-spacing:-.02em; line-height:1.1; } .in-title span { font-size:11.5px; color:var(--ink2); font-weight:600; }
+  .in-story { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-left:auto; } .in-story > i { font-style:normal; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--ink2); margin-right:2px; }
+  .in-story span { display:inline-flex; align-items:baseline; gap:5px; padding:4px 9px; border-radius:999px; background:color-mix(in srgb, var(--h) 14%, transparent); box-shadow:0 0 0 1px color-mix(in srgb, var(--h) 30%, transparent) inset; font-size:12px; }
+  .in-story em { font-style:normal; font-size:9.5px; font-weight:750; text-transform:uppercase; letter-spacing:.06em; color:var(--h); } .in-story b { font-weight:750; } .in-story small { font-size:10.5px; color:var(--ink2); font-weight:650; }
+  .in-cards { display:none; flex-direction:column; gap:8px; }
+  .in-pc { background:color-mix(in srgb, var(--ink) 3.5%, transparent); border-radius:14px; padding:10px; } .in-pc.on { box-shadow:0 0 0 1.5px var(--accent) inset; } .in-pc.dim { opacity:.45; }
+  .in-pch { display:flex; align-items:center; gap:10px; margin-bottom:8px; } .in-pch > span { flex:1; min-width:0; }
+  .in-pch img, .in-pch .noimg { width:40px; height:40px; border-radius:50%; object-fit:cover; background:#000; flex:none; }
+  .in-pch b { display:block; font-size:15px; font-weight:750; } .in-pch b i { color:var(--amber); font-style:normal; font-size:11px; margin-left:3px; }
+  .in-pch b u { text-decoration:none; font-size:10.5px; font-weight:750; color:var(--ink2); background:color-mix(in srgb, var(--ink) 8%, transparent); border-radius:6px; padding:1px 6px; margin-left:6px; vertical-align:2px; }
+  .in-pch small { display:block; font-size:11px; color:var(--ink2); } .in-pch .few { font-style:normal; font-size:11px; color:var(--ink2); font-weight:650; }
+  .in-pch .ring { width:40px; height:40px; border-radius:50%; display:grid; place-items:center; flex:none; background:conic-gradient(var(--accent) calc(var(--p) * 1%), color-mix(in srgb, var(--ink) 12%, transparent) 0); }
+  .in-pch .ring em { width:33px; height:33px; border-radius:50%; background:var(--soft); display:grid; place-items:center; font-style:normal; font-size:11px; font-weight:800; }
+  .in-pc .in-story { margin:0; gap:5px; } .in-pc .in-story span { padding:3px 8px; font-size:11.5px; }
+  .in-tab { border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; margin:0 auto; }
+  .in-tab th { font-weight:600; text-align:left; white-space:nowrap; }
+  .in-tab thead th { font-size:10px; font-weight:650; color:var(--ink2); vertical-align:bottom; }
+  .in-tab thead th.sc { padding:0 0 8px 8px; text-align:center; font-weight:750; font-size:10.5px; white-space:nowrap; color:var(--ink); }
+  .in-tab th.grp { text-align:left; padding:0 0 2px 9px; }
+  .in-tab th.grp span { display:block; color:var(--h); font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; padding:0 0 4px 2px; border-bottom:2px solid color-mix(in srgb, var(--h) 55%, transparent); }
+  .in-tab th.op { padding:4px 1px 8px; text-align:center; white-space:normal; line-height:1.15; width:31px; min-width:31px; max-width:46px; font-size:9.5px; font-weight:600; } .in-tab th.op.now { color:var(--amber); font-weight:800; }
+  .in-tab .g0 { padding-left:9px !important; }
+  .in-tab tbody th.bk { display:flex; align-items:center; gap:10px; padding:5px 16px 5px 0; cursor:pointer; min-width:124px; }
+  .in-tab th.bk img, .in-tab th.bk .noimg { width:38px; height:38px; border-radius:50%; object-fit:cover; background:#000; flex:none; box-shadow:0 0 0 1.5px var(--line); }
+  .in-tab th.bk b { display:block; font-size:14px; font-weight:750; line-height:1.15; } .in-tab th.bk b i { color:var(--amber); font-style:normal; font-size:10.5px; margin-left:3px; }
+  .in-tab th.bk small { display:block; font-size:10px; color:var(--ink2); line-height:1.25; white-space:nowrap; }
+  .in-tab th.bk b u { text-decoration:none; font-size:10px; font-weight:750; color:var(--ink2); background:color-mix(in srgb, var(--ink) 8%, transparent); border-radius:6px; padding:1px 5px; margin-left:6px; vertical-align:1px; }
+  .in-tab tr.on th.bk img { box-shadow:0 0 0 2.5px var(--accent); } .in-tab tr.on th.bk b { color:var(--accent); } .in-tab tr.dim { opacity:.35; }
+  .in-tab tbody tr:not(.tot):hover th.bk b { color:var(--ink); text-decoration:underline; text-underline-offset:3px; text-decoration-color:var(--line); }
+  .in-tab td { text-align:center; height:46px; padding:0; width:31px; min-width:31px; }
+  .in-tab td.ls { width:auto; min-width:64px; padding:0 4px 0 2px; text-align:left; white-space:nowrap; }
+  .in-tab td.ls b { font-size:13px; font-weight:750; } .in-tab td.ls small { font-size:10.5px; color:var(--ink2); margin-left:4px; }
+  .in-tab td.ls.cold b { color:var(--ink2); }
+  .in-tab th.grp.ls { padding-left:0; } .in-tab th.op.ls { min-width:78px; }
+  .in-tab td > i { display:inline-grid; place-items:center; width:26px; height:26px; border-radius:50%; font-style:normal; font-weight:750; font-size:11.5px; color:var(--ink);
+                   background:color-mix(in srgb, var(--h) calc(22% + var(--s, 0) * 70%), transparent); transition:transform .12s; }
+  .in-tab td.z > i { width:5px; height:5px; background:color-mix(in srgb, var(--ink) 12%, transparent); }
+  .in-tab td.hi > i { color:#0f1312; }
+  .in-tab td.top > i { box-shadow:0 0 0 2px var(--soft), 0 0 0 3.5px var(--h); }
+  .in-tab td:not(.z):hover > i { transform:scale(1.12); }
+  .in-tab td.sum.z > i { width:5px; height:5px; border-radius:50%; background:color-mix(in srgb, var(--ink) 12%, transparent); }
+  .in-tab td.sum:not(.z) > i { width:30px; height:30px; border-radius:9px; background:color-mix(in srgb, var(--h) calc(10% + var(--s, 0) * 45%), transparent); color:var(--ink); box-shadow:none; font-size:11.5px; }
+  .in-tab tbody tr:not(.tot) > * { border-bottom:1px solid color-mix(in srgb, var(--ink) 5%, transparent); }
+  .in-tab td.dt-unused { background:none; font-size:11.5px; font-weight:650; line-height:1.15; padding:0 6px; white-space:nowrap; text-align:center; } .in-tab td.dt small { display:block; font-size:10px; color:var(--ink2); font-weight:600; }
+  .in-tab td.sc { padding-left:8px; }
+  .in-tab tr.tot > * { padding-top:8px; } .in-tab tr.tot th.bk { cursor:default; padding-left:44px; }
+  .in-tab tr.tot th.bk b { font-size:12px; color:var(--ink2); }
+  .in-tab .ring { width:38px; height:38px; margin:0 auto; border-radius:50%; display:grid; place-items:center; background:conic-gradient(var(--accent) calc(var(--p) * 1%), color-mix(in srgb, var(--ink) 12%, transparent) 0); }
+  .in-tab .ring em { width:31px; height:31px; border-radius:50%; background:var(--soft); display:grid; place-items:center; font-style:normal; font-size:11px; font-weight:800; }
+  .in-tab td.sc.few { font-size:10.5px; color:var(--ink2); font-weight:650; text-align:center; line-height:1.1; white-space:nowrap; } .in-tab td.sc.few small { display:block; font-size:9.5px; font-weight:600; }
+  .in-foot { font-size:11px; color:var(--ink2); margin-top:8px; line-height:1.4; max-width:900px; } .in-foot .nowk { color:var(--amber); font-weight:650; }
+  .in-v { display:grid; grid-template-columns:44px 1.2fr 1.1fr 1.2fr 1.2fr .9fr .8fr 1.1fr; gap:10px; align-items:center; padding:4px 6px; border-radius:10px; color:inherit; text-decoration:none; font-size:12.5px; }
+  .in-v:not(.hd):hover { background:var(--card); }
+  .in-v.hd { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink2); padding-top:0; }
+  .in-v img, .in-v .noimg { width:44px; height:44px; border-radius:8px; object-fit:cover; background:#000; display:block; }
+  .in-v > span { min-width:0; display:flex; flex-direction:column; } .in-v > span:nth-child(3) { flex-direction:row; flex-wrap:wrap; align-items:center; gap:0 6px; }
+  .in-v small { display:block; color:var(--ink2); font-size:11px; width:100%; } .in-v .in-who b { font-weight:750; }
+  /* ---- the hunting sheet: a compact dialog over the Predictability table */
+  .in-tab td.sc, .in-pch .ring, .in-pch .few { cursor:pointer; } .in-tab td.sc:hover .ring { transform:scale(1.08); } .in-tab .ring { transition:transform .15s; }
+  .in-tab td.sc.few:hover { color:var(--ink); }
+  .pd-wrap { position:fixed; inset:0; z-index:80; background:rgba(5,8,7,.62); backdrop-filter:blur(6px); display:grid; place-items:center; padding:16px; animation:pd-in .18s ease-out; }
+  .pd-wrap.out { opacity:0; transition:opacity .15s; }
+  @keyframes pd-in { from { opacity:0; } } @keyframes pd-up { from { transform:translateY(14px) scale(.98); opacity:0; } }
+  .pd { position:relative; width:min(640px, 100%); max-height:calc(100dvh - 24px); overflow:hidden; background:linear-gradient(180deg, #19201d, #121715); border-radius:22px; padding:16px 18px 16px;
+        box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.07) inset; animation:pd-up .22s cubic-bezier(.2,.8,.3,1); }
+  .pd-x { position:absolute; top:12px; right:12px; width:32px; height:32px; border:0; border-radius:50%; background:rgba(255,255,255,.08); color:var(--ink); font-size:20px; line-height:1; cursor:pointer; z-index:3; }
+  .pd-head { display:flex; align-items:center; gap:12px; padding-right:40px; margin-bottom:12px; }
+  .pd-head img { width:50px; height:50px; border-radius:50%; object-fit:cover; box-shadow:0 0 0 2px rgba(255,255,255,.12); }
+  .pd-head > div:first-of-type { flex:1; min-width:0; } .pd-head b { display:block; font-size:24px; font-weight:800; letter-spacing:-.02em; } .pd-head b i { color:var(--amber); font-style:normal; font-size:15px; margin-left:5px; vertical-align:3px; }
+  .pd-head span { font-size:12.5px; color:var(--ink2); }
+  .pd-ring { width:62px; height:62px; border-radius:50%; flex:none; display:grid; place-items:center; align-content:center; position:relative; background:conic-gradient(var(--accent) calc(var(--p) * 1%), rgba(255,255,255,.09) 0); }
+  .pd-ring::before { content:''; position:absolute; inset:6px; border-radius:50%; background:#161c19; }
+  .pd-ring em, .pd-ring small { position:relative; font-style:normal; } .pd-ring em { font-size:17px; font-weight:800; line-height:1; } .pd-ring small { font-size:8.5px; color:var(--ink2); text-transform:uppercase; letter-spacing:.05em; font-weight:700; margin-top:2px; }
+  .pd-ring.locked { background:conic-gradient(var(--amber) calc(var(--p) * 1%), rgba(255,255,255,.09) 0); }
+  .pd-k { font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--ink2); margin-bottom:8px; }
+  .pd-sec { background:rgba(255,255,255,.035); border-radius:14px; padding:9px 12px 9px; margin-bottom:8px; }
+  .pd-k { display:flex; justify-content:space-between; align-items:baseline; } .pd-k span { text-transform:none; letter-spacing:0; font-weight:600; font-size:11.5px; color:var(--ink2); }
+  .pd-row { display:grid; grid-template-columns:112px minmax(0, 1fr) 90px 34px; align-items:center; column-gap:10px; padding:3px 0; font-size:13px; border-top:1px solid rgba(255,255,255,.05); }
+  .pd-row:first-of-type { border-top:0; } .pd-row > i { width:8px; height:8px; border-radius:50%; background:var(--h); }
+  .pd-row b { font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .pd-row em { font-style:normal; font-size:11.5px; color:var(--ink2); font-weight:650; text-align:right; white-space:nowrap; }
+  .pd-row em.g { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; font-weight:750; }
+  .pd-row u { display:block; height:5px; border-radius:3px; background:rgba(255,255,255,.08); overflow:hidden; } .pd-row u s { display:block; height:100%; border-radius:3px; background:var(--h); }
+  .pd-row.time { grid-template-columns:minmax(0, auto) 1fr 52px; } .pd-row.time span { font-size:12px; color:var(--ink2); } .pd-row.time.top b { color:var(--accent); font-size:14px; }
+  .pd-row.rec { margin-top:2px; border-top:1px dashed rgba(255,255,255,.12); }
+  .pd-math { font-size:11.5px; color:var(--ink2); padding-top:7px; text-align:right; } .pd-math b { color:var(--ink); } .pd-math .tot { color:var(--accent); font-size:13px; }
+  .pd-fc { margin:0; }
+  .pd-sum { font-size:13.5px; line-height:1.45; margin:-2px 2px 10px; color:var(--ink); }
+  .pd-cams { display:flex; flex-wrap:wrap; gap:4px; margin:2px 0 6px; } .pd-cams button { border:0; border-radius:10px; padding:3px 9px; font-size:11px; font-weight:650; background:rgba(255,255,255,.05); color:var(--ink2); cursor:pointer; } .pd-cams button.on { background:rgba(90,165,120,.2); color:var(--ink); }
+  .pd-row em.st { font-weight:800; font-size:11px; text-transform:uppercase; letter-spacing:.05em; } .pd-row em.st.strong { color:var(--accent); } .pd-row em.st.fair { color:var(--amber); } .pd-row em.st.low { color:var(--ink2); }
+  .pd-c.weak { opacity:.5; }
+  .dl { font-style:normal; font-size:9.5px; font-weight:750; letter-spacing:.03em; padding:1px 6px; border-radius:6px; margin-right:4px; white-space:nowrap; }
+  .dl.n { background:rgba(141,159,224,.18); color:#aab6ea; } .dl.m { background:rgba(242,181,68,.14); color:#e9c27a; } .dl.d { background:rgba(90,165,120,.18); color:#8fd3a8; }
+  .in-info { cursor:help; margin-left:4px; color:var(--ink2); } .in-story .none { font-size:11px; color:var(--ink2); } .pd-none { font-size:12.5px; color:var(--ink2); padding:6px 0; }
+  .pd-cal { margin-top:8px; display:flex; flex-direction:column; gap:3px; }
+  .pd-day { display:flex; align-items:center; gap:8px; } .pd-day > span { width:60px; flex:none; font-size:10.5px; color:var(--ink2); white-space:nowrap; } .pd-day > span b { color:var(--ink); font-weight:750; margin-right:4px; }
+  .pd-day.wk > span b { color:var(--amber); }
+  .pd-day > div { flex:1; display:grid; grid-template-columns:repeat(24, 1fr); gap:2px; }
+  .pd-day i { height:16px; border-radius:3px; background:color-mix(in srgb, #6fd394 calc(var(--v) * 100%), rgba(255,255,255,.05)); }
+  .pd-day i.x { background:transparent; } .pd-day i.nl { background:repeating-linear-gradient(135deg, rgba(255,255,255,.035) 0 3px, transparent 3px 6px); }
+  .pd-note { font-size:11px; color:var(--ink2); padding-top:5px; } .pd-day i.b { box-shadow:0 0 0 1.5px #fff inset; }
+  .pd-day.ax em { font-style:normal; font-size:9px; color:var(--ink2); text-align:left; white-space:nowrap; }
+  .pd-src { font-size:10px; color:var(--ink2); text-align:right; margin-top:6px; }
+  .pd-conds { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:4px; margin-top:2px; }
+  .pd-c { display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:6px; row-gap:1px; padding:6px 8px 7px; border-radius:9px; background:rgba(255,255,255,.035); min-width:0; }
+  .pd-c em { grid-column:1 / -1; font-style:normal; font-size:9.5px; font-weight:750; text-transform:uppercase; letter-spacing:.05em; color:var(--ink2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pd-c b { font-size:12.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .pd-c small { font-size:11px; color:var(--ink2); font-weight:650; }
+  .pd-c u { grid-column:1 / -1; display:block; height:3px; border-radius:2px; background:rgba(255,255,255,.08); overflow:hidden; margin-top:3px; } .pd-c u s { display:block; height:100%; background:var(--h); border-radius:2px; }
+  .pd-c.rec { background:rgba(90,165,120,.08); }
+  .pd-body.blur { filter:blur(7px) saturate(.6); opacity:.55; pointer-events:none; user-select:none; }
+  .pd-lock { position:absolute; inset:96px 0 0; display:grid; place-items:center; padding:20px; }
+  .pd-lockc { display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; background:rgba(15,19,18,.82); border-radius:20px; padding:20px 26px; box-shadow:0 0 0 1px rgba(255,255,255,.08) inset, 0 20px 50px rgba(0,0,0,.5); max-width:320px; }
+  .pd-lockc svg { color:var(--amber); } .pd-lockc b { font-size:17px; font-weight:800; } .pd-lockc span { font-size:12.5px; color:var(--ink2); line-height:1.4; }
+  .pd-dots { display:flex; gap:6px; margin-top:6px; } .pd-dots i { width:26px; height:6px; border-radius:3px; background:rgba(255,255,255,.12); } .pd-dots i.on { background:var(--amber); }
+  @media (max-width: 560px) { .pd-wrap { padding:10px 8px; } .pd-conds { grid-template-columns:repeat(3, minmax(0, 1fr)); gap:3px; } .pd-c { padding:5px 6px 6px; } .pd-c em { font-size:8.5px; letter-spacing:.02em; } .pd-c b { font-size:11.5px; } .pd-c small { font-size:10px; } .pd-day i { height:13px; } .pd-src { font-size:9.5px; text-align:left; } .pd-math { font-size:10.5px; } .pd-sec .pd-k span { display:none; } .pd-head { margin-bottom:8px; } .pd-head span { font-size:11.5px; } .pd-row.time { grid-template-columns:auto 1fr auto; } .pd-row.time span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px; } .pd-cal .pd-day > span { width:30px; } .pd-day > span small, .pd-fc .pd-k span { display:none; } .pd-row { grid-template-columns:92px minmax(0, 1fr) 46px 34px; column-gap:7px; font-size:12px; } .pd-row em.g { font-size:9.5px; letter-spacing:.03em; } .pd-row.time { grid-template-columns:auto 1fr 40px; } .pd-row.time span { overflow:hidden; text-overflow:ellipsis; } .pd-row.time b { font-size:12.5px; } .pd-row.time span { white-space:nowrap; font-size:11px; } .pd-row.time.top b { font-size:13px; } .pd { padding:16px 14px 16px; border-radius:20px; } .pd-head b { font-size:20px; } .pd-ring { width:60px; height:60px; } }
+  /* ---- review as a lineup: the new photo big on the left, every named buck the same size on the right */
+  .swr { padding:12px 16px 28px; max-width:1320px; margin:0 auto; }
+  .sw-strip { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 22px; margin:0 2px 10px; min-height:18px; font-size:12px; color:var(--ink2); }
+  .sw-strip b { font-size:18px; font-weight:800; color:var(--ink); margin-right:6px; letter-spacing:-.02em; } .sw-strip .wait b { color:var(--amber); } .sw-strip .sess b { color:var(--accent); }
+  .sw-grid { margin-left:auto; font-size:12px; color:var(--ink2); cursor:pointer; text-decoration:underline; text-underline-offset:3px; text-decoration-color:var(--line); }
+  .sw-main { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1.15fr); gap:22px; align-items:start; }
+  .sw-left { position:sticky; top:66px; display:flex; flex-direction:column; gap:12px; }
+  .sw-card { position:relative; background:var(--card); border-radius:20px; overflow:hidden; box-shadow:0 18px 50px rgba(0,0,0,.4), 0 0 0 1px var(--line); transition:transform .26s cubic-bezier(.2,.8,.3,1), opacity .26s; }
+  .sw-card.fly-left { transform:translateX(-140%) rotate(-14deg) !important; opacity:0; } .sw-card.fly-right { transform:translateX(140%) rotate(14deg) !important; opacity:0; }
+  .sw-ph { position:relative; aspect-ratio:4/3; background:#0b0d0c; overflow:hidden; }
+  .sw-ph::before { content:''; position:absolute; inset:-30px; background:var(--bg) center/cover; filter:blur(28px) brightness(.45); }
+  .sw-ph img { position:relative; display:block; width:100%; height:100%; object-fit:contain; pointer-events:none; } .sw-card.full .sw-ph img { object-fit:cover; }
+  .sw-cap { position:absolute; left:0; right:0; bottom:0; padding:40px 16px 12px; background:linear-gradient(transparent, rgba(0,0,0,.8)); color:#fff; display:flex; align-items:baseline; gap:10px; }
+  .sw-cap b { font-size:17px; font-weight:750; } .sw-cap span { font-size:12.5px; opacity:.8; }
+  .sw-flip { position:absolute; top:12px; right:12px; border:0; border-radius:14px; padding:6px 12px; font-size:12px; font-weight:700; background:rgba(15,19,18,.7); color:#fff; backdrop-filter:blur(8px); cursor:pointer; }
+  .sw-stamp { position:absolute; top:22px; left:22px; padding:6px 14px; border:3px solid #fff; border-radius:10px; color:#fff; font-size:22px; font-weight:900; letter-spacing:.04em; text-transform:uppercase; transform:rotate(-10deg); opacity:0; transition:opacity .12s; background:rgba(0,0,0,.25); }
+  .sw-card.stamping .sw-stamp { opacity:1; } .sw-card.yes .sw-stamp { border-color:var(--accent); color:#c9f0d6; }
+  .sw-ai { padding:10px 16px 12px; font-size:13px; line-height:1.4; } .sw-ai em { font-style:normal; font-size:10px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--accent); margin-right:8px; } .sw-ai small { display:block; color:var(--ink2); font-size:11.5px; margin-top:2px; }
+  .sw-act { display:grid; grid-template-columns:1.4fr 1fr; gap:10px; margin-top:16px; } .sw-other { margin-top:10px; }
+  .sw-act button { display:flex; align-items:center; justify-content:center; gap:10px; height:58px; border:0; border-radius:29px; font-size:16px; font-weight:800; cursor:pointer; transition:transform .12s, opacity .12s; white-space:nowrap; overflow:hidden; }
+  .sw-act button span { width:30px; height:30px; border-radius:50%; display:grid; place-items:center; font-size:16px; flex:none; }
+  .sw-yes { background:var(--accent); color:#0c120f; box-shadow:0 10px 30px rgba(90,165,120,.3); } .sw-yes span { background:rgba(0,0,0,.15); }
+  .sw-yes:disabled { background:var(--soft); color:var(--ink2); box-shadow:0 0 0 1.5px var(--line) inset; cursor:default; } .sw-yes:disabled span { background:rgba(255,255,255,.06); }
+  .sw-no { background:var(--soft); color:var(--ink); box-shadow:0 0 0 1.5px var(--line) inset; } .sw-no span { background:rgba(240,120,100,.18); color:#f0a49a; } .sw-no.on { box-shadow:0 0 0 2px #f0a49a inset; }
+  .sw-act button:not(:disabled):hover { transform:translateY(-2px); } .sw-act button:not(:disabled):active { transform:scale(.97); }
+  .sw-other { display:none; flex-wrap:wrap; gap:6px; } .sw-other.open { display:flex; }
+  .sw-o { border:0; border-radius:14px; padding:9px 14px; background:var(--soft); color:var(--ink); font-size:13px; font-weight:650; cursor:pointer; } .sw-o:hover { background:var(--card); } .sw-o.bad { color:#f0a49a; }
+  .sw-h { font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--ink2); display:flex; align-items:baseline; gap:10px; margin-bottom:10px; } .sw-h span { text-transform:none; letter-spacing:0; font-weight:600; font-size:11.5px; }
+  .sw-lineup { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px; }
+  .sw-l { cursor:pointer; text-align:center; } .sw-l > b { display:block; font-size:13.5px; font-weight:750; margin-top:7px; }
+  .sw-lph { position:relative; aspect-ratio:4/3; border-radius:14px; overflow:hidden; background:#0b0d0c; box-shadow:0 0 0 1px var(--line); transition:box-shadow .15s, transform .15s; }
+  .sw-lph img { display:block; width:100%; height:100%; object-fit:cover; }
+  .sw-l:hover .sw-lph { transform:translateY(-2px); box-shadow:0 0 0 2px var(--ink2); }
+  .sw-l.on .sw-lph { box-shadow:0 0 0 3px var(--accent), 0 10px 26px rgba(90,165,120,.25); } .sw-l.on > b { color:var(--accent); }
+  .sw-ln { position:absolute; top:50%; transform:translateY(-50%); width:28px; height:28px; border:0; border-radius:50%; background:rgba(15,19,18,.65); color:#fff; font-size:18px; line-height:1; cursor:pointer; opacity:0; transition:opacity .15s; }
+  .sw-ln.prev { left:6px; } .sw-ln.next { right:6px; } .sw-l:hover .sw-ln { opacity:1; }
+  .sw-lc { position:absolute; bottom:6px; right:7px; font-size:10px; font-weight:700; color:#fff; background:rgba(15,19,18,.6); border-radius:7px; padding:1px 6px; }
+  .sw-chk { position:absolute; top:7px; left:7px; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#0c120f; font-style:normal; font-weight:900; display:grid; place-items:center; transform:scale(0); transition:transform .15s; }
+  .sw-l.on .sw-chk { transform:scale(1); }
+  .sw-l .pile { position:absolute; top:7px; right:7px; min-width:22px; height:22px; border-radius:11px; background:var(--amber); color:#1a1408; font-style:normal; font-size:11.5px; font-weight:800; display:grid; place-items:center; padding:0 6px; }
+  .sw-l.catch .sw-lph { animation:sw-catch .45s ease-out .38s; } @keyframes sw-catch { 40% { transform:scale(1.08); box-shadow:0 0 0 3px var(--accent); } }
+  .sw-deck { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+  .sw-stat { background:var(--soft); border-radius:16px; padding:12px 12px 11px; display:grid; grid-template-columns:auto 1fr; column-gap:12px; align-items:center; }
+  .sw-stack { grid-row:span 2; position:relative; width:46px; height:54px; }
+  .sw-stack i { position:absolute; inset:0; border-radius:8px; background:color-mix(in srgb, var(--c) 30%, var(--card)); box-shadow:0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent) inset; }
+  .sw-stack i:nth-child(1) { transform:rotate(-9deg) translateX(-3px); opacity:.5; } .sw-stack i:nth-child(2) { transform:rotate(5deg) translateX(2px); opacity:.75; }
+  .sw-stack b { position:absolute; inset:0; display:grid; place-items:center; border-radius:8px; background:color-mix(in srgb, var(--c) 22%, var(--card)); box-shadow:0 0 0 1.5px var(--c) inset, 0 6px 14px rgba(0,0,0,.3); font-size:15px; font-weight:800; letter-spacing:-.02em; color:var(--ink); }
+  .sw-stat span { font-size:13px; font-weight:750; align-self:end; line-height:1.15; } .sw-stat small { font-size:10.5px; color:var(--ink2); align-self:start; line-height:1.25; }
+  .sw-stat.wait { --c:#f2b544; } .sw-stat.today { --c:#5aa578; } .sw-stat.total { --c:#5aa9e6; }
+  .sw-empty { display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; padding:80px 20px; } .sw-empty b { font-size:22px; } .sw-empty span { color:var(--ink2); }
+  #tabs .count:not(:empty) { background:var(--accent); color:#fff; font-size:10.5px; font-weight:700; min-width:18px; height:18px; padding:0 5px; border-radius:9px; display:inline-grid; place-items:center; margin-left:6px; vertical-align:1px; }
+  #tabs .beta { font-style:normal; font-size:8.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--amber); margin-left:5px; vertical-align:5px; }
+  #tabs .sm { display:none; }
   /* ---- phones: a simple column. The header is the mark and the essentials; the Map tab becomes "Latest":
      conditions, the cameras' newest photos and the timeline, no map; Intel's buck list is a row of faces. */
   @media (max-width: 760px) {
@@ -965,16 +1075,23 @@
     .home { padding:4px 10px 0; gap:10px; } .spot-ph img { max-height:230px; } .spot-side { padding:12px 14px; } .spot-when b { font-size:22px; }
     .hunt { grid-template-columns:1fr; } .home-h { margin:10px 0 6px; }
     .home-side { order:-1; } .radar-box { max-width:360px; margin:0 auto; }
-    /* Intel */
+    /* Review lineup: the photo, the lineup two across, the big buttons pinned above the tab bar */
+    .swr { padding:6px 10px 170px; } .sw-strip { gap:4px 14px; margin-bottom:10px; min-height:0; } .sw-strip:not(:has(.sess)) { display:none; } .sw-strip b { font-size:15px; } .sw-grid { display:none; }
+    .sw-main { grid-template-columns:1fr; gap:14px; } .sw-left { position:static; display:contents; } .sw-card { order:1; border-radius:16px; } .sw-ai { display:none; }
+    .sw-deck { order:0; gap:6px; } .sw-stat { grid-template-columns:1fr; justify-items:center; text-align:center; padding:8px 6px; row-gap:4px; } .sw-stack { grid-row:auto; width:40px; height:46px; } .sw-stack b { font-size:13px; } .sw-stat span { font-size:11px; } .sw-stat small { display:none; }
+    .sw-right { order:2; } .sw-other { margin-top:0; } .sw-lineup { grid-template-columns:1fr 1fr; gap:10px; } .sw-ln { opacity:1; }
+    .sw-act { position:fixed; left:10px; right:10px; bottom:calc(86px + env(safe-area-inset-bottom)); z-index:25; order:3; padding:8px; border-radius:36px; background:rgba(15,19,18,.88); backdrop-filter:blur(14px); box-shadow:0 10px 30px rgba(0,0,0,.5); }
+    .sw-act { grid-template-columns:1fr 1fr; gap:8px; } .sw-act button { height:52px; font-size:14.5px; gap:7px; } .sw-act button span { width:26px; height:26px; font-size:14px; } .sw-other { order:4; }
+    #tabs .lg { display:none; } #tabs .sm { display:inline; } #tabs .beta { display:none; }
+    #tabs button { padding:9px 8px; font-size:12.5px; } #tabs .count:not(:empty) { min-width:15px; height:15px; font-size:9px; padding:0 4px; margin-left:3px; }
+    .swr { padding-bottom:110px; }
+    /* Predictability: a card per buck instead of the wide table */
     .intel { padding:6px 10px 16px; gap:10px; }
-    .in-list { display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; padding:5px; } .in-list::-webkit-scrollbar { display:none; }
-    .in-list .tlm-sh { display:none; } .in-list .tlm-k { flex:none; width:auto; flex-direction:column; gap:4px; padding:6px 8px; font-size:11px; }
-    .in-list .tlm-k img { width:44px; height:44px; border-radius:50%; } .in-list .tlm-k b { display:none; } .in-list .tlm-k em { max-width:70px; }
-    .in-top { gap:10px; } .in-name img { width:40px; height:40px; } .in-name b { font-size:22px; } .in-name span { font-size:12px; } .in-days { display:none; }
-    .in-grid { gap:10px; } .in-card { padding:12px; }
-    .in-hrow { grid-template-columns:76px 1fr; gap:6px; font-size:11.5px; } .in-hcells { height:22px; }
-    .in-h { flex-wrap:wrap; } .in-chart .in-h span { display:none; }
-    .in-cl-grid { grid-template-columns:1fr; }
+    .in-card, .in-pred { padding:12px 10px; } .in-tablewrap, .in-tab { display:none; } .in-cards { display:flex; }
+    .in-top { margin-bottom:10px; }
+    .in-v.hd { display:none; }
+    .in-v { grid-template-columns:44px 1fr 1fr; gap:4px 10px; padding:8px 4px; border-top:1px solid var(--line); border-radius:0; }
+    .in-v img, .in-v .noimg { grid-row:1 / span 4; align-self:start; }
   }
   /* ---- engine room: day-by-day calendar of what came in */
   .er { padding:0 16px 24px; }
@@ -1129,7 +1246,6 @@
 <header id="top">
   <div class="hdr-left"><div class="brand" data-go="home"><img src="/static/brand/icons/logo-mark-signal-white.svg" alt=""><span><b>Deerdar</b><small>Trail cam intelligence</small></span></div><div id="job"></div></div>
   <div class="hdr-actions">
-    <button class="hdr-review" data-go="review" title="Buck photos waiting to be named">Review<span class="count" id="rcount"></span></button>
     <select id="ranch" class="pill-select" hidden title="Ranch: each has its own cameras, photos and bucks"></select>
     <select id="season" class="pill-select" title="Season (antler year). Past seasons are archived: still browsable, kept out of the way."></select>
     <button class="iconbtn" id="sync" title="Check for new photos" hidden><span>↻</span></button>
@@ -1140,15 +1256,18 @@
 <nav id="tabs">
   <button data-go="home">Home</button>
   <button data-go="map">Map</button>
-  <button data-go="intel">Intel</button>
+  <button data-go="intel"><span class="lg">Predictability</span><span class="sm">Predict</span></button>
   <button data-go="bucks">Bucks</button>
   <button data-go="photos">Gallery</button>
+  <button data-go="swipe" title="Buck photos waiting to be named: one card at a time">Review<span class="count" id="rcount"></span><em class="beta">Beta</em></button>
 </nav>
 <main id="main"></main>
 <div id="lightbox"><img alt=""><button class="btn blue lb-tag" style="display:none"></button></div>
 <div id="tip"></div>
 
+<script src="/static/predict.js"></script>
 <script>
+const { sunTimes, sunPos, moonAt } = DeerModel;  // sun and moon math lives in static/predict.js (shared with the backtest)
 setTheme(localStorage.getItem('theme'));  // again, for the header's logo
 const $ = (sel, el = document) => el.querySelector(sel);
 const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
@@ -1529,7 +1648,7 @@ async function showHome() {
   // Hit list bucks lead; until there are some, every named buck that isn't a let-walk does.
   const lead = targets.length ? targets : named.filter(b => b.tag !== 'pass' && !b.absent);
   const rest = named.filter(b => !lead.includes(b));
-  const nudge = st.review ? `<button class="nudge" data-go="review">${st.review} buck photo${st.review === 1 ? '' : 's'} waiting in Review: who are they? ›</button>` : '';
+  const nudge = st.review ? `<button class="nudge" data-go="swipe">${st.review} buck photo${st.review === 1 ? '' : 's'} waiting in Review: who are they? ›</button>` : '';
   // Kenny's unusual visitors (the rarest non-deer of the last two weeks), as a tile in the side column
   const rare = unusual?.length ? `<div class="hside hrare-tile"><div class="hside-h">Unusual visitors <span class="r">rarest first</span></div><div class="hrares">${unusual.slice(0, 4).map(rareRow).join('')}</div></div>` : '';
   if (!named.length) {
@@ -2396,20 +2515,6 @@ const tlWildSeen = () => Object.entries(TL.data.animals.reduce((n, a) => (a.kind
 
 // ---- sun and moon. sunTimes is the same NOAA formula as deercam/sun.py, so labels agree with the rest of the app.
 const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
-function sunTimes(ms, lat, lon) {
-  const local = new Date(ms + lon / 15 * HOUR);  // local solar day, as in sun.light()
-  const y = local.getUTCFullYear(), m = local.getUTCMonth(), d = local.getUTCDate();
-  const n = Math.round((Date.UTC(y, m, d) - Date.UTC(y, 0, 1)) / DAY) + 1;
-  const g = 2 * Math.PI / 365 * (n - 1);
-  const eq = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
-  const decl = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g)
-             + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
-  const phi = rad(lat);
-  const cosHa = Math.cos(rad(90.833)) / (Math.cos(phi) * Math.cos(decl)) - Math.tan(phi) * Math.tan(decl);
-  if (cosHa < -1 || cosHa > 1) return null;
-  const ha = deg(Math.acos(cosHa)), mid = Date.UTC(y, m, d);
-  return { rise: mid + (720 - 4 * (lon + ha) - eq) * 60e3, set: mid + (720 - 4 * (lon - ha) - eq) * 60e3 };
-}
 function lightAt(ms, lat, lon, shooting = 30) {
   const s = sunTimes(ms, lat, lon);
   if (!s) return null;
@@ -2418,23 +2523,6 @@ function lightAt(ms, lat, lon, shooting = 30) {
   const [ref, mins] = Math.abs(mr) <= Math.abs(ms_) ? ['sunrise', mr] : ['sunset', ms_];
   const a = Math.round(Math.abs(mins));
   return { kind, label: `${a < 90 ? `${a} min` : `${(a / 60).toFixed(1)} h`} ${mins >= 0 ? 'after' : 'before'} ${ref}`, ...s };
-}
-function sunPos(ms, lat, lon) {
-  const d = ms / DAY - 10957.5;  // days since J2000
-  const g = rad(357.529 + 0.98560028 * d), q = 280.459 + 0.98564736 * d;
-  const L = rad(q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)), e = rad(23.439 - 0.00000036 * d);
-  const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L)), dec = Math.asin(Math.sin(e) * Math.sin(L));
-  const ha = rad(((18.697374558 + 24.06570982441908 * d) % 24) * 15 + lon) - ra, phi = rad(lat);
-  const alt = Math.asin(Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(ha));
-  const az = Math.atan2(-Math.sin(ha), Math.tan(dec) * Math.cos(phi) - Math.sin(phi) * Math.cos(ha));
-  return { alt: deg(alt), az: (deg(az) + 360) % 360 };
-}
-const SYNODIC = 29.530588853, NEW_MOON = Date.UTC(2000, 0, 6, 18, 14);
-function moonAt(ms) {
-  const age = (((ms - NEW_MOON) / DAY) % SYNODIC + SYNODIC) % SYNODIC;
-  const illum = (1 - Math.cos(2 * Math.PI * age / SYNODIC)) / 2, waxing = age < SYNODIC / 2;
-  const names = ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'];
-  return { illum, waxing, name: names[Math.floor((age / SYNODIC) * 8 + 0.5) % 8] };
 }
 
 // Color of the light band on the slider for a sun altitude.
@@ -3701,160 +3789,366 @@ function tlWind(dt) {
   }
 }
 
-// ------------------------------------------------------------------ intel: when and where to be for a buck
-// Every visit a buck has made, read against the sun (minutes from sunrise or sunset), the camera, and the
-// weather Reveal attached. From that, a chance for each camera through the next 48 hours: his visits per
-// day, spread over the times of day he keeps, weighted toward the cameras he uses, nudged by how today's
-// wind, temperature, pressure and moon compare with the days he showed. Few visits = a wide, honest spread.
+// ------------------------------------------------------------------ intel: the hit list's scorecard
+// Every visit each of the top bucks has made, sorted into buckets: time against the sun, camera, wind
+// (direction, speed, and whether it had just shifted), temperature (band, and against a day earlier),
+// pressure (trend and level), moon and sky. Weather is the reading nearest the visit from the 2-hourly
+// readings the cameras send, so visits on cameras that send none still get one. No model yet: just the
+// counts side by side, with how often each condition came up at all, so a trend can stand out as data grows.
 let intel = null;
-const INTEL_K = 45;  // minutes: how far from a past visit's sun-time a slot still counts
+const W8 = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+const MOON8 = ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'];
+const INTEL_CATS = [
+  ['sun', 'Time of day', ['Dawn (±1 h sunrise)', 'Daytime', 'Dusk (±1 h sunset)', 'Early night', 'Late night']],
+  ['light', 'Light', ['Daylight', 'Shooting light', 'Night']],
+  ['cam', 'Camera', null],
+  ['wdir', 'Wind from', W8],
+  ['wspd', 'Wind speed', ['Calm (<3 mph)', 'Light (3–7)', 'Breezy (8–14)', 'Windy (15+)']],
+  ['wshift', 'Wind, 6 h before', ['Held steady', 'Shifted 45–90°', 'Swung 90°+']],
+  ['temp', 'Temperature', null],
+  ['tdep', 'Temp vs. a day earlier', ['Colder (5°+)', 'About the same', 'Warmer (5°+)']],
+  ['ptrend', 'Pressure trend', ['Rising', 'Steady', 'Falling']],
+  ['pdep', 'Pressure vs. a day earlier', ['Lower (0.05+)', 'About the same', 'Higher (0.05+)']],
+  ['plevel', 'Pressure', ['Low (<29.90)', 'Normal', 'High (30.20+)']],
+  ['moon', 'Moon phase', MOON8],
+  ['mlight', 'Moonlight', ['Dark (<25%)', 'Partial', 'Bright (75%+)']],
+  ['sky', 'Sky', null],
+];
+const INTEL_WX = new Set(['wdir', 'wspd', 'wshift', 'temp', 'tdep', 'ptrend', 'pdep', 'plevel', 'moon', 'mlight', 'sky']);  // buckets that also have an "all hours" share
 function intelRel(t, lat, lon) {  // where t sits against the sun: {ref:'rise'|'set', m: signed minutes}
   const s = sunTimes(t, lat, lon);
   if (!s) return null;
   const mr = (t - s.rise) / 60e3, ms = (t - s.set) / 60e3;
   return Math.abs(mr) <= Math.abs(ms) ? { ref: 'rise', m: mr } : { ref: 'set', m: ms };
 }
-function intelModel(b, pat, cams, now, wnow) {
-  const where = c => cams[c] && cams[c].lat != null ? cams[c] : intel.where;
-  const vs = (pat.recent || []).map(v => { const t = Date.parse(v.start), w = where(v.camera_id); return { ...v, t, rel: w ? intelRel(t, w.lat, w.lon) : null }; }).filter(v => v.rel);
-  const n = vs.length, camIds = Object.keys(cams).filter(c => cams[c].lat != null), nc = Math.max(1, camIds.length);
-  const first = Math.min(...vs.map(v => v.t)), days = Math.max(14, (now - first) / DAY + 1);
-  const dailyRate = n / days;
-  const byCam = {}; for (const v of vs) byCam[v.camera_id] = (byCam[v.camera_id] || 0) + 1;
-  const camW = c => (byCam[c] || 0) / Math.max(1, n) * .8 + .2 / nc;  // mostly where he goes, a little everywhere
-  const K = d => Math.exp(-((d / INTEL_K) ** 2));
-  const wind8 = d => ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(d / 45) % 8];
-  // how today's conditions compare with the days he came: a mild multiplier and the reason behind it
-  const cond = [];
-  let mult = 1;
-  if (wnow) {
-    const wn = wnow.wind_deg != null ? wind8(wnow.wind_deg) : null, withWind = vs.filter(v => v.wind);
-    if (wn && withWind.length >= 3) { const share = withWind.filter(v => v.wind === wn).length / withWind.length; const f = .85 + share * .6; mult *= f; cond.push({ k: 'Wind', now: wn, f, note: `${Math.round(share * 100)}% of his visits came on a ${wn} wind` }); }
-    const withTemp = vs.filter(v => v.temp != null);
-    if (wnow.temp != null && withTemp.length >= 3) { const share = withTemp.filter(v => Math.abs(v.temp - wnow.temp) <= 8).length / withTemp.length; const f = .85 + share * .4; mult *= f; cond.push({ k: 'Temp', now: `${Math.round(wnow.temp)}°F`, f, note: `${Math.round(share * 100)}% of his visits were within 8° of this` }); }
-    const trend = { R: 'Rising', S: 'Steady', F: 'Falling' }[wnow.trend], withP = vs.filter(v => v.pressure);
-    if (trend && withP.length >= 3) { const share = withP.filter(v => v.pressure === trend).length / withP.length; const f = .9 + share * .3; mult *= f; cond.push({ k: 'Pressure', now: trend.toLowerCase(), f, note: `${Math.round(share * 100)}% of his visits came on ${trend.toLowerCase()} pressure` }); }
-  }
-  const mo = moonAt(now), withMoon = vs.filter(v => v.moon);
-  if (withMoon.length >= 3) { const bright = mo.illum > .5, share = withMoon.filter(v => /Full|Gibbous/.test(v.moon) === bright).length / withMoon.length; const f = .9 + share * .2; mult *= f; cond.push({ k: 'Moon', now: `${Math.round(mo.illum * 100)}%`, f, note: `${Math.round(share * 100)}% of his visits were under a ${bright ? 'bright' : 'dark'} moon` }); }
-  // chance per camera per half hour through the next 48 hours
-  const step = 30 * 60e3, slots = [];
-  for (let t = now; t < now + 48 * 3600e3; t += step) {
-    const row = { t, cams: {} };
-    for (const c of camIds) {
-      const r = intelRel(t, cams[c].lat, cams[c].lon);
-      let k = 0; for (const v of vs) if (v.rel.ref === r.ref) k += K(v.rel.m - r.m);
-      const share = n ? (k / n) * (60 / 80) : 0;  // a one-hour slot's share of his day
-      row.cams[c] = Math.min(.9, dailyRate * share * camW(c) * mult);
-    }
-    slots.push(row);
-  }
-  // the best windows: runs of half hours at one camera above half his peak; a window's chance is the
-  // odds he shows at some point during it
-  const wins = [], top = Math.max(...slots.flatMap(r => Object.values(r.cams))), floor = Math.max(.004, top * .55);
-  for (const c of camIds) {
-    let cur = null;
-    for (const row of slots) {
-      const p = row.cams[c];
-      if (p >= floor) {
-        if (cur && row.t - cur.t1 <= step) { cur.t1 = row.t + step; cur.miss *= 1 - p / 2; }
-        else { if (cur) wins.push(cur); cur = { cam: c, t0: row.t, t1: row.t + step, miss: 1 - p / 2 }; }
-      }
-    }
-    if (cur) wins.push(cur);
-  }
-  for (const w of wins) w.peak = 1 - w.miss;
-  wins.sort((a, b) => (Math.round(b.peak * 100) - Math.round(a.peak * 100)) || a.t0 - b.t0);  // best first, soonest among equals
-  // what he keeps: his visits by the sun, and when in the day he comes
-  const near = { rise: vs.filter(v => v.rel.ref === 'rise' && Math.abs(v.rel.m) <= 90).length, set: vs.filter(v => v.rel.ref === 'set' && Math.abs(v.rel.m) <= 90).length };
-  return { vs, n, days, dailyRate, byCam, slots, wins, cond, mult, near, light: { day: vs.filter(v => v.light === 'day').length, shooting: vs.filter(v => v.light === 'shooting').length, night: vs.filter(v => v.light === 'night').length } };
+function intelNear(ws, t, within) {  // the weather reading nearest t, if one is close enough
+  let best = null;
+  for (const w of ws) if (Math.abs(w.t - t) <= within && (!best || Math.abs(w.t - t) < Math.abs(best.t - t))) best = w;
+  return best;
 }
+// One moment's weather and moon as bucket labels (and the raw numbers behind them)
+function intelWxFacts(ws, t) {
+  const f = {}, w = intelNear(ws, t, 3 * HOUR), mo = moonAt(t);
+  f.moon = MOON8.find(n => n.toLowerCase() === mo.name.toLowerCase()) || mo.name;
+  f.mlight = mo.illum < .25 ? 'Dark (<25%)' : mo.illum >= .75 ? 'Bright (75%+)' : 'Partial';
+  f.raw = { illum: mo.illum, w };
+  if (!w) return f;
+  if (w.wind_deg != null) f.wdir = W8[Math.round(w.wind_deg / 45) % 8];
+  if (w.wind != null) f.wspd = w.wind < 3 ? 'Calm (<3 mph)' : w.wind < 8 ? 'Light (3–7)' : w.wind < 15 ? 'Breezy (8–14)' : 'Windy (15+)';
+  const before = intelNear(ws, w.t - 6 * HOUR, 2 * HOUR);
+  if (before && before.wind_deg != null && w.wind_deg != null) {
+    const d = Math.abs(((w.wind_deg - before.wind_deg) % 360 + 540) % 360 - 180);
+    f.wshift = d < 45 ? 'Held steady' : d < 90 ? 'Shifted 45–90°' : 'Swung 90°+';
+    f.raw.was = before.wind_dir || W8[Math.round(before.wind_deg / 45) % 8];
+  }
+  if (w.temp != null) f.temp = `${Math.floor(w.temp / 10) * 10}s °F`;
+  if (w.dep != null) f.tdep = w.dep <= -5 ? 'Colder (5°+)' : w.dep >= 5 ? 'Warmer (5°+)' : 'About the same';
+  const tr = { R: 'Rising', S: 'Steady', F: 'Falling' }[w.trend]; if (tr) f.ptrend = tr;
+  const dayBefore = intelNear(ws, w.t - 24 * HOUR, 3 * HOUR);  // pressure a day earlier, from the readings
+  if (dayBefore && w.pressure != null && dayBefore.pressure != null) { const d = w.pressure - dayBefore.pressure; f.raw.pdep = d; f.pdep = d <= -0.05 ? 'Lower (0.05+)' : d >= 0.05 ? 'Higher (0.05+)' : 'About the same'; }
+  if (w.pressure != null) f.plevel = w.pressure < 29.9 ? 'Low (<29.90)' : w.pressure >= 30.2 ? 'High (30.20+)' : 'Normal';
+  if (w.sky) f.sky = w.sky;
+  return f;
+}
+function intelFacts(v, ws, cams, where) {
+  const t = Date.parse(v.start), c = cams[v.camera_id], at = c && c.lat != null ? c : where;
+  const f = intelWxFacts(ws, t), rel = at ? intelRel(t, at.lat, at.lon) : null;
+  f.light = { day: 'Daylight', shooting: 'Shooting light', night: 'Night' }[v.light];
+  if (rel && Math.abs(rel.m) <= 60) f.sun = rel.ref === 'rise' ? 'Dawn (±1 h sunrise)' : 'Dusk (±1 h sunset)';
+  else if (v.light === 'night') f.sun = v.hour >= 12 ? 'Early night' : 'Late night';
+  else if (v.light) f.sun = 'Daytime';
+  f.cam = c?.name || v.camera;
+  return { v, t, f };
+}
+// The property's weather, hour by hour: the past `pastDays` days and the next 7, from Open-Meteo (free, no key).
+// One source for everything the model touches: each visit's conditions, how often each condition came up while
+// the cameras ran, and the forecast.
+const weatherHours = (where, pastDays) => fetch(`https://api.open-meteo.com/v1/forecast?latitude=${where.lat.toFixed(3)}&longitude=${where.lon.toFixed(3)}&hourly=temperature_2m,wind_direction_10m,wind_speed_10m,pressure_msl&temperature_unit=fahrenheit&wind_speed_unit=mph&timeformat=unixtime&timezone=GMT&past_days=${pastDays}&forecast_days=7`)
+  .then(r => r.ok ? r.json() : null).then(d => d?.hourly ? d.hourly.time.map((t, i) => ({ t: t * 1000, temp: d.hourly.temperature_2m[i], deg: d.hourly.wind_direction_10m[i], mph: d.hourly.wind_speed_10m[i], p: d.hourly.pressure_msl[i] * 0.02953 })) : null).catch(() => null);
 async function showIntel() {
-  const [bucks, tl] = await Promise.all([api(`/api/bucks?season=${season()}`), api('/api/timeline?days=3').catch(() => null)]);
+  const [home, tl] = await Promise.all([api(`/api/home?season=${season()}`), api('/api/timeline?days=120').catch(() => null)]);
   if (view !== 'intel') return;
-  const named = bucks.filter(b => !b.generic && b.status === 'alive').sort((a, b) => (b.tag === 'target') - (a.tag === 'target') || b.visits - a.visits);
+  const bucks = home.bucks.slice().sort((a, b) => (b.tag === 'target') - (a.tag === 'target') || b.visits - a.visits);
   const cams = Object.fromEntries((tl?.cameras || []).map(c => [c.camera_id, c]));
   const placed = Object.values(cams).filter(c => c.lat != null);
-  intel = { bucks: named, cams, tl, pats: {}, where: placed.length ? { lat: placed.reduce((a, c) => a + c.lat, 0) / placed.length, lon: placed.reduce((a, c) => a + c.lon, 0) / placed.length } : null,
-            buck: intel?.buck && named.some(b => b.id === intel.buck) ? intel.buck : named[0]?.id };
-  if (!named.length || !intel.where) {
-    $('#main').innerHTML = `<div class="empty tl-wait">${LEAP_SVG}${!named.length ? 'Name a buck in Review and the Intel page will work out his pattern.' : 'Place your cameras on the map first (Engine Room → a camera → Place on map).'}</div>`;
-    return;
-  }
-  await Promise.all(named.map(async b => { intel.pats[b.id] = await api(`/api/bucks/${b.id}/patterns?season=all`).catch(() => null); }));
+  intel = { bucks, cams, tl, pats: {}, where: placed.length ? { lat: placed.reduce((a, c) => a + c.lat, 0) / placed.length, lon: placed.reduce((a, c) => a + c.lon, 0) / placed.length } : null,
+            buck: intel?.buck && bucks.some(b => b.id === intel.buck) ? intel.buck : null };
+  if (!bucks.length) { $('#main').innerHTML = `<div class="empty tl-wait">${LEAP_SVG}Name a buck in Review and his scorecard shows up here.</div>`; return; }
+  const firstPhoto = Math.min(Date.now(), ...(tl?.photos || []).map(p => p[0])), pastDays = Math.min(92, Math.ceil((Date.now() - firstPhoto) / DAY) + 2);
+  const [, settingsNow, hs] = await Promise.all([
+    Promise.all(bucks.map(async b => { intel.pats[b.id] = await api(`/api/bucks/${b.id}/patterns?season=all`).catch(() => null); })),
+    api('/api/settings').catch(() => ({})), intel.where ? weatherHours(intel.where, pastDays) : null]);
+  intel.legalMin = settingsNow.shooting_minutes ?? 30; intel.visitGap = settingsNow.visit_gap_minutes ?? 30; intel.hs = hs;
   if (view !== 'intel') return;
   renderIntel();
 }
 function renderIntel() {
-  const { bucks, cams, tl } = intel, b = bucks.find(x => x.id === intel.buck), pat = intel.pats[b.id];
-  const now = Date.now();
-  const ws = (tl?.weather || []).filter(w => Math.abs(w.t - now) < 4 * 3600e3), wnow = ws.sort((a, c) => Math.abs(a.t - now) - Math.abs(c.t - now))[0] || null;
-  const m = pat ? intelModel(b, pat, cams, now, wnow) : null;
-  const pct = p => `${Math.round(p * 100)}%`;
-  const camName = c => cams[c]?.name || c, camColor = c => TL_CAM_COLORS[Object.keys(cams).indexOf(c) % TL_CAM_COLORS.length];
+  const M = DeerModel, { bucks, cams, tl, where } = intel, ws = tl?.weather || [], hs = intel.hs || [], now = Date.now(), sel = intel.buck;
   const offAt = t => { let o = -300; for (const [at, mm] of tl?.offsets || []) if (at <= t) o = mm; return o; };
   const local = t => new Date(t + offAt(t) * 60e3);
   const hm = t => { const d = local(t), h = d.getUTCHours(); return `${(h % 12) || 12}:${String(d.getUTCMinutes()).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; };
-  const dayName = t => local(t).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
-  const since = t => { const mm = (now - t) / 60e3; return mm < 60 ? `${Math.max(1, Math.round(mm))}m` : mm < 48 * 60 ? `${Math.round(mm / 60)}h` : `${Math.round(mm / 1440)}d`; };
-  const list = `<div class="in-list"><div class="tlm-sh">Most wanted <span class="r">last seen</span></div>${bucks.map(x => `<button class="tlm-k${x.id === b.id ? ' on' : ''}" data-buck-pick="${x.id}">${x.thumb ? `<img src="${x.thumb}" alt="">` : TL_SVG.buck}<em>${esc(x.name)}${x.tag === 'target' ? ' <small>★</small>' : ''}</em><b>${x.last_seen ? since(Date.parse(x.last_seen)) : '—'}</b></button>`).join('')}</div>`;
-  if (!m || !m.n) {
-    $('#main').innerHTML = `<div class="intel">${list}<div class="in-main"><div class="empty">No visits on record for ${esc(b.name)} yet.</div></div></div>`;
-    $$('[data-buck-pick]').forEach(el => el.onclick = () => { intel.buck = Number(el.dataset.buckPick); renderIntel(); });
-    return;
+  const md = t => local(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const dayStr = t => local(t).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const camColor = c => TL_CAM_COLORS[Object.keys(cams).indexOf(c) % TL_CAM_COLORS.length];
+  const camIds = Object.keys(cams), camName = id => cams[id]?.name || id;
+  // the model's view of the property: hourly weather (history + forecast), when each camera was up, where
+  const byCam = {}; for (const [t, ci] of tl?.photos || []) if (camIds[ci]) (byCam[camIds[ci]] ??= []).push(t);
+  const ctx = { hs, up: M.uptime(byCam), cams, where, tzMin: offAt(now), legalMin: intel.legalMin };
+  const exp = hs.length && where ? M.exposure({ ...ctx, until: now }) : null;
+  // each visit's conditions: from the hourly weather when there is some (the same source the model and the
+  // forecast use), else the camera readings
+  const factsOf = v => {
+    const t = Date.parse(v.start);
+    if (!exp) return intelFacts(v, ws, cams, where);
+    const f = { ...M.visitFacts({ t, camera_id: v.camera_id }, ctx), cam: camName(v.camera_id), light: { day: 'Daylight', shooting: 'Shooting light', night: 'Night' }[v.light] };
+    const i = M.hourIndex(hs, t), h = hs[i], d24 = hs[i - 24], d6 = hs[i - 6];
+    f.raw = { illum: moonAt(t).illum, w: h ? { wind_dir: f.wdir, wind: h.mph?.toFixed(1), temp: Math.round(h.temp), dep: d24 ? Math.round(h.temp - d24.temp) : null, pressure: h.p } : null,
+              pdep: h && d24 ? h.p - d24.p : null, was: d6 ? M.W8[Math.round(d6.deg / 45) % 8] : null };
+    return { v, t, f };
+  };
+  const visits = Object.fromEntries(bucks.map(b => [b.id, (intel.pats[b.id]?.recent || []).map(factsOf)]));
+  const all = Object.values(visits).flat();
+  const models = exp ? Object.fromEntries(bucks.map(b => [b.id, M.fit(visits[b.id].map(x => ({ t: x.t, camera_id: x.v.camera_id })), ctx, exp)])) : {};
+  const iNow = M.hourIndex(hs, now), nowKey = iNow >= 0 ? { ...M.hourFacts(hs, iNow), sun: where ? M.sunBucket(now, where.lat, where.lon, ctx.tzMin) : null } : {};
+  // coverage: when each camera has photos
+  const span = Object.fromEntries(Object.entries(byCam).map(([c, ts]) => [c, [Math.min(...ts), Math.max(...ts)]]));
+  const firstPhoto = Math.min(...Object.values(span).map(x => x[0])), lastPhoto = Math.max(...Object.values(span).map(x => x[1]));
+  const cover = Object.keys(span).length ? `${Object.keys(span).length} cameras ${md(firstPhoto)} – ${md(lastPhoto)}` : '';
+  // the table: a row per buck, a column per option, grouped by data point; only options some buck has used
+  const cnt = (xs, k, key) => xs.filter(x => x.f[k] === key).length, known = (xs, k) => xs.filter(x => x.f[k]).length;
+  const rowCls = b => sel === b.id ? 'on' : sel ? 'dim' : '';
+  const seen = k => [...new Set(all.map(x => x.f[k]).filter(Boolean))];
+  const temps = [...new Set([...seen('temp'), ...Object.keys(exp?.counts.temp || {}).filter(x => x !== 'n')])].sort((a, b) => parseInt(a) - parseInt(b));
+  const GROUP = { sun: 'When', light: 'Light', cam: 'Camera', wdir: 'Wind', wspd: 'Wind mph', wshift: 'Wind shift', temp: 'Temp', tdep: 'Temp 24h', ptrend: 'Pressure', pdep: 'Pressure 24h', plevel: 'Baro', moon: 'Moon', mlight: 'Moonlight', sky: 'Sky' };
+  const OPT = { 'Dawn (±1 h sunrise)': 'Dawn', 'Dusk (±1 h sunset)': 'Dusk', 'Daylight': 'Day', 'Shooting light': 'Shooting', 'Calm (<3 mph)': 'Calm', 'Light (3–7)': '3–7', 'Breezy (8–14)': '8–14', 'Windy (15+)': '15+',
+    'Held steady': 'Held', 'Shifted 45–90°': 'Shifted', 'Swung 90°+': 'Swung', 'Colder (5°+)': 'Colder', 'About the same': 'Same', 'Warmer (5°+)': 'Warmer', 'Low (<29.90)': 'Low', 'High (30.20+)': 'High', 'Lower (0.05+)': 'Lower', 'Higher (0.05+)': 'Higher',
+    'New moon': 'New', 'Waxing crescent': 'Wax. cresc.', 'First quarter': '1st qtr', 'Waxing gibbous': 'Wax. gibb.', 'Full moon': 'Full', 'Waning gibbous': 'Wan. gibb.', 'Last quarter': 'Last qtr', 'Waning crescent': 'Wan. cresc.',
+    'Dark (<25%)': 'Dark', 'Bright (75%+)': 'Bright' };
+  const opt = key => OPT[key] || String(key).replace(' °F', '°');
+  const SHOW = { sun: '#f2b544', cam: '#5aa9e6', wdir: '#3ccfa8', wshift: '#8fd36b', temp: '#ff7d66', tdep: '#ffb39e', ptrend: '#b48cff', pdep: '#d6c1ff', moon: '#cdd6ea' };  // each group's color
+  const cols = INTEL_CATS.filter(([k]) => SHOW[k]).map(([k, , fixed]) => ({ k, keys: (k === 'temp' ? temps : k === 'cam' ? Object.values(cams).map(c => c.name) : fixed || seen(k).sort()).filter(key => cnt(all, k, key)) })).filter(g => g.keys.length);
+  // predictability = pattern × data × recency, kept strict.
+  //  pattern: for each data point, how far his leaning (after the pull toward "no preference" that small
+  //    samples get) sits above how often that option comes up while the cameras are running, weighted by how
+  //    much that kind of condition drives deer movement (static/predict.js WEIGHTS).
+  //  data: visits / (visits + DATA_K): 6 visits 43%, 20 visits 71%.
+  //  recency: full while he's been seen in the last RECENT_DAYS, then halved each week beyond.
+  const FACTORS = cols.map(g => g.k), PATTERN_MIN = 4, RECENT_DAYS = 3, HALF_LIFE = 7, DATA_K = 8;
+  const pattern = b => { const xs = visits[b.id], m = models[b.id];
+    const rows = !m ? [] : FACTORS.map(k => { const f = M.favorite(m, k); if (!f) return null;
+        return { k, key: k === 'cam' ? camName(f.key) : f.key, t: f.visits, kn: f.of, usual: f.usual, pref: f.pref, clear: f.clear, edge: Math.max(0, (f.post - f.usual) / (1 - f.usual)) }; })
+      .filter(r => r && r.kn).sort((a, b) => b.edge - a.edge);
+    const wsum = rows.reduce((a, r) => a + (M.WEIGHTS[r.k] ?? .3), 0), cons = wsum ? rows.reduce((a, r) => a + r.edge * (M.WEIGHTS[r.k] ?? .3), 0) / wsum : 0;
+    const conf = xs.length / (xs.length + DATA_K), days = xs.length ? (now - Math.max(...xs.map(x => x.t))) / DAY : Infinity, fresh = days <= RECENT_DAYS ? 1 : Math.pow(.5, (days - RECENT_DAYS) / HALF_LIFE);
+    return { v: Math.round(100 * cons * conf * fresh), cons, conf, fresh, days, rows }; };
+  const dayTag = b => { const d = M.daylight(visits[b.id].map(x => x.v)); return d ? `<em class="dl ${d.ratio < .35 ? 'n' : d.ratio < .65 ? 'm' : 'd'}" title="${Math.round(100 * d.ratio)}% of his visits in legal light">${d.label}</em>` : ''; };
+  const SEEN = [[1, 5, '1–5'], [6, 10, '6–10'], [11, 20, '11–20'], [21, 50, '21–50'], [51, Infinity, '50+']], SEEN_C = '#5aa578';
+  const agoTxt = t => { const mm = (now - t) / 60e3; return mm < 60 ? [`${Math.max(1, Math.round(mm))} min`, 'fresh'] : mm < 23.5 * 60 ? [`${Math.round(mm / 60)} h`, 'fresh'] : mm < 72 * 60 ? [`${Math.round(mm / 1440)} day${Math.round(mm / 1440) === 1 ? '' : 's'}`, 'warm'] : [`${Math.round(mm / 1440)} days`, 'cold']; };
+  const seenB = SEEN.filter(([lo, hi], i) => !i || bucks.some(b => visits[b.id].length >= lo && visits[b.id].length <= hi));
+  const lastCell = ts => { if (!ts.length) return '<td class="ls">—</td>'; const t = Math.max(...ts), [txt, cls] = agoTxt(t); return `<td class="ls ${cls}" title="${dayStr(t)} · ${hm(t)}"><b>${txt}</b><small>ago</small></td>`; };
+  const seenCells = n => seenB.map(([lo, hi], i) => { const hit = n >= lo && n <= hi ? n : 0;
+    return `<td class="${i ? '' : 'g0 '}${hit ? ' hi' : 'z'}" style="--h:${SEEN_C};--s:${hit ? .85 : 0}"><i>${hit || ''}</i></td>`; }).join('');
+  // a ring marks his clear favorite: well above how often it comes up, on 2+ visits (see M.favorite)
+  const cells = b => { const xs = visits[b.id], m = models[b.id];
+    return cols.map(g => { const f = m && M.favorite(m, g.k), fk = f?.clear ? (g.k === 'cam' ? camName(f.key) : f.key) : null, kn = known(xs, g.k);
+      return g.keys.map((key, i) => { const n = cnt(xs, g.k, key), sh = kn ? n / kn : 0;
+        return `<td class="${i ? '' : 'g0 '}${n ? '' : 'z'}${n && key === fk ? ' top' : ''}${sh >= .5 ? ' hi' : ''}" style="--h:${SHOW[g.k]};--s:${sh.toFixed(2)}" title="${esc(GROUP[g.k])} · ${esc(key)}: ${n} of ${kn} visits${n && key === fk ? ' · a clear favorite' : ''}"><i>${n || ''}</i></td>`; }).join(''); }).join(''); };
+  const head = `<thead><tr><th class="bk" rowspan="2"></th><th class="grp ls" style="--h:${SEEN_C}"><span>Last seen</span></th><th class="grp" colspan="${seenB.length}" style="--h:${SEEN_C}"><span>Times seen</span></th>
+      ${cols.map(g => `<th class="grp" colspan="${g.keys.length}" style="--h:${SHOW[g.k]}"><span>${GROUP[g.k]}</span></th>`).join('')}<th class="sc" rowspan="2">Predictability</th></tr>
+    <tr><th class="op ls"></th>${seenB.map(([, , l], i) => `<th class="op${i ? '' : ' g0'}"><span>${l}</span></th>`).join('')}${cols.map(g => g.keys.map((key, i) => `<th class="op${i ? '' : ' g0'}${nowKey[g.k] === key ? ' now' : ''}" title="${esc(key)}${nowKey[g.k] === key ? ' (right now)' : ''}"><span>${esc(opt(key))}</span></th>`).join('')).join('')}</tr></thead>`;
+  const scoreCell = (b, xs, p, tag = 'td') => xs.length >= PATTERN_MIN ? `<${tag} class="sc" data-sheet="${b.id}" title="Open ${esc(b.name)}’s hunting sheet"><div class="ring" style="--p:${p.v}"><em>${p.v}%</em></div></${tag}>`
+    : `<${tag} class="sc few" data-sheet="${b.id}" title="Open ${esc(b.name)}’s hunting sheet">${PATTERN_MIN - xs.length} more<small>visit${PATTERN_MIN - xs.length === 1 ? '' : 's'}</small></${tag}>`;
+  const cards = bucks.map(b => { const xs = visits[b.id], ts = xs.map(x => x.t), p = pattern(b);
+    return `<div class="in-pc ${rowCls(b)}" data-buck-pick="${b.id}"><div class="in-pch">${b.thumb ? `<img src="${b.thumb}" alt="" loading="lazy">` : '<span class="noimg"></span>'}
+      <span><b>${esc(b.name)}${b.tag === 'target' ? '<i>★</i>' : ''}<u>${xs.length}</u></b><small>${dayTag(b)}${ts.length ? ` last seen ${agoTxt(Math.max(...ts))[0]} ago` : ''}</small></span>
+      ${xs.length >= PATTERN_MIN ? `<div class="ring" data-sheet="${b.id}" style="--p:${p.v}"><em>${p.v}%</em></div>` : `<em class="few" data-sheet="${b.id}">${PATTERN_MIN - xs.length} more visit${PATTERN_MIN - xs.length === 1 ? '' : 's'}</em>`}</div>
+      <div class="in-story">${p.rows.filter(r => r.clear).map(r => `<span style="--h:${SHOW[r.k]}"><em>${GROUP[r.k]}</em><b>${esc(opt(r.key))}</b><small>${r.t}/${r.kn}</small></span>`).join('') || '<span class="none">No clear favorites yet</span>'}</div></div>`; }).join('');
+  const rows = bucks.map(b => { const xs = visits[b.id], ts = xs.map(x => x.t);
+    return `<tr class="${rowCls(b)}"><th class="bk" data-buck-pick="${b.id}">${b.thumb ? `<img src="${b.thumb}" alt="" loading="lazy">` : '<span class="noimg"></span>'}<span><b>${esc(b.name)}${b.tag === 'target' ? '<i>★</i>' : ''}</b><small>${dayTag(b)}</small></span></th>
+      ${lastCell(ts)}${seenCells(xs.length)}${cells(b)}${scoreCell(b, xs, pattern(b))}</tr>`; }).join('');
+  // every visit, newest first, with every reading
+  const log = bucks.filter(b => !sel || b.id === sel).flatMap(b => visits[b.id].map(x => ({ ...x, b }))).sort((a, c) => c.t - a.t).map(({ v, t, f, b }) => {
+    const w = f.raw.w;
+    return `<a class="in-v" href="${v.photo}" target="_blank" rel="noopener">${v.crop ? `<img src="${v.crop}" alt="" loading="lazy">` : '<span class="noimg"></span>'}
+      <span class="in-who"><b>${esc(b.name)}</b><small>${dayStr(t)} · ${hm(t)}</small></span>
+      <span><i class="dot" style="background:${camColor(v.camera_id)}"></i>${esc(f.cam)}<small>${v.photos} photo${v.photos === 1 ? '' : 's'}</small></span>
+      <span>${lightTag(v.light, v.light_label)}</span>
+      <span>${w ? `${esc(w.wind_dir || f.wdir || '')} ${w.wind ?? '?'} mph${w.gust ? ` <small>gust ${w.gust}</small>` : ''}<small>${f.wshift ? `${esc(f.wshift.toLowerCase())}${f.raw.was && f.wshift !== 'Held steady' ? ` (was ${esc(f.raw.was)})` : ''}` : ''}</small>` : '<small>no reading</small>'}</span>
+      <span>${w?.temp != null ? `${w.temp}°F<small>${w.dep != null ? `${w.dep > 0 ? '+' : w.dep < 0 ? '' : '±'}${w.dep}° in 24h` : ''}</small>` : '<small>—</small>'}</span>
+      <span>${w?.pressure != null ? `${w.pressure.toFixed(2)}<small>${esc((f.ptrend || '').toLowerCase())}${f.raw.pdep != null ? ` · ${f.raw.pdep > 0 ? '+' : ''}${f.raw.pdep.toFixed(2)} in 24h` : ''}</small>` : '<small>—</small>'}</span>
+      <span>${esc(f.moon || '')}<small>${Math.round(f.raw.illum * 100)}% lit${w?.sky ? ` · ${esc(w.sky.toLowerCase())}` : ''}</small></span></a>`;
+  }).join('') || '<div class="meta">No visits on record.</div>';
+  const logHead = `<div class="in-v hd"><span></span><span>Buck · when</span><span>Camera</span><span>Light</span><span>Wind</span><span>Temp</span><span>Pressure</span><span>Moon</span></div>`;
+  const howTo = `Predictability = pattern × data × recency. Pattern: how much more often than usual he shows up in his favorite time, place and weather, counting time of day and place most and the moon least. Data: more visits, more trust. Recency: full if seen in the last 3 days, halved each week after. Weather is hourly for the property; a visit is one buck at one camera with no gap over ${intel.visitGap} minutes (Settings).`;
+  $('#main').innerHTML = `<div class="intel">
+      <section class="in-card in-pred"><div class="in-top"><div class="in-title"><b>Predictability</b><span>${all.length} visits · ${bucks.length} bucks${cover ? ` · ${esc(cover)}` : ''}</span></div></div>
+        <div class="in-tablewrap"><table class="in-tab">${head}<tbody>${rows}</tbody></table></div><div class="in-cards">${cards}</div>
+        <div class="in-foot">Numbers are visits · ring = clear favorite · <b class="nowk">amber</b> = right now · tap a score for his hunting sheet <span class="in-info" title="${esc(howTo)}">ⓘ</span></div></section>
+      <section class="in-card in-log"><div class="in-top"><div class="in-title"><b>Every visit</b><span>${sel ? esc(bucks.find(b => b.id === sel).name) : `all ${bucks.length} bucks`} · newest first · tap one for the photo</span></div>${sel ? '<button class="in-allbtn" data-buck-pick="0">Show all</button>' : ''}</div>${logHead}${log}</section>
+    </div>`;
+  const dayWord = t => { const a = local(t), b = local(now), d = Math.round((Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate()) - Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate())) / DAY);
+    return d === 0 ? (a.getUTCHours() >= 17 ? 'Tonight' : 'Today') : d === 1 ? 'Tomorrow' : dayStr(t).split(',')[0]; };
+  // the next week at every camera, hour by hour: his expected visits from his preferences (static/predict.js).
+  // Words, not percentages: how an hour compares with his average hour this week.
+  const strength = r => r >= 3 ? 'Strong' : r >= 1.5 ? 'Fair' : 'Low';
+  function forecastBox(b, xs, camSel) {
+    const m = models[b.id], night = xs.filter(x => x.v.light === 'night').length, head = '<div class="pd-k">Best chances to see him<span>legal light · next 7 days</span></div>';
+    if (!m || !hs.length) return head + '<div class="pd-none">No hourly weather to forecast with right now.</div>';
+    const preds = M.predict(m, ctx, now - HOUR, now + 7 * DAY), avg = preds.reduce((a, p) => a + p.lam, 0) / Math.max(1, preds.length);
+    const cs = camSel ? preds.filter(p => p.cam === camSel) : preds;
+    const legal = cs.filter(p => p.legal && p.t > now - HOUR).sort((a, c) => c.lam - a.lam), best = [];
+    for (const p of legal) { if (best.length >= 3) break; if (best.every(q => q.cam !== p.cam || Math.abs(q.t - p.t) > 4 * HOUR)) best.push(p); }
+    const dayKey = t => { const d = local(t); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); }, rows = [];
+    for (const p of cs) { const k = dayKey(p.t), h = local(p.t).getUTCHours(); let r = rows.find(x => x.k === k); if (!r) rows.push(r = { k, cells: Array(24).fill(null) }); if (!r.cells[h] || p.lam > r.cells[h].lam) r.cells[h] = p; }
+    const wkday = k => new Date(k).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }), md_ = k => new Date(k).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    const h12 = h => `${(h % 12) || 12}${h < 12 ? 'a' : 'p'}`, shade = lam => Math.max(0, Math.min(1, Math.log2(lam / avg) / Math.log2(6)));
+    const chips = `<div class="pd-cams"><button class="${camSel ? '' : 'on'}" data-fc-cam="">All cameras</button>${camIds.filter(c => ctx.up[c]).map(c => `<button class="${camSel === c ? 'on' : ''}" data-fc-cam="${c}">${esc(camName(c))}</button>`).join('')}</div>`;
+    return `${head}${chips}
+      ${best.map((p, i) => `<div class="pd-row time${i ? '' : ' top'}"><b>${dayWord(p.t)} ${hm(p.t)}</b><span>${esc(camName(p.cam))} · ${esc(opt(p.f.sun).toLowerCase())} · ${p.f.wdir || ''} wind</span><em class="st ${strength(p.lam / avg).toLowerCase()}">${strength(p.lam / avg)}</em></div>`).join('') || '<div class="pd-none">No legal-light hour this week stands out for him.</div>'}
+      <div class="pd-cal">${rows.slice(0, 8).map(r => { const wk = [0, 6].includes(new Date(r.k).getUTCDay());
+        return `<div class="pd-day${wk ? ' wk' : ''}"><span><b>${wkday(r.k)}</b><small>${md_(r.k)}</small></span><div>${r.cells.map((c, h) => !c ? '<i class="x"></i>' : !c.legal ? '<i class="nl"></i>'
+          : `<i style="--v:${shade(c.lam).toFixed(2)}" title="${wkday(r.k)} ${h12(h)} · ${strength(c.lam / avg)} · ${esc(camName(c.cam))}, ${esc(opt(c.f.sun))}, ${c.f.wdir || ''} wind, ${esc(opt(c.f.temp || ''))}"${best.includes(c) ? ' class="b"' : ''}></i>`).join('')}</div></div>`; }).join('')}
+        <div class="pd-day ax"><span></span><div>${Array.from({ length: 24 }, (_, h) => `<em>${h % 6 ? '' : h12(h)}</em>`).join('')}</div></div></div>
+      <div class="pd-src">${night ? `${night} of ${xs.length} visits were after legal light · ` : ''}brighter = better odds than his average hour · forecast: Open-Meteo</div>`;
   }
-  // best windows
-  const wins = m.wins.slice(0, 3).map((w, i) => {
-    const r = intelRel(w.t0 + (w.t1 - w.t0) / 2, cams[w.cam].lat, cams[w.cam].lon);
-    const sunNote = `${Math.abs(Math.round(r.m)) < 90 ? `${Math.abs(Math.round(r.m))} min` : `${(Math.abs(r.m) / 60).toFixed(1)} h`} ${r.m < 0 ? 'before' : 'after'} ${r.ref === 'rise' ? 'sunrise' : 'sunset'}`;
-    const seen = m.vs.filter(v => v.camera_id === w.cam && v.rel.ref === r.ref && Math.abs(v.rel.m - r.m) <= 90).length;
-    return `<div class="in-win${i === 0 ? ' top' : ''}"><div class="in-pct"><b>${pct(w.peak)}</b><span>chance</span></div>
-      <div class="in-wbody"><b><i class="dot" style="background:${camColor(w.cam)}"></i>${esc(camName(w.cam))}</b><div class="in-when">${dayName(w.t0)} · ${hm(w.t0)} – ${hm(w.t1)}</div>
-        <div class="meta">${sunNote}${seen ? ` · seen here ${seen}× then` : ''}</div></div></div>`;
-  }).join('') || '<div class="meta">Not enough of a pattern yet to call a window.</div>';
-  // chance by camera: a heat row per camera, one cell per hour through the next 48 hours
-  const camIds = Object.keys(cams).filter(c => cams[c].lat != null);
-  const peak = Math.max(.005, ...m.slots.flatMap(r => Object.values(r.cams)));
-  const hours48 = Array.from({ length: 48 }, (_, i) => now + i * 3600e3);
-  const heatOf = (c, t) => { const rs = m.slots.filter(r => r.t >= t && r.t < t + 3600e3); return rs.length ? Math.max(...rs.map(r => r.cams[c])) / peak : 0; };
-  const ramp = v => { const st = [[0, [52, 140, 90]], [.35, [120, 180, 70]], [.6, [235, 190, 60]], [.8, [240, 120, 50]], [1, [225, 50, 50]]]; let j = 1; while (j < st.length - 1 && st[j][0] < v) j++; const [a0, c0] = st[j - 1], [a1, c1] = st[j], f = Math.max(0, Math.min(1, (v - a0) / (a1 - a0))); return c0.map((x, q) => Math.round(x + (c1[q] - x) * f)); };
-  const isNight = t => sunPos(t + 1800e3, intel.where.lat, intel.where.lon).alt < -0.833;
-  const heatRows = camIds.map(c => `<div class="in-hrow"><span><i class="dot" style="background:${camColor(c)}"></i>${esc(camName(c))}</span><div class="in-hcells">${hours48.map(t => { const v = Math.sqrt(heatOf(c, t)), [r, g, bl] = ramp(v); const p = m.slots.find(x => x.t >= t)?.cams[c] || 0;
-    return `<i class="${isNight(t) ? 'n' : ''}" style="background:${v > .03 ? `rgba(${r},${g},${bl},${(.25 + .75 * v).toFixed(2)})` : 'transparent'}" title="${dayName(t)} ${hm(t)} · ${pct(p)}"></i>`; }).join('')}</div></div>`).join('');
-  const heatAxis = `<div class="in-hrow ax"><span></span><div class="in-hcells">${hours48.map(t => { const h = local(t).getUTCHours(); return `<b>${h === 0 ? `<em>${dayName(t).slice(0, 3)}</em>` : h % 6 === 0 ? `${(h % 12) || 12}${h < 12 ? 'a' : 'p'}` : ''}</b>`; }).join('')}</div></div>`;
-  // time of day: a 24-hour bar, each hour colored by how many visits, sunrise and sunset marked for today
-  const sunToday = sunTimes(now, intel.where.lat, intel.where.lon);
-  const hourOf = t => { const d = local(t); return d.getUTCHours() + d.getUTCMinutes() / 60; };
-  const hrs = (pat.hours || []).map(h => h.day + h.shooting + h.night + h.unknown), hmax = Math.max(1, ...hrs);
-  const dayBar = `<div class="in-clock">${hrs.map((n, h) => `<i style="background:${n ? `rgba(90,165,120,${(.25 + .75 * n / hmax).toFixed(2)})` : 'color-mix(in srgb, var(--ink) 5%, transparent)'}" title="${(h % 12) || 12}${h < 12 ? ' AM' : ' PM'}: ${n} visit${n === 1 ? '' : 's'}"><b>${n || ''}</b></i>`).join('')}
-    ${sunToday ? `<u class="rise" style="left:${hourOf(sunToday.rise) / 24 * 100}%" title="Sunrise ${hm(sunToday.rise)}"></u><u class="set" style="left:${hourOf(sunToday.set) / 24 * 100}%" title="Sunset ${hm(sunToday.set)}"></u>` : ''}</div>
-    <div class="in-clock-ax"><span>12a</span><span>6a</span><span>noon</span><span>6p</span><span>12a</span></div>`;
-  const lightSplit = `<div class="in-light">${[['Daylight', m.light.day, '#9ec5f4'], ['Shooting light', m.light.shooting, '#f0a35e'], ['Night', m.light.night, '#5a6fb0']].map(([k, n, col]) => `<span><i style="background:${col}"></i>${k} <b>${n}</b></span>`).join('')}</div>`;
-  // the last 14 days: a cell per day, colored by how many visits
-  const dayKey = t => { const d = local(t); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); };
-  const perDay = {}; for (const v of m.vs) perDay[dayKey(v.t)] = (perDay[dayKey(v.t)] || 0) + 1;
-  const today = dayKey(now), days14 = Array.from({ length: 14 }, (_, i) => today - (13 - i) * DAY);
-  const trend = `<div class="in-days">${days14.map(k => { const n = perDay[k] || 0; return `<i class="${n ? 'on' : ''}" style="--v:${Math.min(1, n / 3)}" title="${new Date(k).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })}: ${n} visit${n === 1 ? '' : 's'}"><b>${n || ''}</b><span>${new Date(k).toLocaleDateString('en-US', { weekday: 'narrow', timeZone: 'UTC' })}</span></i>`; }).join('')}</div>`;
-  // conditions: four short bar lists, today's value lit when there's current weather
-  const wind8 = d => ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(d / 45) % 8];
-  const condRows = pat.conditions || {};
-  const nowOf = { wind: wnow?.wind_deg != null ? wind8(wnow.wind_deg) : '', temp: wnow?.temp != null ? `${Math.floor(wnow.temp / 10) * 10}-` : '', pressure: { R: 'Rising', S: 'Steady', F: 'Falling' }[wnow?.trend] || '', moon: '' };
-  const seg = (key, title) => { const rows = (condRows[key] || []).filter(r => r.all).sort((x, y) => y.all - x.all).slice(0, 4), max = Math.max(1, ...rows.map(r => r.all));
-    return `<div class="in-cl"><div class="in-cl-h">${title}${nowOf[key] ? `<span>now ${esc(nowOf[key].replace(/-$/, '°s'))}</span>` : ''}</div>
-      ${rows.length ? rows.map(r => `<div class="in-row${nowOf[key] && String(r.key).startsWith(nowOf[key]) ? ' now' : ''}"><span>${esc(String(r.key))}</span><i><b style="width:${100 * r.all / max}%"></b></i><em>${r.all}</em></div>`).join('') : '<div class="meta">No data</div>'}</div>`; };
-  const camRows = (pat.cameras || []).map(c => `<div class="in-row"><span><i class="dot" style="background:${camColor(c.camera_id)}"></i>${esc(c.camera)}</span><i><b style="width:${100 * c.visits / Math.max(1, pat.visits)}%;background:${camColor(c.camera_id)}"></b></i><em>${c.visits}<small> · ${c.daylight} day</small></em></div>`).join('');
-  $('#main').innerHTML = `<div class="intel">${list}<div class="in-main">
-      <div class="in-top"><div class="in-name">${b.thumb ? `<img src="${b.thumb}" alt="">` : ''}<div><b>${esc(b.name)}${b.tag === 'target' ? ' <i>★</i>' : ''}</b><span>${m.n} visit${m.n === 1 ? '' : 's'} · ${m.light.day + m.light.shooting} in legal light · about ${(m.dailyRate * 7).toFixed(1)} a week${m.cond.length ? ` · today ${m.mult >= 1 ? 'helps' : 'hurts'} his odds ×${m.mult.toFixed(2)}` : ''}</span></div></div>${trend}</div>
-      <div class="in-grid">
-        <section class="in-card in-best"><div class="in-h">Best windows <span>next 48 h</span></div><div class="in-wins">${wins}</div></section>
-        <section class="in-card in-chart"><div class="in-h">Chance by camera <span>next 48 hours · darker night hours shaded</span></div><div class="in-heat">${heatRows}${heatAxis}</div></section>
-        <section class="in-card in-day"><div class="in-h">Time of day <span>when his visits start</span></div>${dayBar}${lightSplit}</section>
-        <section class="in-card in-where"><div class="in-h">Where <span>visits · in daylight</span></div>${camRows}</section>
-        <section class="in-card in-conds"><div class="in-h">Conditions when he showed${wnow ? '' : ' <span>no current weather yet</span>'}</div>
-          <div class="in-cl-grid">${seg('wind', 'Wind')}${seg('temp', 'Temperature')}${seg('pressure', 'Pressure')}${seg('moon', 'Moon')}</div>
-          ${m.cond.length ? `<div class="in-reasons">${m.cond.map(c => `<div class="${c.f >= 1 ? 'good' : 'bad'}"><b>${c.k} ${esc(c.now)}</b> ${esc(c.note)} <em>×${c.f.toFixed(2)}</em></div>`).join('')}</div>` : ''}</section>
-      </div></div></div>`;
-  $$('[data-buck-pick]').forEach(el => el.onclick = () => { intel.buck = Number(el.dataset.buckPick); renderIntel(); });
+  // one or two plain sentences: when he moves, where, and his best legal-light setup this week
+  function summary(b, xs, p) {
+    const d = M.daylight(xs.map(x => x.v)), cam = p.rows.find(r => r.k === 'cam'), m = models[b.id];
+    const when = !d ? '' : d.ratio < .35 ? 'Shows up mostly after dark' : d.ratio < .65 ? 'Moves both day and night' : 'Moves mostly in daylight';
+    let s = `${when}${cam ? `, most often at ${cam.key}` : ''}.`;
+    if (m && hs.length) { const preds = M.predict(m, ctx, now, now + 7 * DAY).filter(q => q.legal).sort((a, c) => c.lam - a.lam), q = preds[0];
+      if (q) { const dw = dayWord(q.t); s += ` Best legal-light odds this week: ${/^(Today|Tonight|Tomorrow)$/.test(dw) ? dw.toLowerCase() : dw} at ${opt(q.f.sun).toLowerCase()}, ${camName(q.cam)}${q.f.wdir ? `, wind from the ${q.f.wdir}` : ''}.`; } }
+    return s;
+  }
+  function openSheet(b) {
+    const xs = visits[b.id], ts = xs.map(x => x.t), p = pattern(b), locked = xs.length < PATTERN_MIN, pct = v => `${Math.round(v * 100)}%`;
+    const ago = ts.length ? agoTxt(Math.max(...ts))[0] : '';
+    const body = `<div class="pd-sum">${esc(summary(b, xs, p))}</div>
+      <div class="pd-sec pd-fc" id="pd-fc">${forecastBox(b, xs, '')}</div>
+      <div class="pd-sec"><div class="pd-k">Favorite conditions<span>bar = how much more than usual</span></div>
+        <div class="pd-conds">${p.rows.map(r => `<div class="pd-c${r.clear ? '' : ' weak'}" title="${esc(GROUP[r.k])}: ${esc(r.key)} on ${r.t} of ${r.kn} visits; that comes up ${pct(r.usual)} of the time the cameras are running"><em>${GROUP[r.k]}</em><b>${esc(opt(r.key))}</b><small>${r.t}/${r.kn}</small><u><s style="width:${pct(r.edge)};--h:${SHOW[r.k]}"></s></u></div>`).join('')}
+        <div class="pd-c rec"><em>Data</em><b>${xs.length} visit${xs.length === 1 ? '' : 's'}</b><small>${pct(p.conf)}</small><u><s style="width:${pct(p.conf)};--h:var(--accent)"></s></u></div>
+        <div class="pd-c rec"><em>Recency</em><b>${ago} ago</b><small>${pct(p.fresh)}</small><u><s style="width:${pct(p.fresh)};--h:var(--accent)"></s></u></div></div>
+        <div class="pd-math">Pattern <b>${pct(p.cons)}</b> × data <b>${pct(p.conf)}</b> × recency <b>${pct(p.fresh)}</b> = <b class="tot">${p.v}%</b> predictable</div></div>`;
+    document.body.insertAdjacentHTML('beforeend', `<div class="pd-wrap"><div class="pd" role="dialog" aria-label="${esc(b.name)}">
+      <button class="pd-x" aria-label="Close">×</button>
+      <div class="pd-head">${b.thumb ? `<img src="${b.thumb}" alt="">` : ''}<div><b>${esc(b.name)}${b.tag === 'target' ? '<i>★</i>' : ''}</b><span>${dayTag(b)} ${xs.length} visit${xs.length === 1 ? '' : 's'} · ${xs.reduce((a, x) => a + FACTORS.filter(k => x.f[k]).length, 0)} data points${ts.length ? ` · last seen ${ago} ago` : ''}</span></div>
+        <div class="pd-ring${locked ? ' locked' : ''}" style="--p:${locked ? 100 * xs.length / PATTERN_MIN : p.v}"><em>${locked ? `${xs.length}/${PATTERN_MIN}` : `${p.v}%`}</em><small>${locked ? 'visits' : 'score'}</small></div></div>
+      <div class="pd-body${locked ? ' blur' : ''}">${body}</div>
+      ${locked ? `<div class="pd-lock"><div class="pd-lockc"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        <b>Unlocks at ${PATTERN_MIN} visits</b><span>${PATTERN_MIN - xs.length} more sighting${PATTERN_MIN - xs.length === 1 ? '' : 's'} of ${esc(b.name)} and his hunting sheet opens up.</span>
+        <div class="pd-dots">${Array.from({ length: PATTERN_MIN }, (_, i) => `<i class="${i < xs.length ? 'on' : ''}"></i>`).join('')}</div></div></div>` : ''}
+    </div></div>`);
+    const wrap = $('.pd-wrap'), close = () => { wrap.classList.add('out'); setTimeout(() => wrap.remove(), 160); removeEventListener('keydown', esc_); };
+    const esc_ = e => { if (e.key === 'Escape') close(); };
+    wrap.onclick = e => { const c = e.target.closest('[data-fc-cam]'); if (c) { $('#pd-fc').innerHTML = forecastBox(b, xs, c.dataset.fcCam); return; } if (e.target === wrap || e.target.closest('.pd-x')) close(); };
+    addEventListener('keydown', esc_);
+  }
+  $$('[data-buck-pick]').forEach(el => el.onclick = () => { const id = Number(el.dataset.buckPick); intel.buck = id && intel.buck !== id ? id : null; renderIntel(); });
+  $$('[data-sheet]').forEach(el => el.onclick = e => { e.stopPropagation(); openSheet(bucks.find(b => b.id === Number(el.dataset.sheet))); });
+}
+
+// ------------------------------------------------------------------ review as flashcards (experimental)
+// One photo at a time, big, beside a lineup of every named buck (same size, alphabetical, nothing marked as the
+// likely one, so the pick isn't nudged; flip through each buck's photos). Tap the buck, then It's him: the photo
+// drops on his pile. Or None of these: what else it is, a bad photo, or skip it. The deck on the side counts
+// everyone's decisions: waiting, decided today, decided in all.
+let sw = null;
+const SW_OTHER = [['doe', 'Doe'], ['fawn', 'Fawn'], ['turkey', 'Turkey'], ['hog', 'Hog'], ['coyote', 'Coyote'], ['raccoon', 'Raccoon'], ['bobcat', 'Bobcat'], ['other', 'Other animal']];
+async function showSwipe() {
+  const [items, list, stats] = await Promise.all([api(`/api/review?sort=newest&season=${season()}`), api(`/api/bucks?season=${season()}`),
+    api(`/api/review/stats?tz=${-new Date().getTimezoneOffset()}&season=${season()}`).catch(() => null)]);
+  if (view !== 'swipe') return;
+  const named = list.filter(b => !b.generic && b.status === 'alive').sort((a, b) => (b.tag === 'target') - (a.tag === 'target') || b.visits - a.visits);
+  // counts that don't know about this queue came from somewhere else (the local mirror's own database): don't show them
+  sw = { items, named, stats: stats && !(stats.waiting === 0 && items.length) ? stats : null, cands: {}, cmp: {}, piles: {}, saved: 0, done: 0, preview: false, busy: false };
+  swRender();
+}
+async function swCompare(d, b) {  // a buck's photos, most alike first
+  const key = `${d.id}:${b.id}`;
+  return sw.cmp[key] ??= api(`/api/detections/${d.id}/compare/${b.id}`).then(r => r.photos || []).catch(() => []);
+}
+function swDeck() {  // three little card piles: waiting, decided today, decided in all (everyone's decisions)
+  const st = sw.stats, n = v => v == null ? '—' : v.toLocaleString();
+  const today = st ? st.today + sw.saved : null, total = st ? st.total + sw.saved : null, mine = st ? st.mine_today + sw.saved : null;
+  const pile = (cls, num, label, sub, layers) => `<div class="sw-stat ${cls}"><div class="sw-stack">${'<i></i>'.repeat(layers)}<b>${num}</b></div><span>${label}</span><small>${sub}</small></div>`;
+  return `<div class="sw-deck">${pile('wait', n(sw.items.length), 'To review', sw.items.length ? 'buck photos waiting' : 'all caught up', Math.min(2, Math.ceil(sw.items.length / 40)))}
+    ${pile('today', n(today), 'Reviewed today', !st ? 'after the server update' : mine ? `${mine} by you` : 'everyone', 2)}
+    ${pile('total', n(total), 'Total reviewed', !st ? 'after the server update' : 'all of you', 2)}</div>`;
+}
+function swStats() {
+  return `<div class="sw-strip">${sw.done ? `<span class="sess"><b>${sw.done}</b>reviewed this session${sw.preview ? ' · preview, not saved' : ''}</span>` : ''}<a class="sw-grid" data-go="review">Grid view</a></div>`;
+}
+async function swRender() {
+  const d = sw.items[0];
+  if (!d) { $('#main').innerHTML = `<div class="swr">${swStats()}${swDeck()}<div class="sw-empty"><b>All caught up</b><span>No buck photos waiting. New ones land here after the next check.</span><button class="btn" data-go="home">Back to Home</button></div></div>`; return; }
+  // the lineup: every named buck, same size, a fixed order (alphabetical) so nothing nudges the pick
+  const bucks = sw.named.slice().sort((a, b) => a.name.localeCompare(b.name));
+  const refs = await Promise.all(bucks.map(b => swCompare(d, b)));
+  if (view !== 'swipe' || sw.items[0] !== d) return;
+  if (sw.card !== d.id) { sw.card = d.id; sw.pick = null; sw.ri = {}; sw.none = false; }
+  const next = sw.items[1]; if (next) { new Image().src = next.crop; bucks.forEach(b => swCompare(next, b)); }
+  const t = Date.parse(d.taken_utc), rack = d.rack ? rackLine(d.rack) : '', pick = bucks.find(b => b.id === sw.pick);
+  const when = ms => `${new Date(ms).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+  const lineup = bucks.map((b, i) => { const rs = refs[i], ri = (sw.ri[b.id] || 0) % Math.max(1, rs.length), r = rs[ri];
+    return `<div class="sw-l${sw.pick === b.id ? ' on' : ''}" data-bid="${b.id}"><div class="sw-lph">${r ? `<img src="${r.crop}" alt="" loading="lazy">` : b.thumb ? `<img src="${b.thumb}" alt="">` : ''}
+        ${rs.length > 1 ? `<button class="sw-ln prev" data-flip="${b.id}" data-d="-1" aria-label="Previous photo">‹</button><button class="sw-ln next" data-flip="${b.id}" data-d="1" aria-label="Next photo">›</button><span class="sw-lc">${ri + 1}/${rs.length}</span>` : ''}
+        <i class="sw-chk">✓</i>${sw.piles[b.id] ? `<em class="pile">${sw.piles[b.id]}</em>` : ''}</div>
+      <b>${esc(b.name)}</b></div>`; }).join('');
+  $('#main').innerHTML = `<div class="swr">${swStats()}
+    <div class="sw-main">
+      <div class="sw-left">
+        <div class="sw-card" id="sw-card"><div class="sw-ph" style="--bg:url('${d.crop}')"><img src="${d.crop}" data-crop="${d.crop}" data-full="${d.photo}" alt="" draggable="false">
+          <button class="sw-flip">Full photo</button><div class="sw-cap"><b>${esc(d.camera)}</b><span>${when(t)}</span></div><div class="sw-stamp"></div></div>
+          ${d.summary || rack ? `<div class="sw-ai"><em>AI read</em>${esc(d.summary || '')}${rack ? `<small>${esc(rack)}</small>` : ''}</div>` : ''}</div>
+        ${swDeck()}
+      </div>
+      <div class="sw-right"><div class="sw-h">The lineup<span>tap the buck it is · flip through his photos</span></div><div class="sw-lineup">${lineup}</div>
+        <div class="sw-act">
+          <button class="sw-yes" data-sw-yes ${pick ? '' : 'disabled'}><span>✓</span>${pick ? `It’s ${esc(pick.name)}` : 'Pick a buck'}</button>
+          <button class="sw-no${sw.none ? ' on' : ''}" data-sw-none><span>✕</span>None of these</button>
+        </div>
+        <div class="sw-other${sw.none ? ' open' : ''}">${SW_OTHER.map(([k, l]) => `<button class="sw-o" data-sw-animal="${k}">${l}</button>`).join('')}
+          <button class="sw-o bad" data-sw-bad>Bad photo</button><button class="sw-o" data-sw-skip>Skip for now</button></div>
+      </div>
+    </div></div>`;
+  const card = $('#sw-card'), img = card.querySelector('img');
+  card.querySelector('.sw-flip').onclick = e => { e.stopPropagation(); const full = img.src.endsWith(img.dataset.full); img.src = full ? img.dataset.crop : img.dataset.full; e.target.textContent = full ? 'Full photo' : 'Close-up'; card.classList.toggle('full', !full); };
+  $$('[data-flip]').forEach(el => el.onclick = e => { e.stopPropagation(); const id = Number(el.dataset.flip), n = refs[bucks.findIndex(b => b.id === id)].length; sw.ri[id] = ((sw.ri[id] || 0) + Number(el.dataset.d) + n) % n; swRender(); });
+  $$('.sw-l').forEach(el => el.onclick = () => { const id = Number(el.dataset.bid); sw.pick = sw.pick === id ? null : id; sw.none = false; swRender(); });
+  $('[data-sw-yes]').onclick = () => pick && swDecide(pick.name, 'pile', () => post(`/api/detections/${d.id}/assign`, { buck_id: pick.id }), pick.id);
+  $('[data-sw-none]').onclick = () => { sw.none = !sw.none; sw.pick = null; swRender(); };
+  $$('[data-sw-animal]').forEach(el => el.onclick = () => swDecide(el.textContent, 'right', () => post(`/api/detections/${d.id}/animal`, { animal: el.dataset.swAnimal })));
+  $('[data-sw-bad]').onclick = () => swDecide('Bad photo', 'left', () => post(`/api/detections/${d.id}/reject`));
+  $('[data-sw-skip]').onclick = () => swSkip('left');
+}
+function swFly(label, dir, buckId) {
+  const card = $('#sw-card'); if (!card) return Promise.resolve();
+  card.querySelector('.sw-stamp').textContent = label; card.classList.add('stamping'); card.classList.toggle('yes', dir === 'pile');
+  const pile = buckId && $(`.sw-l[data-bid="${buckId}"] .sw-lph`);
+  if (dir === 'pile' && pile) {  // into that buck's pile in the lineup
+    const a = card.getBoundingClientRect(), z = pile.getBoundingClientRect();
+    card.style.transition = 'transform .45s cubic-bezier(.5,0,.2,1), opacity .45s';
+    card.style.transform = `translate(${z.left + z.width / 2 - (a.left + a.width / 2)}px, ${z.top + z.height / 2 - (a.top + a.height / 2)}px) scale(${(z.width / a.width).toFixed(2)}) rotate(6deg)`;
+    card.style.opacity = '.15'; pile.parentElement.classList.add('catch');
+    return new Promise(r => setTimeout(r, 460));
+  }
+  card.classList.add(`fly-${dir === 'pile' ? 'right' : dir}`); card.style.transform = '';
+  return new Promise(r => setTimeout(r, 260));
+}
+async function swSkip(dir) {
+  if (sw.busy || !sw.items.length) return; sw.busy = true;
+  await swFly('Skip', dir); sw.items.push(sw.items.shift()); sw.busy = false; swRender();
+}
+async function swDecide(label, dir, save, buckId) {
+  if (sw.busy || !sw.items.length) return; sw.busy = true;
+  const d = sw.items.shift(), saving = save().then(() => { sw.saved++; }).catch(e => {
+    if (e.status === 403 && /read-only/i.test(e.detail || '')) { if (!sw.preview) toast('Preview only: this is the read-only copy of deerdar.com, so choices aren’t saved.', 6000); sw.preview = true; return; }
+    sw.items.unshift(d); toast(`Couldn’t save that: ${esc(e.detail || e.message)}`);
+  });
+  await swFly(label, dir, buckId); sw.done++; if (buckId) sw.piles[buckId] = (sw.piles[buckId] || 0) + 1;
+  await saving; sw.busy = false;
+  $('#rcount').textContent = sw.items.length || ''; swRender();
 }
 
 // ------------------------------------------------------------------ engine room (calendar of what came in)
@@ -4065,6 +4359,8 @@ async function showSettings(firstRun = false) {
         <span class="meta">current: ${esc(seasonLabel(cfg.current_season))}, since ${esc(cfg.current_season_start)}</span></div>
       <div class="row"><label>Shooting light</label><input id="ss-shoot" type="number" min="0" max="60" value="${cfg.shooting_minutes}" style="flex:0 0 76px">
         <span class="meta">minutes before sunrise and after sunset; counts as daylight</span></div>
+      <div class="row"><label>One visit</label><input id="ss-gap" type="number" min="5" max="240" value="${cfg.visit_gap_minutes ?? 30}" style="flex:0 0 76px">
+        <span class="meta">minutes; closer photos of a buck at one camera are one visit</span></div>
       <div class="row"><label>Region</label><input id="ss-region" value="${esc(cfg.region || '')}" placeholder="${esc(cfg.region_auto ? 'Automatic: ' + cfg.region_auto : 'Automatic, from where your cameras are on the Map')}" title="Told to the AI as context. Leave blank to use where your cameras are."></div>
       <div class="row"><label>Check for photos</label><select id="ss-interval" style="flex:0 0 auto">
         ${[[0, 'Only when I tap ↻'], [1, 'Every hour'], [3, 'Every 3 hours'], [6, 'Every 6 hours'], [12, 'Every 12 hours'], [24, 'Once a day']].map(([v, l]) =>
@@ -4306,7 +4602,7 @@ async function settingsClick(e) {
     try {
       cfg = await post('/api/settings', { season_start: start, region: $('#ss-region').value.trim() || null,
                                           sync_interval_hours: Number($('#ss-interval').value),
-                                          shooting_minutes: Number($('#ss-shoot').value) });
+                                          shooting_minutes: Number($('#ss-shoot').value), visit_gap_minutes: Number($('#ss-gap').value) });
       $('#ss-msg').className = 'ok'; $('#ss-msg').textContent = 'Saved';
       $('#season').value = ''; await loadSeasons();
     } catch (err) { $('#ss-msg').className = 'bad'; $('#ss-msg').textContent = err.detail || 'Save failed'; }
@@ -4349,14 +4645,13 @@ async function render() {
   const [v, a] = (location.hash.slice(1) || 'home').split('/');
   if (v === 'join' && a) return showJoin(a);
   if (!DEMO && !me?.user) return location.reload();  // e.g. back from a link page while signed out
-  view = ['home', 'feed', 'map', 'timeline', 'photos', 'intel', 'bucks', 'buck', 'review', 'place', 'engine', 'settings'].includes(v) ? v : 'home';
+  view = ['home', 'feed', 'map', 'timeline', 'photos', 'intel', 'bucks', 'buck', 'review', 'swipe', 'place', 'engine', 'settings'].includes(v) ? v : 'home';
   TL.wantMode = view === 'photos' ? 'cams' : 'map';
   if (view === 'photos' || view === 'map') view = 'timeline';  // the map and the photo list share the timeline's data
-  if (view === 'review' && !DEMO && !can('member')) view = 'home';
+  if ((view === 'review' || view === 'swipe') && !DEMO && !can('member')) view = 'home';
   arg = a ?? null;
-  const tab = view === 'timeline' ? (TL.wantMode === 'cams' ? 'photos' : 'map') : { feed: 'home', buck: 'bucks' }[view] || view;
+  const tab = view === 'timeline' ? (TL.wantMode === 'cams' ? 'photos' : 'map') : { feed: 'home', buck: 'bucks', review: 'swipe' }[view] || view;
   $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.go === tab));
-  $('.hdr-review').classList.toggle('on', view === 'review');
   $('#season').style.visibility = ['settings', 'timeline', 'engine', 'intel'].includes(view) ? 'hidden' : '';
   if (lmap && view !== 'place') { lmap.remove(); lmap = null; }
   if (view !== 'timeline') tlDestroy();
@@ -4365,7 +4660,7 @@ async function render() {
   const wait = setTimeout(() => { if (!$('.loader.page')) document.body.insertAdjacentHTML('beforeend', LOADER.replace('loader', 'loader page')); }, 150);
   try {
     if (view === 'buck') await showBuck(Number(arg));
-    else await ({ home: showHome, feed: showFeed, timeline: TL.data && $('#tl') ? tlAgain : showTimeline, engine: showEngine, intel: showIntel, bucks: showBucks, review: showReview, place: showMap, settings: () => showSettings() }[view])();
+    else await ({ home: showHome, feed: showFeed, timeline: TL.data && $('#tl') ? tlAgain : showTimeline, engine: showEngine, intel: showIntel, bucks: showBucks, review: showReview, swipe: showSwipe, place: showMap, settings: () => showSettings() }[view])();
   } finally { clearTimeout(wait); $('.loader.page')?.remove(); }
   refreshCounts();
 }

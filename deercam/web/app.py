@@ -476,7 +476,7 @@ def get_settings(request: Request):
     login and AI setup are for owners."""
     season = {
         "setup_done": settings.setup_done, "season_start": settings.season_start,
-        "shooting_minutes": settings.shooting_minutes, "current_season": settings.current_season(),
+        "shooting_minutes": settings.shooting_minutes, "visit_gap_minutes": settings.visit_gap_minutes, "current_season": settings.current_season(),
         "current_season_start": settings.season_start_date(settings.current_season()).isoformat(),
     }
     if not _is(request, "owner"):
@@ -503,6 +503,7 @@ class SettingsUpdate(BaseModel):
     season_start: str | None = None
     sync_interval_hours: float | None = None
     shooting_minutes: int | None = None
+    visit_gap_minutes: int | None = None
     setup_done: bool | None = None
 
 
@@ -799,8 +800,8 @@ class Assign(BaseModel):
 
 @app.post("/api/detections/{det_id}/assign")
 @needs("member")
-def assign(det_id: int, body: Assign):
-    return _assign([det_id], body)
+def assign(det_id: int, body: Assign, request: Request):
+    return _assign([det_id], body, _reviewer(request))
 
 
 class AssignMany(Assign):
@@ -809,12 +810,22 @@ class AssignMany(Assign):
 
 @app.post("/api/detections/assign")
 @needs("member")
-def assign_many(body: AssignMany):
+def assign_many(body: AssignMany, request: Request):
     """Several photos are the same buck (picked together from the Review grid)."""
-    return _assign(body.ids, body)
+    return _assign(body.ids, body, _reviewer(request))
 
 
-def _assign(ids: list[int], body: Assign) -> dict:
+def _reviewer(request: Request) -> int | None:
+    return (request.state.user or {}).get("id")
+
+
+def _mark_reviewed(conn, ids: list[int], by: int | None):
+    """Stamp who decided and when, for the review counts (reviewed today, all-time)."""
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    conn.executemany("UPDATE detections SET reviewed_at=?, reviewed_by=? WHERE id=?", [(now, by, i) for i in ids])
+
+
+def _assign(ids: list[int], body: Assign, by: int | None = None) -> dict:
     ids = sorted(set(ids))
     if not ids:
         raise HTTPException(400, "no photos picked")
@@ -855,6 +866,7 @@ def _assign(ids: list[int], body: Assign) -> dict:
                                   ids).fetchone()[0]
         conn.executemany("UPDATE detections SET buck_id=?, match_status='confirmed', match_reason=NULL, sex='buck' WHERE id=?",
                          [(buck_id, i) for i in ids])
+        _mark_reviewed(conn, ids, by)
         propagate_bursts(conn)
         _drop_empty_groups(conn)
     searching = created or first_this_season
@@ -910,9 +922,9 @@ def returning(det_id: int):
 
 @app.post("/api/detections/{det_id}/reject")
 @needs("member")
-def reject(det_id: int):
+def reject(det_id: int, request: Request):
     """Not a usable buck photo (doe misclassified, antlers not visible enough, etc.)."""
-    return reject_many(Picked(ids=[det_id]))
+    return reject_many(Picked(ids=[det_id]), request)
 
 
 class Picked(BaseModel):
@@ -921,10 +933,11 @@ class Picked(BaseModel):
 
 @app.post("/api/detections/reject")
 @needs("member")
-def reject_many(body: Picked):
+def reject_many(body: Picked, request: Request):
     with db.session() as conn:
         conn.executemany("UPDATE detections SET buck_id=NULL, match_status='rejected' WHERE id=?",
                          [(i,) for i in body.ids])
+        _mark_reviewed(conn, body.ids, _reviewer(request))
         _drop_empty_groups(conn)
         return {"ok": True}
 
@@ -951,18 +964,24 @@ def group_not_a_buck(buck_id: int, body: NotABuck):
 
 
 class AnimalLabel(BaseModel):
-    animal: str  # a key of wildlife.KINDS, or 'deer'
+    animal: str  # a key of wildlife.KINDS, 'deer', or 'doe' / 'fawn' (a deer that isn't a buck)
 
 
 @app.post("/api/detections/{det_id}/animal")
 @needs("member")
-def label_animal(det_id: int, body: AnimalLabel):
+def label_animal(det_id: int, body: AnimalLabel, request: Request):
     """Correct what an animal is. A deer made into wildlife leaves any buck it was matched to; wildlife
-    made into a deer waits for someone to tag it, as an unlabeled deer."""
-    if body.animal != "deer" and body.animal not in wildlife.KINDS:
+    made into a deer waits for someone to tag it, as an unlabeled deer. A doe or fawn leaves the buck
+    review queue for good."""
+    if body.animal not in ("deer", "doe", "fawn") and body.animal not in wildlife.KINDS:
         raise HTTPException(400, f"unknown animal {body.animal}")
     with db.session() as conn:
-        if body.animal == "deer":
+        _mark_reviewed(conn, [det_id], _reviewer(request))
+        if body.animal in ("doe", "fawn"):
+            conn.execute("UPDATE detections SET species='deer', animal=NULL, sex=?, buck_id=NULL, match_status=NULL, "
+                         "match_confidence=NULL, match_reason=NULL WHERE id=?", (body.animal, det_id))
+            _drop_empty_groups(conn)
+        elif body.animal == "deer":
             conn.execute("UPDATE detections SET species='deer', animal=NULL, sex=CASE WHEN species='deer' THEN sex ELSE 'unknown' END "
                          "WHERE id=?", (det_id,))
         else:
@@ -1371,6 +1390,25 @@ def review(sort: Literal["similar", "size", "newest"] = "similar", season: str |
         elif sort == "size":
             rows = sorted(rows, key=lambda r: -(r["x2"] - r["x1"]) * (r["y2"] - r["y1"]))
         return [_row(r) for r in rows]
+
+
+@app.get("/api/review/stats")
+@needs("viewer")
+def review_stats(request: Request, tz: int = -300, season: str | None = None):
+    """The review deck's counts, everyone's decisions together: waiting, decided today (the ranch's day,
+    tz = minutes from UTC), and decided in all (photos named or turned down, from before the review stamps
+    too), plus how many of today's were the signed-in user's."""
+    s = _season(season)
+    day0 = (datetime.now(timezone.utc) + timedelta(minutes=tz)).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(minutes=tz)
+    since = day0.isoformat(timespec="seconds")
+    me = _reviewer(request)
+    with db.session() as conn:
+        waiting = conn.execute(f"""SELECT COUNT(*) FROM detections d JOIN photos p USING(photo_id) WHERE d.match_status='review'
+                                   {'' if s is None else f'AND season(p.taken_utc)={s}'}""").fetchone()[0]
+        today, mine = conn.execute("SELECT COUNT(*), COALESCE(SUM(reviewed_by=?), 0) FROM detections WHERE reviewed_at>=?",
+                                   (me, since)).fetchone()
+        total = conn.execute("SELECT COUNT(*) FROM detections WHERE match_status IN ('confirmed', 'rejected') OR reviewed_at IS NOT NULL").fetchone()[0]
+    return {"waiting": waiting, "today": today, "mine_today": mine, "total": total}
 
 
 @app.post("/api/identify")

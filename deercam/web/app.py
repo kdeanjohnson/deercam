@@ -1202,6 +1202,74 @@ def home(season: str | None = None):
     return {"bucks": named, "recent": recent[:6], "unusual": unusual, "wildlife": wildlife.listing()}
 
 
+@app.get("/api/since")
+@needs("viewer")
+def since(t: str, season: str | None = None, limit: int = 4):
+    """What happened since the user was last here (t, ISO UTC), the most interesting first. A visit scores
+    for who (a hit-list buck most, then any named buck, an auto-group, an unnamed buck), for daylight or legal
+    light, and for being news: his first visit this season, his first at that camera, or his first in a week
+    or more. A let-walk buck scores low. Rare wildlife joins in. Plus what came in, counted."""
+    try:
+        t0 = datetime.fromisoformat(t.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(400, "t must be an ISO time")
+    t0 = t0 if t0.tzinfo else t0.replace(tzinfo=timezone.utc)
+    vs = feed(season=season, limit=1_000_000)  # newest first
+    new = [v for v in vs if datetime.fromisoformat(v["start"]) > t0]
+    older = {}  # buck -> his visits before this one, newest first
+    for v in reversed(vs):
+        v["_before"] = list(older.get(v["buck_id"], []))
+        older.setdefault(v["buck_id"], []).insert(0, v)
+
+    def score(v):
+        why, s = [], 0
+        named = v["buck"] and not v["generic"]
+        s += 60 if v["tag"] == "target" else 40 if named else 15 if v["buck_id"] else 10
+        if v["tag"] == "pass":
+            s -= 25
+        if v["light"] in ("day", "shooting"):
+            s += 25
+            why.append("daylight" if v["light"] == "day" else "legal light")
+        before = v["_before"] if v["buck_id"] else []
+        if v["buck_id"] and not before:
+            s += 30 if named else 5
+            why.append("first time this season")
+        elif v["buck_id"] and v["camera_id"] not in {w["camera_id"] for w in before}:
+            s += 20
+            why.append(f"first time at {v['camera']}")
+        elif before:
+            gap = (datetime.fromisoformat(v["start"]) - datetime.fromisoformat(before[0]["start"])).days
+            if gap >= 7:
+                s += 10
+                why.append(f"first in {gap} days")
+        if v["photos"] >= 5:
+            s += 5
+            why.append(f"stayed {v['minutes']} min" if v["minutes"] else f"{v['photos']} photos")
+        return s, why
+
+    best: dict = {}  # one highlight per buck: his most interesting visit, with how many he made
+    for v in new:
+        s, why = score(v)
+        key = v["buck_id"] if v["buck_id"] is not None else f"unnamed-{v['detection_id']}"
+        n = best.get(key, {}).get("visits", 0) + 1
+        if key not in best or s > best[key]["score"]:
+            best[key] = {k: x for k, x in v.items() if k != "_before"} | {"kind": "buck", "score": s, "why": why}
+        best[key]["visits"] = n
+    with db.session() as conn:
+        for w in _unusual_wildlife(conn):
+            if datetime.fromisoformat(w["start"]) > t0:
+                best[w["key"]] = w | {"kind": "wildlife", "score": 45 if w["seen"] <= 3 else 30,
+                                      "why": ["the only one seen here" if w["seen"] == 1 else f"seen {w['seen']} times ever"]}
+        stamp = f"{t0.astimezone(timezone.utc):%Y-%m-%dT%H:%M:%S}"
+        photos = conn.execute("SELECT COUNT(*) FROM photos WHERE taken_utc > ?", (stamp,)).fetchone()[0]
+        deer = dict(conn.execute("""SELECT d.sex, COUNT(*) FROM detections d JOIN photos p USING(photo_id)
+                                    WHERE p.taken_utc > ? AND d.species='deer' GROUP BY 1""", (stamp,)).fetchall())
+    top = sorted(best.values(), key=lambda h: (h["score"], h["start"]), reverse=True)[:limit]
+    return {"since": t0.isoformat(), "photos": photos, "buck_visits": len(new),
+            "named_visits": sum(1 for v in new if v["buck"] and not v["generic"]),
+            "does": deer.get("doe", 0), "fawns": deer.get("fawn", 0), "highlights": top}
+
+
 RARE_SHARE = 0.10  # an animal is unusual here when it's at most this share of all the non-deer visits
 
 

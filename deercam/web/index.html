@@ -212,6 +212,18 @@
   .hcard dd b { font-weight:700; }
   .spot .btn { align-self:flex-start; margin-top:auto; }
   .hstrip { display:block; width:100%; height:60px; }
+  .since { grid-column:1 / -1; background:var(--soft); border-radius:var(--radius); padding:12px 14px 14px; }
+  .since-h { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; } .since-h b { font-size:15px; font-weight:750; }
+  .since-h span { font-size:12px; color:var(--ink2); } .since-h .tally { margin-left:auto; }
+  .since-row { display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:10px; margin-top:10px; }
+  .since-c { display:flex; flex-direction:column; background:var(--card); border:0; padding:0; border-radius:12px; overflow:hidden; text-align:left; color:var(--ink); cursor:pointer; min-width:0; }
+  .since-c img { width:100%; aspect-ratio:16/10; object-fit:cover; background:#000; display:block; }
+  .since-c .tx { padding:8px 10px 10px; display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .since-c .tx b { font-size:14px; } .since-c .tx b.wild { color:var(--good); } .since-c .tx b.unk { color:var(--ink2); }
+  .since-c small { font-size:11.5px; color:var(--ink2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .since-c .why { display:flex; flex-wrap:wrap; gap:4px; margin-top:2px; }
+  .since-c .why i { font-style:normal; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:9px; background:color-mix(in srgb, var(--amber) 16%, transparent); color:var(--amber); }
+  .since-none { font-size:13px; color:var(--ink2); margin-top:4px; }
   .hday { display:block; width:100%; height:auto; }
   .hday-cap { display:flex; gap:10px; align-items:center; font-size:10.5px; color:var(--ink2); margin-top:2px; }
   .hday-cap b { font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--ink); margin-right:auto; }
@@ -1091,7 +1103,7 @@
     /* Home */
     .home { padding:4px 10px 0; gap:10px; } .spot-ph img { max-height:230px; } .spot-side { padding:12px 14px; } .spot-when b { font-size:22px; }
     .hunt { grid-template-columns:1fr; } .home-h { margin:10px 0 6px; }
-    .home-side { order:-1; } .radar-box { max-width:360px; margin:0 auto; }
+    .home-side { order:-1; } .since { order:-2; } .since-row { grid-template-columns:1fr 1fr; gap:8px; } .radar-box { max-width:360px; margin:0 auto; }
     /* Review lineup: the photo, the lineup two across, the big buttons pinned above the tab bar */
     .swr { padding:6px 10px 170px; } .sw-strip { gap:4px 14px; margin-bottom:10px; min-height:0; } .sw-strip:not(:has(.sess)) { display:none; } .sw-strip b { font-size:15px; } .sw-grid { display:none; }
     .sw-main { grid-template-columns:1fr; gap:14px; } .sw-left { position:static; display:contents; } .sw-card { order:1; border-radius:16px; } .sw-ai { display:none; }
@@ -1698,9 +1710,40 @@ function spotlight(v, cams, isFresh, tl) {
       <button class="btn small" data-buck="${v.buck_id}">Open ${esc(v.buck)} ›</button>
     </div></section>`;
 }
+// "Since you were here": the user's last visit to Home on this device, per ranch. A visit is one sitting:
+// coming back within half an hour keeps the same starting point, so a refresh doesn't wipe the news.
+function homeSince() {
+  const ranch = decodeURIComponent((document.cookie.match(/(?:^|; )ranch=([^;]*)/) || [])[1] || ''), key = `homeSeen:${ranch}`, now = Date.now();
+  let s = null; try { s = JSON.parse(localStorage.getItem(key)); } catch { /* none yet */ }
+  if (!s) s = { at: now, prev: now - 48 * 3600e3 };  // first time: the last two days
+  else if (now - s.at > 30 * 60e3) s = { at: now, prev: s.at };
+  else s.at = now;
+  localStorage.setItem(key, JSON.stringify(s));
+  return s.prev;
+}
+function sinceBox(d) {
+  if (!d) return '';
+  const t = Date.parse(d.since), hrs = (Date.now() - t) / 3600e3;
+  const label = hrs < 20 ? new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : new Date(t).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' ' + new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const pl = (n, w) => `${n.toLocaleString()} ${w}${n === 1 ? '' : 's'}`;
+  const tally = [pl(d.photos, 'photo'), d.buck_visits ? pl(d.buck_visits, 'buck visit') : '', d.does ? pl(d.does, 'doe photo') : '', d.fawns ? pl(d.fawns, 'fawn photo') : ''].filter(Boolean).join(' · ');
+  const card = h => {
+    const who = h.kind === 'wildlife' ? `<b class="wild">${esc(h.label)}</b>` : h.buck && !h.generic ? `<b>${esc(h.buck)}${star(h)}</b>` : h.buck ? `<b>${esc(h.buck)}</b>` : '<b class="unk">Unnamed buck</b>';
+    const go = h.kind === 'wildlife' ? '' : h.buck_id ? `data-buck="${h.buck_id}"` : `data-since-tag="${h.detection_id}"`;
+    return `<button class="since-c" ${go}>${zoomImg(h.crop, h.photo)}<div class="tx">${who}
+      <small>${esc(h.camera)} · ${esc(when(h.local))}${h.visits > 1 ? ` · ${h.visits} visits` : ''}</small>
+      ${h.why?.length ? `<div class="why">${h.why.map(w => `<i>${esc(w)}</i>`).join('')}</div>` : ''}</div></button>`;
+  };
+  return `<section class="since"><div class="since-h"><b>Since you were here</b><span>${esc(label)}</span><span class="tally">${tally}</span></div>
+    ${d.highlights.length ? `<div class="since-row">${d.highlights.map(card).join('')}</div>`
+      : `<div class="since-none">${d.photos ? 'Nothing that stands out: no bucks or rare visitors.' : 'Nothing new yet.'}</div>`}</section>`;
+}
 async function showHome() {
-  const [{ bucks: named, recent, unusual, wildlife: kinds }, st, mapData, tl, health] = await Promise.all([api(`/api/home?season=${season()}`), refreshCounts(), api(`/api/map?season=${season()}`).catch(() => null),
-                                                                     api('/api/timeline?days=3').catch(() => null), api('/api/camera-health?days=30').catch(() => null)]);
+  const sinceAt = new Date(homeSince()).toISOString();
+  const [{ bucks: named, recent, unusual, wildlife: kinds }, st, mapData, tl, health, news] = await Promise.all([api(`/api/home?season=${season()}`), refreshCounts(), api(`/api/map?season=${season()}`).catch(() => null),
+                                                                     api('/api/timeline?days=3').catch(() => null), api('/api/camera-health?days=30').catch(() => null),
+                                                                     api(`/api/since?t=${encodeURIComponent(sinceAt)}&season=${season()}`).catch(() => null)]);
   rareKinds = kinds || [];
   const cams = Object.fromEntries((mapData?.cameras || []).map(c => [c.camera_id, c]));
   const pick = spotlightPick(named, recent), fresh = pick && new Date(pick.start) >= Date.now() - 24 * 3600e3;
@@ -1717,7 +1760,7 @@ async function showHome() {
       ${nudge}${rare}<button class="link morelink" data-go="feed">All sightings ›</button>`;
     return bindRareFix();
   }
-  $('#main').innerHTML = `<div class="home"><div class="home-main">
+  $('#main').innerHTML = `<div class="home">${sinceBox(news)}<div class="home-main">
       ${pick ? spotlight(pick, cams, fresh, tl) : ''}
       <div class="home-h">${targets.length ? 'Hit list' : 'Your bucks'}${targets.length ? '' : ' <span class="meta">tag the bucks you’re after ★ on their page</span>'}</div>
       <div class="hunt">${lead.slice(0, 3).map(b => huntCard(b, cams, tl)).join('')}</div>
@@ -1731,6 +1774,7 @@ async function showHome() {
         <button class="link" data-go="bucks">All bucks ›</button></div>` : ''}
     </aside></div>`;
   bindRareFix();
+  $$('[data-since-tag]').forEach(el => el.onclick = e => { if (!e.target.closest('img')) tagInModal(Number(el.dataset.sinceTag)); });
   $('#main').addEventListener('click', e => {
     const t = e.target.closest('[data-radar-bucks]'), b = e.target.closest('[data-radar]');
     if (t) { radarBucks = !radarBucks; localStorage.setItem('radarBucks', radarBucks ? '1' : '0'); }

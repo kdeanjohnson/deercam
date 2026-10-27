@@ -296,7 +296,7 @@
   .rvm { position:fixed; inset:0; z-index:44; background:rgba(10,12,16,.72); display:flex; align-items:center; justify-content:center; padding:16px; }
   .rvm-box { position:relative; background:var(--card); border-radius:var(--radius); width:min(1200px, 100%); max-height:100%; overflow:auto; }
   .rvm-x { position:sticky; top:10px; float:right; margin:10px 10px -40px 0; z-index:3; border:0; width:34px; height:34px; border-radius:50%;
-           background:rgba(255,255,255,.92); font-size:20px; line-height:1; color:var(--ink); box-shadow:0 1px 6px rgba(0,0,0,.25); }
+           background:rgba(255,255,255,.92); font-size:20px; line-height:1; color:#15171a; box-shadow:0 1px 6px rgba(0,0,0,.25); }
   .rvm [data-go="review"] { display:none; }
   .rvm .rv-top { right:56px; }  /* clear of the close button */
   @media (max-width: 760px) { .rvm { padding:0; } .rvm-box { border-radius:0; height:100%; } }
@@ -1946,12 +1946,12 @@ document.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') s
 const rv = { items: [], i: 0, pick: null, cands: [], newName: '' };
 const rg = { items: [], sel: new Set(), pick: null, newName: '' };
 let rvMode = 'grid';
-let rvModal = false, rvModalDirty = false;  // a grid photo open in a window over the grid
+let rvModal = false, rvModalDirty = false;  // a photo open in a window over the grid (or over the Gallery)
 
-function openReviewModal(id) {
+function openReviewModal(id, items = rg.items) {
   closeReviewModal(false);
   rvModal = true; rvModalDirty = false;
-  rv.items = rg.items.slice();
+  rv.items = items.slice();
   rv.i = Math.max(0, rv.items.findIndex(d => d.id === Number(id)));
   const box = document.createElement('div');
   box.className = 'rvm'; box.id = 'rvm';
@@ -1973,6 +1973,14 @@ async function closeReviewModal(refresh = true) {
     await showReviewGrid(); refreshCounts();
     scrollTo(0, y);
   }
+  if (refresh && rvModalDirty && view === 'timeline') { tlReload(); refreshCounts(); }
+}
+
+// The Gallery's "Who is this?": the one photo in a window, so the Gallery stays where it was.
+async function tagInModal(id) {
+  const [one, list] = await Promise.all([api(`/api/detections/${id}`), api(`/api/bucks?season=${season()}`)]);
+  bucks = list;
+  openReviewModal(id, [one]);
 }
 
 async function loadReview(focusId) {
@@ -2097,6 +2105,7 @@ async function renderReview() {
   // The AI's pick is only a guess here (sure matches never reach Review), so nothing is preselected.
   rv.pick = null; rv.newName = '';
   const sort = localStorage.getItem('reviewSort') || 'similar';
+  const solo = rvModal && view !== 'review';  // one photo from the Gallery: no queue
   main.innerHTML = `<div class="review" data-det="${d.id}">
     <div class="rv-photo"><img id="rv-img" src="${d.crop}" alt="" title="Tap to switch between the close-up and the full photo">
       <div class="rv-top"><span>${d.match_status === 'review' ? `${rv.i + 1} of ${rv.items.length}` : 'Not in the review queue'}</span><span>${esc(d.camera)}</span></div></div>
@@ -2121,17 +2130,17 @@ async function renderReview() {
       <div class="form" style="margin-top:12px"><div class="row"><button class="btn blue" id="rv-save" style="flex:1">Save</button></div></div>
       <div class="rv-links">
         <button class="link" id="rv-reject" title="Not a buck, or antlers not visible enough to ID">Not a buck / can't tell</button>
-        <button class="link" id="rv-skip">Skip</button>
+        ${solo ? '' : '<button class="link" id="rv-skip">Skip</button>'}
         <button class="link" id="rv-full">Full photo</button>
       </div>
       ${d.match_reason && d.buck_id ? `<details><summary>Why the AI guessed ${esc(d.buck_name)}</summary><div class="meta">${esc(d.match_reason)}</div></details>` : ''}
       <details><summary>Details</summary><div class="meta">${[weatherLine(d), `${d.size_pct}% of frame`, d.quality ? `${d.quality} photo` : null,
         d.rack?.distinctive_features?.length ? `features: ${d.rack.distinctive_features.join('; ')}` : null].filter(Boolean).map(esc).join(' · ')}</div></details>
-      <h3 style="display:flex; align-items:center; gap:10px">Queue
+      ${solo ? '' : `<h3 style="display:flex; align-items:center; gap:10px">Queue
         <select id="rv-sort" style="margin-left:auto; font-size:13px; padding:6px 10px">
           ${[['similar', 'Look-alikes together'], ['size', 'Biggest first'], ['newest', 'Newest first']].map(([k, l]) => `<option value="${k}" ${sort === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
         <button class="btn small" id="rematch" title="Re-match the queue against your named bucks">Re-run matching</button></h3>
-      <div class="strip">${rv.items.map((x, j) => `<img src="${x.crop}" data-jump="${j}" class="${j === rv.i ? 'cur' : ''}" loading="lazy" alt="">`).join('')}</div>
+      <div class="strip">${rv.items.map((x, j) => `<img src="${x.crop}" data-jump="${j}" class="${j === rv.i ? 'cur' : ''}" loading="lazy" alt="">`).join('')}</div>`}
     </div></div>`;
   const strip = $('.strip'), cur = $('.strip img.cur');  // scroll the strip sideways only, never the page
   if (cur) strip.scrollLeft = cur.offsetLeft - strip.offsetLeft - strip.clientWidth / 2 + cur.clientWidth / 2;
@@ -2323,6 +2332,7 @@ async function saveReview() {
 async function afterReview() {
   // Same-burst photos may have been assigned too, so reload the queue and stay at this position.
   rvModalDirty = true;
+  if (rvModal && view !== 'review') return closeReviewModal();  // one photo from the Gallery: done
   const at = rv.i;
   await loadReview();
   rv.i = Math.min(at, Math.max(0, rv.items.length - 1));
@@ -2759,6 +2769,15 @@ async function tlOlder() {
   try { data = tlPrep(await api(`/api/timeline?days=${days}`)); } catch { btn.disabled = false; btn.textContent = 'Try again'; return; }
   if (view !== 'timeline') return;
   if (data.photos.length <= TL.data.photos.length) { $('#tlf-end').textContent = 'No older photos.'; return; }
+  tlSwap(data, days);
+}
+// Fresh labels for the same stretch (after tagging a photo), keeping the feed where it was.
+async function tlReload() {
+  let data;
+  try { data = tlPrep(await api(`/api/timeline?days=${TL.days}`)); } catch { return; }
+  if (view === 'timeline' && TL.data) tlSwap(data, TL.days);
+}
+function tlSwap(data, days) {
   const top = $('#tl-feed').scrollTop, shown = TL.feed.n;
   Object.assign(TL, { data, days, dirty: true, pathKey: null });
   tlPanel();
@@ -3862,7 +3881,7 @@ function intelFacts(v, ws, cams, where) {
 // The property's weather, hour by hour: the past `pastDays` days and the next 7, from Open-Meteo (free, no key).
 // One source for everything the model touches: each visit's conditions, how often each condition came up while
 // the cameras ran, and the forecast.
-const weatherHours = (where, pastDays) => fetch(`https://api.open-meteo.com/v1/forecast?latitude=${where.lat.toFixed(3)}&longitude=${where.lon.toFixed(3)}&hourly=temperature_2m,wind_direction_10m,wind_speed_10m,pressure_msl&temperature_unit=fahrenheit&wind_speed_unit=mph&timeformat=unixtime&timezone=GMT&past_days=${pastDays}&forecast_days=7`)
+const weatherHours = (where, pastDays) => fetch(`https://api.open-meteo.com/v1/forecast?latitude=${where.lat.toFixed(2)}&longitude=${where.lon.toFixed(2)}&hourly=temperature_2m,wind_direction_10m,wind_speed_10m,pressure_msl&temperature_unit=fahrenheit&wind_speed_unit=mph&timeformat=unixtime&timezone=GMT&past_days=${pastDays}&forecast_days=7`)
   .then(r => r.ok ? r.json() : null).then(d => d?.hourly ? d.hourly.time.map((t, i) => ({ t: t * 1000, temp: d.hourly.temperature_2m[i], deg: d.hourly.wind_direction_10m[i], mph: d.hourly.wind_speed_10m[i], p: d.hourly.pressure_msl[i] * 0.02953 })) : null).catch(() => null);
 async function showIntel() {
   const [home, tl] = await Promise.all([api(`/api/home?season=${season()}`), api('/api/timeline?days=120').catch(() => null)]);
@@ -4672,7 +4691,7 @@ addEventListener('hashchange', () => { closeReviewModal(false); render(); scroll
 
 document.addEventListener('click', async e => {
   const lbTag = e.target.closest('#lightbox .lb-tag');
-  if (lbTag) { $('#lightbox').style.display = 'none'; return go('review', lbTag.dataset.det); }
+  if (lbTag) { $('#lightbox').style.display = 'none'; return tagInModal(lbTag.dataset.det); }
   if (e.target.closest('#lightbox')) { $('#lightbox').style.display = 'none'; $('#lightbox .lb-tag').style.display = 'none'; return; }
   const img = e.target.closest('img[data-full]');
   if (img) { $('#lightbox img').src = img.dataset.full; $('#lightbox').style.display = 'flex'; return; }
@@ -4826,6 +4845,7 @@ async function watchJob() {
   await loadSeasons();
   const typing = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
   if (view === 'settings' || typing) return refreshCounts();
+  if (rvModal && view !== 'review') { rvModalDirty = true; return refreshCounts(); }  // don't redraw the page under the window
   if (view === 'review' && rvMode === 'grid') { if (rvModal) { rvModalDirty = true; return refreshCounts(); } await showReviewGrid(); refreshCounts(); }
   else if (view === 'review') { const id = rv.items[rv.i]?.id; await loadReview(id); renderReview(); refreshCounts(); }
   else render();

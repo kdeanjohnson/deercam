@@ -1270,6 +1270,37 @@ def since(t: str, season: str | None = None, limit: int = 4):
             "does": deer.get("doe", 0), "fawns": deer.get("fawn", 0), "highlights": top}
 
 
+@app.get("/api/trends")
+@needs("viewer")
+def trends(season: str | None = None):
+    """Movement over the season, for the Trends page: every buck visit (named or not) with its camera-local
+    day, minute of the day and light; and per camera-local day how many photos came in, from how many
+    cameras, and how many had does in them (so a quiet day can be told from a camera that was down)."""
+    s = _season(season)
+    visits = []
+    for v in feed(season=season, limit=1_000_000):
+        if not v["local"]:
+            continue
+        t = datetime.strptime(v["local"], "%b %d %Y %I:%M %p")
+        visits.append({"start": v["start"], "local": v["local"], "date": t.date().isoformat(), "min": t.hour * 60 + t.minute,
+                       "light": v["light"], "buck_id": v["buck_id"], "buck": v["buck"], "tag": v["tag"], "generic": v["generic"],
+                       "camera": v["camera"], "photos": v["photos"], "crop": v["crop"], "photo": v["photo"]})
+    days: dict[str, dict] = {}
+    with db.session() as conn:
+        rows = conn.execute(f"""SELECT p.meta_json, p.camera_id, MAX(d.sex='doe') AS doe
+                                FROM photos p LEFT JOIN detections d ON d.photo_id=p.photo_id AND d.species='deer'
+                                {'' if s is None else f'WHERE season(p.taken_utc)={s}'} GROUP BY p.photo_id""").fetchall()
+    for r in rows:
+        t = patterns._local(r["meta_json"])
+        if t is None:
+            continue
+        d = days.setdefault(t.date().isoformat(), {"photos": 0, "cams": set(), "doe_photos": 0})
+        d["photos"] += 1
+        d["cams"].add(r["camera_id"])
+        d["doe_photos"] += bool(r["doe"])
+    return {"visits": visits, "days": {k: v | {"cams": len(v["cams"])} for k, v in sorted(days.items())}}
+
+
 RARE_SHARE = 0.10  # an animal is unusual here when it's at most this share of all the non-deer visits
 
 

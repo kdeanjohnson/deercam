@@ -890,6 +890,23 @@
   /* ---- intel: one compact table (a row per buck, a narrow column per option, grouped by data point) and every visit */
   .intel { display:flex; flex-direction:column; gap:12px; padding:6px 16px 20px; width:min(1600px, 100vw); margin-left:50%; transform:translateX(-50%); }
   .in-card { background:var(--soft); border-radius:var(--radius); padding:12px 14px; min-width:0; }
+  /* ---- trends: is it hot, when are they moving, who's moving */
+  .tr-range { display:flex; gap:2px; margin-left:auto; background:var(--card); border-radius:12px; padding:3px; }
+  .tr-range button { border:0; background:none; color:var(--ink2); font-size:12px; font-weight:700; padding:5px 11px; border-radius:9px; cursor:pointer; }
+  .tr-range button.on { background:var(--ink); color:var(--bg); }
+  .tr-tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; margin-bottom:16px; }
+  .tr-tile { background:var(--card); border-radius:12px; padding:11px 13px; min-width:0; }
+  .tr-tile em { display:block; font-style:normal; font-size:10px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--ink2); }
+  .tr-tile b { display:block; font-size:22px; font-weight:800; letter-spacing:-.02em; margin-top:3px; } .tr-tile b.hot { color:#e8590c; } .tr-tile b.warm { color:var(--amber); } .tr-tile b.cool { color:var(--ink2); }
+  .tr-tile small { display:block; font-size:11.5px; color:var(--ink2); margin-top:2px; }
+  .tr-h { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; font-size:13px; font-weight:750; margin:4px 0 6px; } .tr-h span { font-size:11.5px; font-weight:600; color:var(--ink2); }
+  .tr-key { display:flex; gap:12px; margin-left:auto; font-size:11.5px; color:var(--ink2); font-weight:600; } .tr-key i { display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+  .tr-key i.ln { height:2px; border-radius:1px; vertical-align:3px; background:var(--ink); }
+  .tr-svg { display:block; width:100%; height:auto; margin-bottom:14px; } .tr-svg [data-buck] { cursor:pointer; }
+  .tr-who { display:grid; grid-template-columns:150px minmax(0, 1fr) 120px; gap:4px 12px; align-items:center; font-size:13px; }
+  .tr-who > b { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; } .tr-who .chg { text-align:right; font-size:12px; color:var(--ink2); white-space:nowrap; }
+  .tr-who .chg b { color:var(--ink); } .tr-who .up { color:#e8590c; font-weight:800; } .tr-who .dn { color:var(--ink2); }
+  @media (max-width: 700px) { .tr-who { grid-template-columns:96px minmax(0, 1fr) 76px; } .tr-range { margin-left:0; } }
   .in-allbtn { margin-left:auto; border:0; background:var(--card); color:var(--ink2); font-size:11.5px; font-weight:650; padding:3px 10px; border-radius:10px; cursor:pointer; }
   .in-tablewrap { overflow-x:auto; }
   .in-pred { padding:16px 18px 14px; }
@@ -1287,7 +1304,7 @@
 <nav id="tabs">
   <button data-go="home">Home</button>
   <button data-go="map">Map</button>
-  <button data-go="intel"><span class="lg">Predictability</span><span class="sm">Predict</span></button>
+  <button data-go="intel">Trends</button>
   <button data-go="bucks">Bucks</button>
   <button data-go="photos">Gallery</button>
   <button data-go="swipe" title="Buck photos waiting to be named: one card at a time">Review<span class="count" id="rcount"></span><em class="beta">Beta</em></button>
@@ -4007,12 +4024,13 @@ function intelFacts(v, ws, cams, where) {
 const weatherHours = (where, pastDays) => fetch(`https://api.open-meteo.com/v1/forecast?latitude=${where.lat.toFixed(2)}&longitude=${where.lon.toFixed(2)}&hourly=temperature_2m,wind_direction_10m,wind_speed_10m,pressure_msl&temperature_unit=fahrenheit&wind_speed_unit=mph&timeformat=unixtime&timezone=GMT&past_days=${pastDays}&forecast_days=7`)
   .then(r => r.ok ? r.json() : null).then(d => d?.hourly ? d.hourly.time.map((t, i) => ({ t: t * 1000, temp: d.hourly.temperature_2m[i], deg: d.hourly.wind_direction_10m[i], mph: d.hourly.wind_speed_10m[i], p: d.hourly.pressure_msl[i] * 0.02953 })) : null).catch(() => null);
 async function showIntel() {
-  const [home, tl] = await Promise.all([api(`/api/home?season=${season()}`), api('/api/timeline?days=120').catch(() => null)]);
+  const [home, tl, tr] = await Promise.all([api(`/api/home?season=${season()}`), api('/api/timeline?days=120').catch(() => null),
+                                            api(`/api/trends?season=${season()}`).catch(() => null)]);
   if (view !== 'intel') return;
   const bucks = home.bucks.slice().sort((a, b) => (b.tag === 'target') - (a.tag === 'target') || b.visits - a.visits);
   const cams = Object.fromEntries((tl?.cameras || []).map(c => [c.camera_id, c]));
   const placed = Object.values(cams).filter(c => c.lat != null);
-  intel = { bucks, cams, tl, pats: {}, where: placed.length ? { lat: placed.reduce((a, c) => a + c.lat, 0) / placed.length, lon: placed.reduce((a, c) => a + c.lon, 0) / placed.length } : null,
+  intel = { bucks, cams, tl, tr, trRange: intel?.trRange || 30, pats: {}, where: placed.length ? { lat: placed.reduce((a, c) => a + c.lat, 0) / placed.length, lon: placed.reduce((a, c) => a + c.lon, 0) / placed.length } : null,
             buck: intel?.buck && bucks.some(b => b.id === intel.buck) ? intel.buck : null };
   if (!bucks.length) { $('#main').innerHTML = `<div class="empty tl-wait">${LEAP_SVG}Name a buck in Review and his scorecard shows up here.</div>`; return; }
   const firstPhoto = Math.min(Date.now(), ...(tl?.photos || []).map(p => p[0])), pastDays = Math.min(92, Math.ceil((Date.now() - firstPhoto) / DAY) + 2);
@@ -4122,6 +4140,7 @@ function renderIntel() {
   const logHead = `<div class="in-v hd"><span></span><span>Buck · when</span><span>Camera</span><span>Light</span><span>Wind</span><span>Temp</span><span>Pressure</span><span>Moon</span></div>`;
   const howTo = `Predictability = pattern × data × recency. Pattern: how much more often than usual he shows up in his favorite time, place and weather, counting time of day and place most and the moon least. Data: more visits, more trust. Recency: full if seen in the last 3 days, halved each week after. Weather is hourly for the property; a visit is one buck at one camera with no gap over ${intel.visitGap} minutes (Settings).`;
   $('#main').innerHTML = `<div class="intel">
+      ${trendsBox()}
       <section class="in-card in-pred"><div class="in-top"><div class="in-title"><b>Predictability</b><span>${all.length} visits · ${bucks.length} bucks${cover ? ` · ${esc(cover)}` : ''}</span></div></div>
         <div class="in-tablewrap"><table class="in-tab">${head}<tbody>${rows}</tbody></table></div><div class="in-cards">${cards}</div>
         <div class="in-foot">Numbers are visits · ring = clear favorite · <b class="nowk">amber</b> = right now · tap a score for his hunting sheet <span class="in-info" title="${esc(howTo)}">ⓘ</span></div></section>
@@ -4184,8 +4203,103 @@ function renderIntel() {
     wrap.onclick = e => { const c = e.target.closest('[data-fc-cam]'); if (c) { $('#pd-fc').innerHTML = forecastBox(b, xs, c.dataset.fcCam); return; } if (e.target === wrap || e.target.closest('.pd-x')) close(); };
     addEventListener('keydown', esc_);
   }
+  bindTrends();
   $$('[data-buck-pick]').forEach(el => el.onclick = () => { const id = Number(el.dataset.buckPick); intel.buck = id && intel.buck !== id ? id : null; renderIntel(); });
   $$('[data-sheet]').forEach(el => el.onclick = e => { e.stopPropagation(); openSheet(bucks.find(b => b.id === Number(el.dataset.sheet))); });
+}
+
+// ------------------------------------------------------------------ trends
+// The top of the Trends page: is it hot right now, day by day buck movement, when in the day they move (over night,
+// legal light and daylight), and which named bucks are picking up. Hit-list bucks, other named bucks and everyone
+// else (auto-groups, unnamed) keep the same three colors in every chart; "others" is a neutral gray on purpose.
+const TR_C = { hit: '#d07f30', named: '#3f8fd8', other: '#5f6b78' };
+function trKind(v) { return v.tag === 'target' ? 'hit' : v.buck && !v.generic ? 'named' : 'other'; }
+function trendsBox() {
+  const tr = intel.tr;
+  if (!tr || !tr.visits.length) return '';
+  const DAYMS = 864e5, iso = ms => new Date(ms).toISOString().slice(0, 10), ms = d => Date.parse(d + 'T00:00:00Z');
+  const lastDay = [...Object.keys(tr.days), ...tr.visits.map(v => v.date)].sort().at(-1), end = ms(lastDay);
+  const firstDay = [...Object.keys(tr.days), ...tr.visits.map(v => v.date)].sort()[0];
+  const span = Math.round((end - ms(firstDay)) / DAYMS) + 1, n = intel.trRange === 'season' ? span : Math.min(span, intel.trRange);  // never before the first photo
+  const dates = Array.from({ length: n }, (_, i) => iso(end - (n - 1 - i) * DAYMS));
+  const vs = tr.visits.filter(v => v.date >= dates[0]);
+  const by = Object.fromEntries(dates.map(d => [d, { hit: 0, named: 0, other: 0, legal: 0, list: [] }]));
+  for (const v of vs) { const b = by[v.date]; if (!b) continue; b[trKind(v)]++; b.legal += v.light !== 'night'; b.list.push(v); }
+  const tot = d => by[d].hit + by[d].named + by[d].other;
+  const md = d => new Date(ms(d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const wd = d => new Date(ms(d)).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
+  const stale = (Date.now() - end) / DAYMS > 1.5;
+  // ---- is it hot? the last 3 days against every day of the season with cameras running
+  const all = tr.visits, seasonDays = Object.keys(tr.days).filter(d => tr.days[d].photos).length || 1;
+  const in3 = all.filter(v => v.date > iso(end - 3 * DAYMS)), perDay = all.length / seasonDays, now3 = in3.length / 3, ratio = perDay ? now3 / perDay : 0;
+  const heat = ratio >= 1.5 ? ['Hot', 'hot'] : ratio >= 1.15 ? ['Picking up', 'warm'] : ratio >= .85 ? ['Normal', ''] : ['Slow', 'cool'];
+  const in7 = all.filter(v => v.date > iso(end - 7 * DAYMS)), legal7 = in7.filter(v => v.light !== 'night').length;
+  const legalAll = all.filter(v => v.light !== 'night').length, pct = (a, b) => b ? Math.round(100 * a / b) : 0;
+  const named7 = [...new Set(in7.filter(v => v.buck && !v.generic).map(v => v.buck))], namedAll = new Set(all.filter(v => v.buck && !v.generic).map(v => v.buck));
+  const doeDays = Object.entries(tr.days), doe3 = doeDays.filter(([d]) => d > iso(end - 3 * DAYMS)).reduce((a, [, x]) => a + x.doe_photos, 0) / 3;
+  const doeAvg = doeDays.reduce((a, [, x]) => a + x.doe_photos, 0) / seasonDays;
+  const tile = (k, v, cls, sub) => `<div class="tr-tile"><em>${k}</em><b class="${cls}">${v}</b><small>${sub}</small></div>`;
+  const tiles = `<div class="tr-tiles">
+    ${tile('Buck movement, last 3 days', heat[0], heat[1], `${now3.toFixed(1)} visits a day · usual ${perDay.toFixed(1)}`)}
+    ${tile('In legal light, last 7 days', `${pct(legal7, in7.length)}%`, pct(legal7, in7.length) > pct(legalAll, all.length) + 10 ? 'warm' : '', `${legal7} of ${in7.length} visits · season ${pct(legalAll, all.length)}%`)}
+    ${tile('Named bucks out, last 7 days', `${named7.length} of ${namedAll.size}`, named7.length ? '' : 'cool', esc(named7.join(', ') || 'none seen'))}
+    ${tile('Doe activity, last 3 days', doeAvg && doe3 / doeAvg >= 1.3 ? 'Up' : doeAvg && doe3 / doeAvg <= .75 ? 'Down' : 'Steady', '', `${Math.round(doe3)} doe photos a day · usual ${Math.round(doeAvg)}`)}</div>`;
+  // ---- chart 1: buck visits a day, stacked by who, with the 7-day average
+  const Wd = Math.max(320, Math.min(1560, ($('#main')?.clientWidth || 900) - 60)), L = 28, R = 8, T = 10, Hc = 150, B = 22;
+  const cw = (Wd - L - R) / n, bw = Math.max(2, cw - 2), x = i => L + i * cw;
+  const top = Math.max(3, ...dates.map(tot)), step = top <= 6 ? 1 : top <= 15 ? 5 : 10, ymax = Math.ceil(top / step) * step, y = v => T + Hc - v / ymax * Hc;
+  const grid = Array.from({ length: Math.floor(ymax / step) + 1 }, (_, i) => i * step).map(v =>
+    `<line x1="${L}" x2="${Wd - R}" y1="${y(v)}" y2="${y(v)}" stroke="currentColor" stroke-opacity="${v ? .1 : .3}"/><text x="${L - 6}" y="${y(v) + 3.5}" font-size="10" text-anchor="end" fill="currentColor" fill-opacity=".5">${v}</text>`).join('');
+  const every = Math.ceil(n / Math.max(4, Math.floor((Wd - L) / 64)));
+  const xlab = dates.map((d, i) => i % every ? '' : `<text x="${x(i) + cw / 2}" y="${T + Hc + 15}" font-size="10" text-anchor="middle" fill="currentColor" fill-opacity=".55">${n <= 14 ? wd(d) + ' ' : ''}${md(d)}</text>`).join('');
+  const bars = dates.map((d, i) => { let base = 0; const b = by[d], k = tot(d), cams = tr.days[d]?.cams || 0;
+    const cs = ['hit', 'named', 'other'].filter(c => b[c]), x0 = x(i) + 1;
+    const segs = cs.map((c, j) => {  // stacked bottom up, a 2px gap between, the top one rounded
+      const yb = y(base) - (j ? 2 : 0); base += b[c]; const yt = y(base), h = yb - yt, r = j === cs.length - 1 ? Math.min(4, bw / 2, h) : 0;
+      return h <= 0 ? '' : `<path d="M${x0},${yb} V${yt + r} Q${x0},${yt} ${x0 + r},${yt} H${x0 + bw - r} Q${x0 + bw},${yt} ${x0 + bw},${yt + r} V${yb} Z" fill="${TR_C[c]}"/>`; }).join('');
+    const tip = `${wd(d)} ${md(d)}: ${k} buck visit${k === 1 ? '' : 's'}${k ? ` (${['hit', 'named', 'other'].filter(c => b[c]).map(c => `${b[c]} ${{ hit: 'hit list', named: 'named', other: 'other' }[c]}`).join(', ')}) · ${b.legal} in legal light` : ''} · ${(tr.days[d]?.photos || 0).toLocaleString()} photos from ${cams} camera${cams === 1 ? '' : 's'}`;
+    return `<g><rect x="${x(i)}" y="${T}" width="${cw}" height="${Hc}" fill="transparent"><title>${esc(tip)}</title></rect>${segs}${!cams ? `<text x="${x(i) + cw / 2}" y="${T + Hc - 3}" font-size="9" text-anchor="middle" fill="currentColor" fill-opacity=".35">off</text>` : ''}</g>`; }).join('');
+  const avg = dates.map((d, i) => { const w = dates.slice(Math.max(0, i - 6), i + 1).filter(dd => tr.days[dd]?.photos); return w.length ? [x(i) + cw / 2, y(w.reduce((a, dd) => a + tot(dd), 0) / w.length)] : null; }).filter(Boolean);  // over days the cameras ran
+  const line = n >= 10 && avg.length > 1 ? `<polyline points="${avg.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="currentColor" stroke-width="2" stroke-opacity=".85" stroke-linejoin="round"/>` : '';
+  const chart1 = `<svg class="tr-svg" viewBox="0 0 ${Wd} ${T + Hc + B}" role="img" aria-label="Buck visits a day">${grid}${bars}${line}${xlab}</svg>`;
+  // ---- chart 2: every visit at its day and time of day, over night, legal light and daylight
+  const H2 = 190, T2 = 6, y2 = m => T2 + m / 1440 * H2, where = intel.where, legal = intel.legalMin ?? 30;
+  let sky = '';
+  if (where) sky = dates.map((d, i) => { const s = sunTimes(ms(d) + 18 * 3600e3, where.lat, where.lon); if (!s) return '';
+    const off = (intel.tl?.offsets || []).at(-1)?.[1] ?? -300, lm = t => (((t - ms(d)) / 60e3 + off) % 1440 + 1440) % 1440, r = lm(s.rise), st = lm(s.set);
+    const band = (a, b, f) => b > a ? `<rect x="${x(i)}" y="${y2(a)}" width="${cw + .5}" height="${y2(b) - y2(a)}" fill="${f}"/>` : '';
+    return band(0, r - legal, 'rgba(8,12,20,.5)') + band(r - legal, r, 'rgba(242,166,90,.22)') + band(r, st, 'rgba(255,255,255,.05)') + band(st, st + legal, 'rgba(242,166,90,.22)') + band(st + legal, 1440, 'rgba(8,12,20,.5)'); }).join('');
+  const hrs = [[0, '12a'], [360, '6a'], [720, 'noon'], [1080, '6p'], [1440, '12a']].map(([m, l]) => `<line x1="${L}" x2="${Wd - R}" y1="${y2(m)}" y2="${y2(m)}" stroke="currentColor" stroke-opacity=".08"/><text x="${L - 6}" y="${y2(m) + 3.5}" font-size="10" text-anchor="end" fill="currentColor" fill-opacity=".5">${l}</text>`).join('');
+  const order = { other: 0, named: 1, hit: 2 };  // the ones that matter drawn last, on top
+  const dots = vs.slice().sort((a, b) => order[trKind(a)] - order[trKind(b)]).map(v => { const i = dates.indexOf(v.date); if (i < 0) return ''; const k = trKind(v);
+    return `<circle cx="${(x(i) + cw / 2).toFixed(1)}" cy="${y2(v.min).toFixed(1)}" r="${k === 'other' ? 3.5 : 4.5}" fill="${TR_C[k]}" stroke="#15171a" stroke-width="1.5" ${v.buck_id && k !== 'other' ? `data-buck="${v.buck_id}"` : ''}><title>${esc(`${v.buck || 'Unnamed buck'} · ${v.local} · ${v.camera}${v.photos > 1 ? ` · ${v.photos} photos` : ''}`)}</title></circle>`; }).join('');
+  const chart2 = `<svg class="tr-svg" viewBox="0 0 ${Wd} ${T2 + H2 + B}" role="img" aria-label="When in the day the bucks move">${sky}${hrs}${dots}${xlab.replaceAll(`y="${T + Hc + 15}"`, `y="${T2 + H2 + 15}"`)}</svg>`;
+  // ---- who's moving: each named buck's days, and his last 7 days against the 7 before
+  const named = intel.bucks.slice();
+  const rowsOf = named.map(b => { const mine = all.filter(v => v.buck_id === b.id), a = mine.filter(v => v.date > iso(end - 7 * DAYMS)).length, p = mine.filter(v => v.date > iso(end - 14 * DAYMS) && v.date <= iso(end - 7 * DAYMS)).length; return { b, mine, a, p }; })
+    .filter(r => r.mine.length).sort((r, s) => (s.b.tag === 'target') - (r.b.tag === 'target') || s.a - r.a || s.mine.length - r.mine.length);
+  const SW = 600, sh = 22, sx = i => i / n * SW;
+  const who = rowsOf.map(({ b, mine, a, p }) => { const k = b.tag === 'target' ? 'hit' : 'named';
+    const marks = mine.filter(v => v.date >= dates[0]).map(v => { const i = dates.indexOf(v.date); return `<rect x="${(sx(i) + 1).toFixed(1)}" y="${v.light === 'night' ? 7 : 2}" width="${Math.max(2, SW / n - 2).toFixed(1)}" height="${v.light === 'night' ? 13 : 18}" rx="2" fill="${TR_C[k]}" opacity="${v.light === 'night' ? .45 : 1}"><title>${esc(`${v.local} · ${v.camera}${v.light === 'night' ? ' · night' : ' · legal light'}`)}</title></rect>`; }).join('');
+    const before = Object.keys(tr.days).some(d => d > iso(end - 14 * DAYMS) && d <= iso(end - 7 * DAYMS) && tr.days[d].photos);
+    const chg = !before ? '' : a > p ? `<span class="up">▲</span>` : a < p ? `<span class="dn">▼</span>` : '';
+    return `<b data-buck="${b.id}">${esc(b.name)}${star(b)}</b><svg viewBox="0 0 ${SW} ${sh}" preserveAspectRatio="none" style="width:100%;height:${sh}px;display:block"><rect width="${SW}" height="${sh}" rx="4" fill="currentColor" fill-opacity=".05"/>${marks}</svg>
+      <span class="chg" title="Visits in the last 7 days${before ? `, and in the 7 before (${p})` : '; the cameras weren’t running the week before'}">${chg} <b>${a}</b> this wk${before ? ` · ${p} prior` : ''}</span>`; }).join('');
+  const range = `<div class="tr-range">${[[14, '2 weeks'], [30, '30 days'], ['season', 'Season']].map(([v, l]) => `<button data-tr-range="${v}" class="${intel.trRange === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  const key = `<span class="tr-key"><span><i style="background:${TR_C.hit}"></i>Hit list</span><span><i style="background:${TR_C.named}"></i>Named</span><span><i style="background:${TR_C.other}"></i>Other bucks</span></span>`;
+  return `<section class="in-card" id="tr">
+    <div class="in-top"><div class="in-title"><b>Trends</b><span>${stale ? `as of ${md(lastDay)}, the newest photos · ` : ''}${all.length} buck visits this season</span></div>${range}</div>
+    ${tiles}
+    <div class="tr-h">Buck movement<span>visits a day${n >= 10 ? ' · line: 7-day average' : ''}</span>${key.replace('</span></span>', `</span>${n >= 10 ? '<span><i class="ln"></i>7-day avg</span>' : ''}</span>`)}</div>${chart1}
+    <div class="tr-h">When they move<span>every buck visit at its time of day · shading: night, legal light, daylight</span>${key}</div>${chart2}
+    ${who ? `<div class="tr-h">Who’s moving<span>named bucks · tall marks in legal light, short at night · visits in the last 7 days, ▲▼ against the week before</span></div><div class="tr-who">${who}</div>` : ''}
+  </section>`;
+}
+function bindTrends() {
+  $$('[data-tr-range]').forEach(el => el.onclick = () => {
+    intel.trRange = el.dataset.trRange === 'season' ? 'season' : Number(el.dataset.trRange);
+    $('#tr').outerHTML = trendsBox(); bindTrends();
+  });
 }
 
 // ------------------------------------------------------------------ review as flashcards (experimental)

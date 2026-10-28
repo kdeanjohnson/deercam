@@ -1084,8 +1084,9 @@
   #tabs .count:not(:empty) { background:var(--accent); color:#fff; font-size:10.5px; font-weight:700; min-width:18px; height:18px; padding:0 5px; border-radius:9px; display:inline-grid; place-items:center; margin-left:6px; vertical-align:1px; }
   #tabs .beta { font-style:normal; font-size:8.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--amber); margin-left:5px; vertical-align:5px; }
   #tabs .sm { display:none; }
-  /* ---- phones: a simple column. The header is the mark and the essentials; the Map tab becomes "Latest":
-     conditions, the cameras' newest photos and the timeline, no map; Intel's buck list is a row of faces. */
+  /* ---- phones: a simple column. The header is the mark and the essentials; the Map tab is a column: a map
+     panel up top (pins and activity rings, no photo cards; tap a pin for its photo), the timeline under it to
+     scrub, then conditions and the cameras' newest photos; Intel's buck list is a row of faces. */
   @media (max-width: 760px) {
     header { padding:8px 12px; gap:6px; }
     .brand span, #job, #season, [data-go="engine"] { display:none !important; }
@@ -1098,10 +1099,11 @@
     /* Map → Latest */
     body.tl-on { overflow:auto; padding-bottom:calc(var(--nav-h) + 30px + env(safe-area-inset-bottom)); }
     #tl { position:static !important; display:flex; flex-direction:column; gap:10px; padding:6px 10px 0; overflow:visible; }
-    #tl-map, .tlm-note { display:none !important; }
+    #tl-map { display:block !important; position:relative; inset:auto; flex:none; height:min(50vh, 420px); border-radius:var(--radius); overflow:hidden; order:0; }
+    #tl-map .tlm-card, .tlm-note { display:none !important; }
     #tl .tlm-top, #tl .tl-panel { position:static !important; transform:none !important; width:100% !important; max-width:none; max-height:none; overflow:visible; left:auto; right:auto; top:auto; bottom:auto; margin:0; }
     #tl .tlm-top { display:flex !important; flex-direction:column; gap:10px; align-items:stretch; }
-    #tl .tlm-right { order:1; } #tl .tl-panel { order:2; padding:10px; } #tl .tlm-top:not(.tlm-right) { order:3; }
+    #tl .tl-panel { order:1; padding:10px; } #tl .tlm-right { order:2; } #tl .tlm-top:not(.tlm-right) { order:3; }
     #tl .tlm-strip { width:100% !important; } .tlm-right .tlm-strip + .tlm-strip { margin:0; }
     body.tl-float .tlm-strip { flex-direction:column; align-items:stretch; padding:5px; border-radius:var(--radius); }
     body.tl-float .tlm-clock { padding:8px 12px 9px; border-radius:11px; margin-bottom:4px; } body.tl-float .tlm-clock b { font-size:24px; } body.tl-float .tlm-clock span { font-size:10.5px; }
@@ -3047,7 +3049,12 @@ async function tlMapInit() {
   // Frame the cameras in the open space between the strip at the top and the timeline (again when the timeline changes size).
   TL.frame = () => {
     const where = tlWhere();
-    if (!box.clientHeight) { if (!m._loaded) m.setView([where.lat, where.lon], 13); return; }  // hidden (phones): just a view, so markers exist
+    if (!box.clientHeight) { if (!m._loaded) m.setView([where.lat, where.lon], 13); return; }  // hidden: just a view, so markers exist
+    if (getComputedStyle(box).position === 'relative') {  // phones: a panel of its own with nothing over it
+      m.invalidateSize({ pan: false });
+      if (placed.length) m.fitBounds(placed.map(c => [c.lat, c.lon]), { padding: [40, 40], maxZoom: 18 }); else m.setView([where.lat, where.lon], 12);
+      return;
+    }
     const phone = innerWidth <= 760, panelH = tlMapMetrics();
     const tabs = $('#tabs')?.getBoundingClientRect(), navH = tabs && tabs.top > box.getBoundingClientRect().top ? tabs.height : 0, docked = tlDocked();
     // desktop: the tiles take the left edge and the slider the top, so pad for those and a card's worth
@@ -3229,7 +3236,7 @@ function tlSelect(ci) {
 // The side panel: the selected camera's photo at the moment, with what's in it.
 function tlSide(t) {
   const ci = TL.sel, c = TL.data.cameras[ci], ps = c.photos, i = tlBisect(ps, t + 1, x => x[0]) - 1, p = ps[i];
-  const side = $('#tlm-side'), tile = side.querySelector('.tl-tile'), age = p ? (t - p[0]) / 60e3 : Infinity;
+  const side = $('#tlm-side'), tile = side.querySelector('.tl-tile'), age = p ? (Date.now() - p[0]) / 60e3 : Infinity;
   side.style.setProperty('--c', c.color);
   $('#tlm-side-name').textContent = c.name || c.camera_id;
   $('#tlm-side-age').textContent = !p ? 'No photos yet' : `${tlStamp(p[0])}${age < 60 ? ` · ${age < 1 ? 'just now' : `${Math.round(age)} min ago`}` : ''}`;
@@ -3477,7 +3484,7 @@ function tlMapCams(t) {
   TL.data.cameras.forEach((c, ci) => {
     const pin = TL.pins[ci];
     if (!pin) return;
-    const ps = c.photos, p = ps[tlBisect(ps, t + 1, x => x[0]) - 1], age = p ? (t - p[0]) / 60e3 : Infinity, el = pin.el;
+    const ps = c.photos, p = ps[tlBisect(ps, t + 1, x => x[0]) - 1], el = pin.el;
     const row = $(`#tlm-latest [data-cam="${ci}"]`);
     if (row && (p ? p[2] : null) !== pin.src) { const img = row.querySelector('img'); if (p) img.src = p[2]; else img.removeAttribute('src'); }
     pin.src = p ? p[2] : null; pin.at = p ? p[0] : null;
@@ -3498,6 +3505,7 @@ function tlMapCams(t) {
     el.style.setProperty('--r', recent ? `${Math.round(40 + 22 * Math.sqrt(recent))}px` : '0px');
     if (row) {
       if (TL.health) tlDiag(row, c, t, p);
+      const age = p ? (Date.now() - p[0]) / 60e3 : Infinity;  // "ago" is from now, not from the slider (Live sits on the newest photo)
       row.querySelector('.tlm-age').textContent = !p ? '' : age < 1 ? 'Now' : age < 60 ? `${Math.round(age)} min ago` : age < 1440 ? `${Math.round(age / 60)} h ago` : `${Math.round(age / 1440)} d ago`;
     }
     if ((newest?.id ?? null) !== pin.last) {
@@ -3512,7 +3520,7 @@ function tlMapCams(t) {
     const atEl = el.querySelector('.tlm-at');
     atEl.classList.toggle('on', !!at && at.cam === ci);
     if (at && at.cam === ci) {
-      const h = (t - at.t) / HOUR;
+      const h = (Date.now() - at.t) / HOUR;
       atEl.textContent = `${TL.follow} · ${h < 1 ? `${Math.max(1, Math.round(h * 60))} min` : h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} days`} ago`;
     }
   });

@@ -899,6 +899,12 @@
   .tr-tile em { display:block; font-style:normal; font-size:10px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--ink2); }
   .tr-tile b { display:block; font-size:22px; font-weight:800; letter-spacing:-.02em; margin-top:3px; } .tr-tile b.hot { color:#e8590c; } .tr-tile b.warm { color:var(--amber); } .tr-tile b.cool { color:var(--ink2); }
   .tr-tile small { display:block; font-size:11.5px; color:var(--ink2); margin-top:2px; }
+  .tr-ins { background:var(--card); border-radius:12px; padding:12px 14px 10px; margin-bottom:16px; }
+  .tr-ins > b { display:block; font-size:10px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--ink2); margin-bottom:6px; }
+  .tr-in { display:grid; grid-template-columns:22px minmax(0, 1fr); gap:8px; padding:6px 0; font-size:13.5px; line-height:1.45; }
+  .tr-in + .tr-in { border-top:1px solid var(--line); } .tr-in > i { font-style:normal; font-size:15px; text-align:center; line-height:1.3; }
+  .tr-in small { display:block; font-size:11.5px; color:var(--ink2); margin-top:1px; } .tr-in.none { color:var(--ink2); }
+  .tr-ins > small { display:block; font-size:11px; color:var(--ink2); margin-top:6px; line-height:1.4; }
   .tr-h { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; font-size:13px; font-weight:750; margin:4px 0 6px; } .tr-h span { font-size:11.5px; font-weight:600; color:var(--ink2); }
   .tr-key { display:flex; gap:12px; margin-left:auto; font-size:11.5px; color:var(--ink2); font-weight:600; } .tr-key i { display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
   .tr-key i.ln { height:2px; border-radius:1px; vertical-align:3px; background:var(--ink); }
@@ -4236,6 +4242,117 @@ function renderIntel() {
 // legal light and daylight), and which named bucks are picking up. Hit-list bucks, other named bucks and everyone
 // else (auto-groups, unnamed) keep the same three colors in every chart; "others" is a neutral gray on purpose.
 const TR_C = { hit: '#d07f30', named: '#3f8fd8', other: '#5f6b78' };
+// ---- what's moving them: plain-language reads of the season's buck visits against the property's hourly weather
+// (Open-Meteo, as on the Predictability table), counted per camera-hour while the cameras were up, so a condition
+// that just came up a lot doesn't look like a favorite. Two kinds:
+//  - drivers: a kind of weather whose hours drew clearly more (or fewer) visits than their share of the
+//    camera-hours. Visits come in clumps (one buck working a feeder), so the test counts each visit as worth half
+//    a fresh one (variance doubled), and it asks for z >= 2.5 and a 40%+ difference, since many options get tried.
+//    Weather comes in spells of days, so it also takes 14+ days of photos, the weather on 4+ days, and its visits
+//    on 3+ different days: two windy days with a buck on the feeder are not a pattern.
+//  - recent swings: a day in the last 10 that turned 8°+ colder or warmer, or moved 0.15 inHg in pressure, and how
+//    buck movement that day and the next compared with the week before.
+// They say "lined up with", not "caused": a front brings cold, a pressure rise and a wind shift all at once, and a
+// few weeks of visits can't pull those apart.
+const TR_WX = {
+  tdep: ['Temperature', '🌡', { 'Colder (5°+)': 'when it was 5°+ colder than a day earlier', 'Warmer (5°+)': 'when it was 5°+ warmer than a day earlier' }],
+  ptrend: ['Barometric pressure', '◔', { Rising: 'while the pressure was rising', Falling: 'while the pressure was falling', Steady: 'while the pressure held steady' }],
+  pdep: ['Barometric pressure', '◔', { 'Higher (0.05+)': 'with the pressure up from a day earlier', 'Lower (0.05+)': 'with the pressure down from a day earlier' }],
+  wspd: ['Wind', '≋', { 'Calm (<3 mph)': 'in calm air', 'Light (3–7)': 'in a light 3–7 mph wind', 'Breezy (8–14)': 'in an 8–14 mph breeze', 'Windy (15+)': 'in 15+ mph wind' }],
+  wdir: ['Wind direction', '➚', null],
+};
+function trInsights() {
+  const { hs, tl, where, cams, tr } = intel, M = DeerModel, H = M.HOUR;
+  if (!hs?.length || !where || !tr?.visits.length) return null;
+  if (intel.trIns?.hs === hs && intel.trIns?.tr === tr) return intel.trIns;
+  const camIds = Object.keys(cams), byCam = {};
+  for (const [t, ci] of tl?.photos || []) if (camIds[ci]) (byCam[camIds[ci]] ??= []).push(t);
+  const up = M.uptime(byCam), off = (tl?.offsets || []).at(-1)?.[1] ?? -new Date().getTimezoneOffset();
+  const dayOf = t => new Date(t + off * 60e3).toISOString().slice(0, 10), days = Object.keys(tr.days).sort();
+  const t0 = Date.parse(days[0] + 'T00:00:00Z') - off * 60e3, now = Date.now();
+  // exposure: camera-hours per weather option, all hours and legal-light hours; and per camera-local day
+  const ex = { all: {}, legal: {} }, hrs = {}, wx = {}, facts = [];
+  const exDays = { all: {}, legal: {} };  // the days each option came up, for each
+  const add = (g, f, d) => { const E = ex[g]; for (const k in TR_WX) { const o = f[k]; if (!o) continue; (E[k] ??= { n: 0 })[o] = (E[k][o] || 0) + 1; E[k].n++; (exDays[g][k + o] ??= new Set()).add(d); } };
+  for (let i = 0; i < hs.length; i++) {
+    const t = hs[i].t; if (t > now) break;
+    const f = facts[i] = M.hourFacts(hs, i); if (t < t0) continue;
+    const d = dayOf(t + H / 2); (wx[d] ??= { temp: [], p: [] }); wx[d].temp.push(hs[i].temp); wx[d].p.push(hs[i].p);
+    for (const c in up) {
+      if (!M.isUp(up[c], t)) continue;
+      const at = cams[c]?.lat != null ? cams[c] : where;
+      add('all', f, d); hrs[d] = (hrs[d] || 0) + 1;
+      if (M.isLegal(t + H / 2, at.lat, at.lon, intel.legalMin ?? 30)) add('legal', f, d);
+    }
+  }
+  const vs = tr.visits.map(v => { const i = M.hourIndex(hs, Date.parse(v.start)); return { v, f: i >= 0 ? facts[i] : null }; }).filter(x => x.f);
+  // drivers
+  const groups = [['Bucks', 'all', () => true], ['Bucks', 'legal', x => x.v.light !== 'night'],
+                  ['Hit-list bucks', 'all', x => x.v.tag === 'target'], ['Hit-list bucks', 'legal', x => x.v.tag === 'target' && x.v.light !== 'night']];
+  const cands = [];
+  for (const [who, g, keep] of groups) {
+    const sub = vs.filter(keep), E = ex[g], best = {};
+    for (const k in TR_WX) {
+      const base = E[k]; if (!base?.n) continue;
+      const known = sub.filter(x => x.f[k]), N = known.length;
+      for (const [o, e] of Object.entries(base)) {
+        if (o === 'n' || (TR_WX[k][2] && !TR_WX[k][2][o])) continue;
+        const share = e / base.n; if (share < .05 || share > .8) continue;
+        const hit = known.filter(x => x.f[k] === o), O = hit.length, X = N * share, z = X ? (O - X) / Math.sqrt(2 * X) : 0, lift = X ? O / X : 0;
+        const spread = days.length >= 14 && (exDays[g][k + o]?.size || 0) >= 4 && (lift < 1 || new Set(hit.map(x => x.v.date)).size >= 3);
+        const c = { who, g, k, o, O, X, N, z, lift, ok: spread && (O >= 6 || X >= 6) && Math.abs(z) >= 2.5 && (lift >= 1.4 || lift <= .6) };
+        cands.push(c);
+        const fam = TR_WX[k][0];
+        if (c.ok && (!best[fam] || Math.abs(z) > Math.abs(best[fam].z))) best[fam] = c;
+      }
+    }
+    const ranked = Object.values(best).sort((a, b) => Math.abs(b.z) - Math.abs(a.z));
+    if (ranked[0]) cands.push({ ...ranked[0], top: true, also: ranked.length - 1, groupN: sub.length });
+  }
+  const drivers = [], seen = new Set();
+  for (const c of cands.filter(c => c.top)) { const key = `${c.k}|${c.o}|${c.g}`; if (seen.has(key)) continue; seen.add(key); drivers.push(c); }
+  // recent swings: the newest qualifying day in the last 10, for temperature and for pressure
+  const mean = a => a.reduce((s, x) => s + x, 0) / a.length, wdays = Object.keys(wx).sort(), today = dayOf(now);
+  const visitsOn = d => tr.visits.filter(v => v.date === d).length, prev = (d, k) => new Date(Date.parse(d + 'T00:00:00Z') - k * 864e5).toISOString().slice(0, 10);
+  const swings = [];
+  for (const [kind, key, min] of [['temp', 'temp', 8], ['pressure', 'p', .15]]) {
+    for (const d of wdays.slice().reverse()) {
+      if (d < prev(today, 10) || wx[d][key].length < 18 || !wx[prev(d, 1)] || wx[prev(d, 1)][key].length < 18) continue;
+      const a = mean(wx[prev(d, 1)][key]), b = mean(wx[d][key]); if (Math.abs(b - a) < min) continue;
+      const win = [d, prev(d, -1)].filter(x => x <= today && hrs[x]), base = Array.from({ length: 7 }, (_, i) => prev(d, i + 1)).filter(x => hrs[x]);
+      const vw = win.reduce((s, x) => s + visitsOn(x), 0), hw = win.reduce((s, x) => s + hrs[x], 0);
+      const vb = base.reduce((s, x) => s + visitsOn(x), 0), hb = base.reduce((s, x) => s + hrs[x], 0);
+      if (hw < 24 || vb < 5 || base.length < 3) break;  // too little to compare against
+      swings.push({ kind, d, a, b, win, vw, change: (vw / hw) / (vb / hb) - 1, partial: win.length < 2 || win.includes(today) });
+      break;
+    }
+  }
+  const legalN = vs.filter(x => x.v.light !== 'night').length;
+  return intel.trIns = { hs, tr, drivers, swings, cands, n: vs.length, legalN, days: days.length };
+}
+function trInsightsBox() {
+  const I = trInsights(); if (!I) return '';
+  const md = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const amount = l => l >= 1.9 ? `${l.toFixed(1)}× as often` : l >= 1 ? `${Math.round((l - 1) * 100)}% more` : `${Math.round((1 - l) * 100)}% less`;
+  const row = (icon, html, sub) => `<div class="tr-in"><i>${icon}</i><div>${html}${sub ? `<small>${sub}</small>` : ''}</div></div>`;
+  const out = I.swings.map(s => {
+    const t = s.kind === 'temp', dir = s.b < s.a, chg = Math.round(Math.abs(s.change) * 100);
+    const what = t ? `Temperatures ${dir ? 'dropped' : 'jumped'} ${Math.round(Math.abs(s.b - s.a))}° on ${md(s.d)}` : `Pressure ${dir ? 'fell' : 'rose'} ${Math.abs(s.b - s.a).toFixed(2)} inHg on ${md(s.d)}`;
+    const how = Math.abs(s.change) < .15 ? 'buck movement held about level with the week before' : `buck movement ran <b>${chg}% ${s.change > 0 ? 'above' : 'below'}</b> the week before`;
+    return row(t ? '🌡' : '◔', `${what}, and ${how}${s.partial ? ' so far' : ` that day and the next`}.`,
+      `${t ? `daily average ${Math.round(s.a)}° → ${Math.round(s.b)}°` : `daily average ${s.a.toFixed(2)} → ${s.b.toFixed(2)} inHg`} · ${s.vw} buck visit${s.vw === 1 ? '' : 's'} ${s.win.length > 1 ? 'over the two days' : 'that day'}, per camera-hour against the 7 days before`);
+  });
+  for (const c of I.drivers) {
+    const [fam, icon, phr] = TR_WX[c.k], phrase = phr ? phr[c.o] : `with the wind from the ${c.o}`;
+    const who = c.g === 'legal' ? `${c.who === 'Bucks' ? 'Bucks' : 'Hit-list bucks'} in legal light` : c.who;
+    const lead = `<b>${fam}</b> has lined up with ${c.g === 'legal' ? 'daylight ' : ''}movement${c.who === 'Bucks' ? '' : ' by hit-list bucks'} more than any other weather we track: `;
+    out.push(row(icon, `${lead}${who.charAt(0).toLowerCase() + who.slice(1)} moved <b>${amount(c.lift)}</b> ${phrase}.`,
+      `${c.O} visit${c.O === 1 ? '' : 's'} where about ${Math.round(c.X)} would be expected from how often that weather came up while the cameras ran · season so far`));
+  }
+  if (!I.drivers.length) out.push(`<div class="tr-in none"><i>…</i><div>No steady weather pattern stands out yet.<small>${I.n} buck visits (${I.legalN} in legal light) over ${I.days} days. It takes several fronts coming through before a real pattern beats chance.</small></div></div>`);
+  return `<div class="tr-ins"><b>What’s moving them</b>${out.join('')}
+    <small>Buck visits against the property’s hourly weather, counted per hour the cameras were running. “Lined up with” isn’t proof: a front brings cold, a pressure change and a wind shift together.</small></div>`;
+}
 function trKind(v) { return v.tag === 'target' ? 'hit' : v.buck && !v.generic ? 'named' : 'other'; }
 function trendsBox() {
   const tr = intel.tr;
@@ -4312,7 +4429,7 @@ function trendsBox() {
   const key = `<span class="tr-key"><span><i style="background:${TR_C.hit}"></i>Hit list</span><span><i style="background:${TR_C.named}"></i>Named</span><span><i style="background:${TR_C.other}"></i>Other bucks</span></span>`;
   return `<section class="in-card" id="tr">
     <div class="in-top"><div class="in-title"><b>Trends</b><span>${stale ? `as of ${md(lastDay)}, the newest photos · ` : ''}${all.length} buck visits this season</span></div>${range}</div>
-    ${tiles}
+    ${tiles}${trInsightsBox()}
     <div class="tr-h">Buck movement<span>visits a day${n >= 10 ? ' · line: 7-day average' : ''}</span>${key.replace('</span></span>', `</span>${n >= 10 ? '<span><i class="ln"></i>7-day avg</span>' : ''}</span>`)}</div>${chart1}
     <div class="tr-h">When they move<span>every buck visit at its time of day · shading: night, legal light, daylight</span>${key}</div>${chart2}
     ${who ? `<div class="tr-h">Who’s moving<span>named bucks · tall marks in legal light, short at night · visits in the last 7 days, ▲▼ against the week before</span></div><div class="tr-who">${who}</div>` : ''}

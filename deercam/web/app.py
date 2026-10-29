@@ -1741,8 +1741,10 @@ def timeline(days: int = 30):
             kind = "other"
         elif d["sex"] in ("buck", "doe", "fawn"):
             kind = d["sex"]
+        elif d["species"] == "deer":
+            kind = "deer"  # the AI looked: a deer, but head down or out of frame, so not which
         else:
-            kind = "animal"  # found by the detector, not labeled by the AI yet
+            kind = "animal"  # found by the detector, not labeled by the AI yet (or too small to look at)
         animals.append({
             "id": d["id"], "t": t, "cam": ci, "kind": kind, "conf": d["conf"],
             "species": a.get("other_species") or None, "age": a.get("age_class"),

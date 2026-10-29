@@ -441,6 +441,15 @@
   #lightbox { position:fixed; inset:0; background:rgba(0,0,0,.94); display:none; align-items:center; justify-content:center; z-index:50; cursor:zoom-out; }
   #lightbox img { max-width:100vw; max-height:100vh; }
   #lightbox .lb-tag { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(24px + env(safe-area-inset-bottom)); }
+  #lightbox .lb-pn { position:absolute; top:50%; transform:translateY(-50%); width:52px; height:52px; border:0; border-radius:50%; background:rgba(15,19,18,.6);
+    color:#fff; font-size:30px; line-height:1; cursor:pointer; display:none; backdrop-filter:blur(6px); }
+  #lightbox .lb-pn:hover { background:rgba(15,19,18,.85); } #lightbox .lb-pn:disabled { opacity:.25; cursor:default; }
+  #lightbox .lb-pn.prev { left:14px; } #lightbox .lb-pn.next { right:14px; }
+  #lightbox .lb-cap { position:absolute; left:50%; transform:translateX(-50%); top:calc(12px + env(safe-area-inset-top)); display:none; gap:10px; align-items:center;
+    background:rgba(15,19,18,.7); color:#fff; border-radius:16px; padding:5px 12px; font-size:13px; font-weight:600; white-space:nowrap; backdrop-filter:blur(6px); cursor:default; }
+  #lightbox .lb-cap i { width:8px; height:8px; border-radius:50%; background:var(--c); } #lightbox .lb-cap span { opacity:.7; font-weight:500; }
+  #lightbox.steps .lb-pn, #lightbox.steps .lb-cap { display:flex; align-items:center; justify-content:center; }
+  @media (max-width:700px) { #lightbox .lb-pn { width:40px; height:40px; font-size:24px; } #lightbox .lb-pn.prev { left:6px; } #lightbox .lb-pn.next { right:6px; } }
   #tip { position:fixed; pointer-events:none; background:var(--ink); color:var(--on-ink); border-radius:8px; padding:6px 9px; font-size:12px; display:none; z-index:60; max-width:260px; }
 
   /* ---- timeline: the cameras on a map at one moment with the light and weather then, and a time slider;
@@ -1333,7 +1342,7 @@
   <button data-go="swipe" title="Buck photos waiting to be named: one card at a time">Review<span class="count" id="rcount"></span><em class="beta">Beta</em></button>
 </nav>
 <main id="main"></main>
-<div id="lightbox"><img alt=""><button class="btn blue lb-tag" style="display:none"></button></div>
+<div id="lightbox"><img alt=""><div class="lb-cap"></div><button class="lb-pn prev" data-lb-step="-1" aria-label="Previous photo">‹</button><button class="lb-pn next" data-lb-step="1" aria-label="Next photo">›</button><button class="btn blue lb-tag" style="display:none"></button></div>
 <div id="tip"></div>
 
 <script src="/static/predict.js"></script>
@@ -2652,6 +2661,7 @@ const TL_KINDS = {
   buck:   { label: 'Buck',   color: '#d97706', rank: 5 },
   doe:    { label: 'Doe',    color: '#d6567a', rank: 4 },
   fawn:   { label: 'Fawn',   color: '#a07b3b', rank: 3 },
+  deer:   { label: 'Deer', color: '#a08a6c', rank: 2.5 },  // the AI couldn't see enough of the head to say which
   other:  { label: 'Other animal', color: '#2b8a6e', rank: 2 },
   animal: { label: 'Animal, not labeled yet', color: '#8a929c', rank: 1 },
 };
@@ -2680,6 +2690,7 @@ const HOUR = 3600e3, DAY = 864e5;
 const TL = { map: null };
 // What to call an animal: a buck by name, wildlife by what it is (turkey, hog...), else its kind.
 const tlWild = key => TL.data.wildlife?.find(w => w.key === key) || { key, label: 'Other animal', plural: 'Other animals' };
+TL_SVG.deer = TL_SVG.doe;
 const tlName = a => a.buck || (a.kind === 'other' ? tlWild(a.animal).label : TL_KINDS[a.kind].label.replace(', not labeled yet', ''));
 // The wildlife in the data, most seen first: [key, how many]
 const tlWildSeen = () => Object.entries(TL.data.animals.reduce((n, a) => (a.kind === 'other' && (n[a.animal] = (n[a.animal] || 0) + 1), n), {}))
@@ -2952,9 +2963,22 @@ function tlSwap(data, days) {
   $('#tl-feed').scrollTop = top;
 }
 
-// A camera's photo full size, with "Who is this?" for an unnamed deer in it.
+// A camera's photo full size, with "Who is this?" for an unnamed deer in it. From the Gallery, the
+// arrows (keys, buttons, a swipe) step through the photos it's showing, with the same filters.
 function tlOpen(src) {
   if (!src) return;
+  const list = TL.mode === 'cams' ? TL.feed.list || [] : [];
+  const i = list.findIndex(x => x.p[2] === src);
+  TL.lb = i >= 0 ? i : null;
+  $('#lightbox').classList.toggle('steps', TL.lb != null);
+  if (TL.lb != null) {
+    const p = list[i].p, c = TL.data.cameras[p[1]], clock = tlClock(p[0]);
+    $('#lightbox .lb-cap').style.setProperty('--c', c.color);
+    $('#lightbox .lb-cap').innerHTML = `<i></i>${esc(c.name || c.camera_id)} · ${esc(tlDate(p[0], { weekday: 'short', month: 'short', day: 'numeric' }))}, ${clock.hm} ${clock.ap}<span>${i + 1} of ${list.length.toLocaleString('en-US')}</span>`;
+    $('#lightbox .lb-pn.prev').disabled = i === 0;
+    $('#lightbox .lb-pn.next').disabled = i === list.length - 1;
+    for (const j of [i - 1, i + 1, i + 2]) if (list[j]) new Image().src = list[j].p[2];  // the next ones ready to show
+  }
   // The deer most likely to be a buck that has no name yet (the AI may not have been able to tell)
   const deer = (TL.data.byPhoto[src] || []).filter(a => !a.buck && a.kind !== 'other')
     .sort((a, b) => TL_KINDS[b.kind].rank - TL_KINDS[a.kind].rank)[0];
@@ -2963,6 +2987,19 @@ function tlOpen(src) {
   tag.textContent = 'Who is this? Tag him ›';
   tag.dataset.det = deer?.id ?? '';
   $('#lightbox img').src = src; $('#lightbox').style.display = 'flex';
+}
+
+function lbStep(by) {
+  const list = TL.feed?.list || [], j = (TL.lb ?? -1) + by;
+  if (TL.lb == null || !list[j]) return;
+  tlOpen(list[j].p[2]);
+  // keep the grid behind in step, so closing lands on the same photo
+  while (TL.feed.n <= j && TL.feed.n < list.length) tlFeedPage();
+  $(`#tlf-days .tlf-ph[data-src="${CSS.escape(list[j].p[2])}"]`)?.scrollIntoView({ block: 'nearest' });
+}
+function lbClose() {
+  $('#lightbox').style.display = 'none'; $('#lightbox .lb-tag').style.display = 'none';
+  $('#lightbox').classList.remove('steps'); TL.lb = null;
 }
 
 function tlSetMode(mode) {
@@ -3384,14 +3421,15 @@ function tlFollowTile() {
   el.innerHTML = `<div class="tlm-sh">Follow one buck <span class="r">last seen</span></div>`
     + bucks.map(b => `<button class="tlm-k${TL.show === b.name ? ' on' : ''}" data-show="${esc(b.name)}" title="Follow ${esc(b.name)}: his moves between cameras">${b.pic ? `<img src="${b.pic}" alt="">` : TL_SVG.buck}<em>${esc(b.name)}${b.target ? ' <small>★</small>' : ''}</em><b title="${tlStamp(b.last)}">${since(b.last)}</b></button>`).join('');
 }
-// Each animal's kind for the filter: buck, doe, fawn, 'w:turkey' etc. for wildlife, 'animal' for not labeled yet.
+// Each animal's kind for the filter: buck, doe, fawn, deer (which one unclear), 'w:turkey' etc. for wildlife,
+// 'animal' for not labeled yet.
 const tlType = a => a.kind === 'other' ? `w:${a.animal || 'other'}` : a.kind;
 // The kinds in the loaded data, in a fixed order: deer, then wildlife most seen first, then not labeled yet.
 function tlTypeKeys() {
   const n = {};
   for (const a of TL.data.animals) n[tlType(a)] = (n[tlType(a)] || 0) + 1;
   const wild = Object.keys(n).filter(k => k.startsWith('w:')).sort((a, b) => n[b] - n[a]);
-  return [...['buck', 'doe', 'fawn'].filter(k => n[k]), ...wild, ...(n.animal ? ['animal'] : [])];
+  return [...['buck', 'doe', 'fawn', 'deer'].filter(k => n[k]), ...wild, ...(n.animal ? ['animal'] : [])];
 }
 // The Animals tile under the conditions: a row per kind with how many are in the stretch of time in view;
 // click one to hide or show it on the map and the slider. Redrawn when the view moves.
@@ -3404,7 +3442,7 @@ function tlTypes() {
   const sig = keys.map(k => `${k}${TL.hide.has(k) ? '-' : '+'}${n[k] || 0}`).join();
   if (sig === el.dataset.sig) return;
   el.dataset.sig = sig;
-  const label = k => k === 'animal' ? 'Not labeled yet' : k.startsWith('w:') ? tlWild(k.slice(2)).plural : TL_KINDS[k].label + 's';
+  const label = k => k === 'animal' ? 'Not labeled yet' : k === 'deer' ? 'Deer, buck or doe unclear' : k.startsWith('w:') ? tlWild(k.slice(2)).plural : TL_KINDS[k].label + 's';
   const icon = k => { const kind = k.startsWith('w:') ? 'other' : k; return `<span style="color:${TL_KINDS[kind].color};display:contents">${k === 'buck' ? RACK_SVG : TL_SVG[kind]}</span>`; };
   const allOn = keys.every(k => !TL.hide.has(k));
   const noneOn = keys.every(k => TL.hide.has(k));
@@ -3440,7 +3478,7 @@ function tlFixMenu(id) {
     const v = e.target.value;
     try { await post(`/api/detections/${id}/animal`, { animal: v }); }
     catch (err) { box.innerHTML = `<span class="bad">${esc(err.detail || 'Couldn’t save')}</span>`; return; }
-    if (v === 'deer') { if (a.kind === 'other') a.kind = 'animal'; a.animal = null; }
+    if (v === 'deer') { if (a.kind === 'other' || a.kind === 'animal') a.kind = 'deer'; a.animal = null; }
     else Object.assign(a, { kind: 'other', animal: v, buck: null, tag: null });
     TL.sideSrc = undefined;
     tlPanel(); tlShow(TL.show); TL.onResize();
@@ -5170,8 +5208,11 @@ addEventListener('hashchange', () => { closeReviewModal(false); render(); scroll
 
 document.addEventListener('click', async e => {
   const lbTag = e.target.closest('#lightbox .lb-tag');
-  if (lbTag) { $('#lightbox').style.display = 'none'; return tagInModal(lbTag.dataset.det); }
-  if (e.target.closest('#lightbox')) { $('#lightbox').style.display = 'none'; $('#lightbox .lb-tag').style.display = 'none'; return; }
+  if (lbTag) { lbClose(); return tagInModal(lbTag.dataset.det); }
+  const lbPn = e.target.closest('#lightbox [data-lb-step]');
+  if (lbPn) return lbStep(Number(lbPn.dataset.lbStep));
+  if (e.target.closest('#lightbox .lb-cap')) return;
+  if (e.target.closest('#lightbox')) return lbClose();
   const img = e.target.closest('img[data-full]');
   if (img) { $('#lightbox img').src = img.dataset.full; $('#lightbox').style.display = 'flex'; return; }
   const nav = e.target.closest('[data-go]');
@@ -5273,8 +5314,11 @@ document.addEventListener('click', async e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     const lb = $('#lightbox').style.display === 'flex';
-    $('#lightbox').style.display = 'none'; $('#lightbox .lb-tag').style.display = 'none';
+    lbClose();
     if (!lb && !$('#cmp') && $('#rvm')) closeReviewModal();
+  }
+  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && $('#lightbox').style.display === 'flex' && TL.lb != null) {
+    e.preventDefault(); return lbStep(e.key === 'ArrowLeft' ? -1 : 1);
   }
   if (e.key === 'Enter' && e.target.closest('#buck-edit')) $('[data-act="save-buck"]').click();
   if (e.key === 'Enter' && e.target.id === 'rv-name') saveReview();
@@ -5288,6 +5332,17 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// A sideways swipe on the full-size photo steps through the Gallery
+{
+  let x0 = null, y0 = null;
+  $('#lightbox').addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+  $('#lightbox').addEventListener('touchend', e => {
+    if (x0 == null || TL.lb == null) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    x0 = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > 1.5 * Math.abs(dy)) { e.preventDefault(); lbStep(dx < 0 ? 1 : -1); }
+  });
+}
 $('#season').addEventListener('change', () => render());
 $('#sync').addEventListener('click', async () => {
   await post('/api/import', {});

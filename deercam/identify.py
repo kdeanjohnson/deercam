@@ -285,7 +285,11 @@ def identify(recheck: bool = False, limit: int | None = None, workers: int = 6,
                 WHERE d.sex='buck' AND d.embedding IS NOT NULL
                   AND (d.match_status IS NULL {"OR d.match_status='review'" if recheck else ""})
                 LIMIT ?""", (limit or -1,)).fetchall()
-        units = [(u, galleries.for_query(u[0])) for u in _units(queue, bursts(conn))]
+        # The AI only matches in a season where someone has named a buck: with just auto-groups to compare
+        # against (e.g. an old season pulled in from Reveal), it would spend on matches nobody asked for.
+        # Those photos still auto-group by burst, or wait unnamed.
+        units = [(u, g if any(not refs[0]["generic"] for refs in g.values()) else {})
+                 for u in _units(queue, bursts(conn)) for g in [galleries.for_query(u[0])]]
         if only_for_buck is not None:
             units = [(u, g) for u, g in units if only_for_buck in {c[0] for c in _shortlist(u, g)}]
         conn.commit()

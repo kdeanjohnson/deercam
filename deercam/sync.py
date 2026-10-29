@@ -37,8 +37,10 @@ def sync(full: bool = False, days: int | None = None, since: datetime | None = N
             seen.update(x["camera_id"] for x in cams)
             shared = [x["shared_id"] for x in mine if not x["own"]]
             own = [x["camera_id"] for x in mine if x["own"]]
-            if shared:
-                added += _pull(conn, client, client.shared_photos(shared), full, cutoff, zips)
+            # one camera at a time: Reveal's shared feed ends after 10,000 photos per request, so all the
+            # cameras in one request would cut every camera's history short
+            for sid in shared:
+                added += _pull(conn, client, client.shared_photos([sid]), full, cutoff, zips)
             if own:
                 added += _pull(conn, client, client.own_photos(own), full, cutoff, zips)
         if len(failures) == len(conns):

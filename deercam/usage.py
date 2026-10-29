@@ -75,6 +75,16 @@ def month_cost(month: str | None = None) -> float:
         return conn.execute("SELECT COALESCE(SUM(cost), 0) FROM ai_usage WHERE month=?", (month or _month(),)).fetchone()[0]
 
 
+PER_PHOTO = 0.0012  # dollars of AI per imported photo, most of them empty or does: about $1.20 a thousand
+
+
+def per_photo(photos_done: int) -> float:
+    """What a photo has cost this ranch on average, all months together, once it has enough history."""
+    with closing(_connect()) as conn:
+        total = conn.execute("SELECT COALESCE(SUM(cost), 0) FROM ai_usage").fetchone()[0]
+    return total / photos_done if photos_done >= 500 and total > 0 else PER_PHOTO
+
+
 def check() -> None:
     """Raise BudgetError if this month's AI budget is spent."""
     limit = settings.ai_monthly_limit

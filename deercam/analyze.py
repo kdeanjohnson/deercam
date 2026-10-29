@@ -37,7 +37,7 @@ def analyze(limit: int | None = None, workers: int = 6) -> int:
         rows = conn.execute(
             """SELECT d.id, d.crop_path, c.name AS camera, p.meta_json
                FROM detections d JOIN photos p USING(photo_id) LEFT JOIN cameras c USING(camera_id)
-               WHERE d.status='new' ORDER BY p.taken_utc LIMIT ?""",
+               WHERE d.status='new' ORDER BY p.taken_utc DESC LIMIT ?""",
             (limit or -1,),
         ).fetchall()
     log.info("analyzing %d crops with %s", len(rows), provider.name)

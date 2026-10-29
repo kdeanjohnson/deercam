@@ -23,6 +23,11 @@ def sync(full: bool = False, days: int | None = None, since: datetime | None = N
     zips = {}  # ZIP code -> photos filed under it, for the rough camera area
 
     with db.session() as conn:
+        if cutoff is None and not conn.execute("SELECT 1 FROM photos LIMIT 1").fetchone():
+            # A new ranch's first check goes back to the start of this season only. A Reveal account can
+            # hold years of photos; older ones are an owner's choice (Import older photos), cost shown first.
+            cutoff = datetime.combine(settings.season_start_date(settings.current_season()), datetime.min.time(), timezone.utc)
+            log.info("first check: photos since %s", cutoff.date())
         for c in conns:
             try:
                 client = connections.client(c)
@@ -58,6 +63,42 @@ def sync(full: bool = False, days: int | None = None, since: datetime | None = N
         log.info("no cameras to sync (none shared, or all switched off in Settings)")
     log.info("sync done: %d new photos", added)
     return added
+
+
+def count_new(since: datetime, seconds: float = 90) -> dict:
+    """How many photos an import back to `since` would download, from Reveal's photo lists alone
+    (nothing downloaded). A big account takes a while to page through: after `seconds` it stops and
+    says so (complete=False), with the count so far."""
+    import time
+    deadline = time.monotonic() + seconds
+    connections.ensure_env_connection()
+    excluded = set(connections.load().get("excluded", []))
+    with db.session() as conn:
+        known = {r[0] for r in conn.execute("SELECT photo_id FROM photos")}
+    n, seen = 0, set()
+    for c in connections.load()["connections"]:
+        try:
+            client = connections.client(c)
+            cams, _ = connections.cameras_of(client)
+        except SignInError:
+            continue
+        mine = [x for x in cams if x["camera_id"] not in excluded and x["camera_id"] not in seen]
+        seen.update(x["camera_id"] for x in cams)
+        streams = [client.shared_photos([x["shared_id"]]) for x in mine if not x["own"]]
+        if own := [x["camera_id"] for x in mine if x["own"]]:
+            streams.append(client.own_photos(own))
+        for photos in streams:
+            for p in photos:
+                if time.monotonic() > deadline:
+                    return {"photos": n, "complete": False}
+                # the upload time stands in when Reveal has no UTC; it's never earlier than the capture
+                taken = (datetime.fromisoformat(p["photoDateUtc"].replace("Z", "+00:00")) if p.get("photoDateUtc")
+                         else datetime.fromtimestamp(p["createdTimestamp"] / 1000, timezone.utc))
+                if taken < since:
+                    break
+                if p.get("photoType", "photo") == "photo" and p["photoId"] not in known:
+                    n += 1
+    return {"photos": n, "complete": True}
 
 
 def _pull(conn, client, photos, full: bool, cutoff: datetime | None, zips: dict) -> int:

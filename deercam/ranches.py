@@ -71,6 +71,9 @@ def default_id() -> str:
     return all_ranches()[0]["id"]
 
 
+NEW_RANCH_AI_LIMIT = 20.0  # dollars a month
+
+
 def create(name: str, env_reveal: bool = False) -> str:
     name = " ".join(name.split())
     if not name:
@@ -82,6 +85,8 @@ def create(name: str, env_reveal: bool = False) -> str:
             rid, n = f"{base}-{n}", n + 1
         (folder() / rid).mkdir(parents=True)
         _write_info(rid, {"name": name, "env_reveal": env_reveal, "created": _now()})
+        # a monthly AI cap from the start, so a first import can't run up a surprise; the owner can change it
+        (folder() / rid / "settings.json").write_text(json.dumps({"ai_monthly_limit": NEW_RANCH_AI_LIMIT}), encoding="utf-8")
     return rid
 
 

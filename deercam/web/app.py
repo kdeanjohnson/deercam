@@ -650,6 +650,21 @@ class ImportRequest(BaseModel):
     since: str | None = None  # YYYY-MM-DD: also go back and fetch older photos to this date
 
 
+@app.get("/api/import/estimate")
+@needs("owner")
+def import_estimate(since: str):
+    """Photos an import back to `since` would bring in, and roughly what the AI would cost for them."""
+    from ..sync import count_new
+    try:
+        found = count_new(datetime.fromisoformat(since).replace(tzinfo=timezone.utc))
+    except SignInError as e:
+        raise HTTPException(400, str(e))
+    with db.session() as conn:
+        done = conn.execute("SELECT COUNT(*) FROM photos WHERE detected=1").fetchone()[0]
+    return {**found, "cost": round(found["photos"] * usage.per_photo(done), 2),
+            "limit": settings.ai_monthly_limit, "spent": round(usage.month_cost(), 2)}
+
+
 @app.post("/api/import")
 @needs("member")
 def start_import(body: ImportRequest, request: Request):
@@ -1612,8 +1627,12 @@ def run_identify():
 
 @app.get("/api/identify")
 @needs("viewer")
-def identify_status():
-    return jobs.status()
+def identify_status(request: Request):
+    out = jobs.status()
+    # owners see it coming: from 75% of the month's AI budget on
+    if (limit := settings.ai_monthly_limit) and _is(request, "owner") and (spent := usage.month_cost()) >= 0.75 * limit:
+        out["budget"] = {"spent": round(spent, 2), "limit": limit}
+    return out
 
 
 # ------------------------------------------------------------------ timeline (map + time slider)

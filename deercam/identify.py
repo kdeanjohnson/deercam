@@ -284,7 +284,7 @@ def identify(recheck: bool = False, limit: int | None = None, workers: int = 6,
             f"""SELECT {QUERY_COLS} FROM detections d JOIN photos p USING(photo_id)
                 WHERE d.sex='buck' AND d.embedding IS NOT NULL
                   AND (d.match_status IS NULL {"OR d.match_status='review'" if recheck else ""})
-                LIMIT ?""", (limit or -1,)).fetchall()
+                ORDER BY p.taken_utc DESC LIMIT ?""", (limit or -1,)).fetchall()
         # The AI only matches in a season where someone has named a buck: with just auto-groups to compare
         # against (e.g. an old season pulled in from Reveal), it would spend on matches nobody asked for.
         # Those photos still auto-group by burst, or wait unnamed.

@@ -53,7 +53,7 @@ The first time, every buck lands in Review. Name a few there and the rest get ma
 
 ## AI costs
 
-Only animal crops go to the AI. Each ranch's spending is counted per month and model (Settings → AI, in the ranch's `ai_usage.db`), and the admin can set a monthly limit per ranch. When it's reached, photos still download and animals are still found; the crops wait for the AI until the next month or a higher limit. For a sense of scale: four busy cameras send about 400 photos and 400 animal crops a day, which comes to a few dollars a day with Grok 4.3 for the first look and Grok 4.7 for the bucks. Prices per model are in `deercam/usage.py`.
+Only animal crops go to the AI. Each ranch's spending is counted per month and model (Settings → AI, in the ranch's `ai_usage.db`), and the admin can set a monthly limit per ranch; a new ranch starts at $20, and the owner sees a warning in the header from 75% of it. When it's reached, photos still download and animals are still found; the crops wait for the AI until the next month or a higher limit, newest photos first. A new ranch's first check only goes back to the start of the current season. Older photos come in through Settings → Import older photos, which counts them on Reveal and shows a rough AI cost before anything downloads. For a sense of scale: four busy cameras send about 400 photos and 400 animal crops a day, which comes to a few dollars a day with Grok 4.3 for the first look and Grok 4.7 for the bucks. Prices per model are in `deercam/usage.py`.
 
 ## Running on a server
 

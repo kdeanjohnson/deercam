@@ -4845,7 +4845,7 @@ async function showSettings(firstRun = false) {
       <h3>${firstRun ? `${num()}Import photos` : 'Import older photos'}</h3>
       <div class="meta">Downloads photos back to this date, finds animals, and has the AI look at each deer. A season's worth can take a while and costs a few dollars of AI time.</div>
       <div class="row"><label>Import since</label><input id="im-since" type="date" value="${esc(cfg.current_season_start)}" style="flex:0 0 170px">
-        <button class="act primary" id="im-go">${firstRun ? 'Finish and import' : 'Import'}</button><span id="im-msg" class="meta"></span></div>
+        <button class="act primary" id="im-go" data-label="${firstRun ? 'Finish and import' : 'Import'}">${firstRun ? 'Finish and import' : 'Import'}</button><span id="im-msg" class="meta"></span></div>
     </section>
     ${firstRun ? '' : `<div class="meta" style="text-align:center">${st.photos} photos · ${st.animals} animals · ${st.buck_detections} buck crops · ${st.bucks} named bucks · ${st.groups} auto-groups</div>`}
   </div>`;
@@ -4931,6 +4931,24 @@ function fillProvider() {
   $('#ai-fast').placeholder = p.fast ? `default: ${p.fast}` : 'optional; defaults to the main model';
   $('#ai-models').innerHTML = '';
   $('#ai-msg').textContent = '';
+}
+
+// Before an import: how many photos Reveal has back to that date, and roughly the AI bill for them.
+async function imEstimate(btn, since) {
+  const msg = $('#im-msg'), usd = n => `$${n.toFixed(2)}`;
+  btn.disabled = true; msg.className = 'meta'; msg.textContent = 'Counting the photos on Reveal…';
+  let e;
+  try { e = await api(`/api/import/estimate?since=${encodeURIComponent(since)}`); }
+  catch (err) { msg.className = 'bad'; msg.textContent = err.detail || "Couldn't count the photos"; return; }
+  finally { btn.disabled = false; }
+  btn.dataset.sure = since; btn.textContent = e.photos ? 'Import them' : 'Import';
+  if (!e.photos) { msg.textContent = 'No photos to bring in back to then; everything is already here.'; return; }
+  const n = `${e.photos.toLocaleString('en-US')}${e.complete ? '' : '+'}`;
+  let text = `About ${n} photos to download, roughly ${usd(e.cost)} of AI${e.complete ? '' : ' (and more; Reveal took too long to count them all)'}.`;
+  const left = e.limit ? Math.max(0, e.limit - e.spent) : null;
+  if (left != null && e.cost > left) text += ` That's more than the ${usd(left)} left in this month's ${usd(e.limit)} AI budget: the newest photos get looked at first, and the AI picks up the rest next month (or raise the limit above).`;
+  else if (!e.limit) text += ' There is no monthly AI limit set for this ranch.';
+  msg.textContent = text;
 }
 
 // This month's AI spending (per model) and the months before, from the ranch's ai_usage table.
@@ -5084,6 +5102,7 @@ async function settingsClick(e) {
   if (t.id === 'im-go') {
     const since = $('#im-since').value;
     if (!since) return $('#im-since').focus();
+    if (t.dataset.sure !== since) return imEstimate(t, since);  // the count and the cost first, then a second tap
     await post('/api/settings', { setup_done: true });
     await post('/api/import', { since });
     $('#im-msg').className = 'ok'; $('#im-msg').textContent = 'Import started; progress shows at the top. You can start reviewing as crops come in.';
@@ -5093,6 +5112,9 @@ async function settingsClick(e) {
 
 document.addEventListener('change', async e => {
   if (e.target.id === 'ai-provider') fillProvider();
+  if (e.target.id === 'im-since' && $('#im-go')?.dataset.sure) {  // a new date needs a new count
+    delete $('#im-go').dataset.sure; $('#im-go').textContent = $('#im-go').dataset.label; $('#im-msg').textContent = '';
+  }
   if (e.target.id === 'acc-theme') { localStorage.setItem('theme', e.target.value); setTheme(e.target.value); }
   if (e.target.id === 'merge-into') {
     const btn = $('[data-act="merge-buck"]');
@@ -5300,6 +5322,12 @@ async function watchJob() {
   if (last && !last.ok) {
     $('#job').className = last.setup ? 'bad' : '';
     $('#job').textContent = last.setup ? `${last.error} (open Settings)` : `${last.label} failed: ${last.error}`;
+  } else if (st?.budget) {
+    const b = st.budget, usd = n => `$${n.toFixed(2)}`, out = b.spent >= b.limit;
+    $('#job').className = out ? 'bad' : '';
+    $('#job').innerHTML = `<span data-go="settings" style="cursor:pointer" title="AI budget, in Settings">${out
+      ? `AI budget used up (${usd(b.spent)} of ${usd(b.limit)}): new photos wait for the AI until next month`
+      : `AI budget: ${usd(b.spent)} of ${usd(b.limit)} used this month`}</span>`;
   } else if (!DEMO) {
     $('#job').className = ''; $('#job').textContent = '';
   }

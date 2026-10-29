@@ -54,7 +54,7 @@ def detect(batch_size: int = 8) -> int:
     settings.crops_dir.mkdir(parents=True, exist_ok=True)
 
     with db.session() as conn:
-        pending = conn.execute("SELECT photo_id, path FROM photos WHERE detected=0 ORDER BY taken_utc").fetchall()
+        pending = conn.execute("SELECT photo_id, path FROM photos WHERE detected=0 ORDER BY taken_utc DESC").fetchall()
         log.info("%d photos to run through MegaDetector", len(pending))
         found = 0
         for i in range(0, len(pending), batch_size):

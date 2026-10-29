@@ -1,8 +1,9 @@
 import json
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 
-from . import db, place
+from . import db, place, stamp
 from .config import settings
 from . import connections
 from .reveal import SignInError, find_location
@@ -96,14 +97,18 @@ def count_new(since: datetime, seconds: float = 90) -> dict:
                          else datetime.fromtimestamp(p["createdTimestamp"] / 1000, timezone.utc))
                 if taken < since:
                     break
-                if p.get("photoType", "photo") == "photo" and p["photoId"] not in known:
+                if p.get("photoType", "photo") in KINDS and p["photoId"] not in known:
                     n += 1
     return {"photos": n, "complete": True}
+
+
+KINDS = ("photo", "hdPhoto")  # not videos
 
 
 def _pull(conn, client, photos, full: bool, cutoff: datetime | None, zips: dict) -> int:
     """Save the new photos from one newest-first stream."""
     added = 0
+    hd = []  # HD copies, placed once the stream is read: their regular copy uploaded before them
     known_streak = 0
     offsets = {}  # camera id -> its clock minus UTC, from its newest photo that has both
     for p in photos:
@@ -128,9 +133,9 @@ def _pull(conn, client, photos, full: bool, cutoff: datetime | None, zips: dict)
         p["photoDateUtc"] = taken.strftime("%Y-%m-%dT%H:%M:%S.000Z")
         if cutoff and taken < cutoff:
             break
-        if p.get("photoType", "photo") != "photo":
-            continue  # videos etc.
-        if known := conn.execute("SELECT meta_json FROM photos WHERE photo_id=?", (p["photoId"],)).fetchone():
+        if p.get("photoType", "photo") not in KINDS:
+            continue
+        if known := conn.execute("SELECT meta_json FROM photos WHERE photo_id=?1 OR hd_id=?1", (p["photoId"],)).fetchone():
             # Photos saved before upload times were kept get theirs now (fix_times() reads them).
             meta = json.loads(known["meta_json"] or "{}")
             if meta.get("uploaded") is None and p.get("uploaded") is not None:
@@ -149,23 +154,89 @@ def _pull(conn, client, photos, full: bool, cutoff: datetime | None, zips: dict)
         dest = settings.photos_dir / p["cameraId"] / p["photoId"]
         dest.parent.mkdir(parents=True, exist_ok=True)
         if not dest.exists():
-            dest.write_bytes(client.download(p["photoUrl"]))
-        conn.execute(
-            """INSERT INTO photos(photo_id, camera_id, taken_utc, minutes_since_midnight, path,
-                                  weather_json, meta_json) VALUES(?,?,?,?,?,?,?)""",
-            (
-                p["photoId"], p["cameraId"], p["photoDateUtc"], p.get("minutesSinceMidnight"),
-                dest.relative_to(settings.data_dir).as_posix(),
-                db.dumps(p.get("weatherRecord")),
-                db.dumps({k: p.get(k) for k in ("metadata", "hdPhoto", "hardwareVersion", "photoTimestamp", "utcSource", "weatherRecordId", "uploaded")}),
-            ),
-        )
+            dest.write_bytes(client.download(p["photoUrl"]))  # now: the link expires
+        if p.get("photoType") == "hdPhoto":
+            hd.append((p, dest))
+            continue
+        _insert(conn, p, dest)
         added += 1
         if added % 50 == 0:
             conn.commit()
             log.info("downloaded %d photos (at %s)", added, p["photoDateUtc"])
+    for p, dest in hd:
+        added += _place_hd(conn, p, dest, offsets)
     conn.commit()
     return added
+
+
+def _insert(conn, p: dict, dest) -> None:
+    conn.execute(
+        """INSERT INTO photos(photo_id, camera_id, taken_utc, minutes_since_midnight, path,
+                              weather_json, meta_json) VALUES(?,?,?,?,?,?,?)""",
+        (
+            p["photoId"], p["cameraId"], p["photoDateUtc"], p.get("minutesSinceMidnight"),
+            dest.relative_to(settings.data_dir).as_posix(),
+            db.dumps(p.get("weatherRecord")),
+            db.dumps({k: p.get(k) for k in ("metadata", "hdPhoto", "hardwareVersion", "photoTimestamp", "utcSource", "weatherRecordId", "uploaded")}
+                     | {k: p[k] for k in ("hdTime", "hdRevealStamp") if k in p}),
+        ),
+    )
+
+
+def _place_hd(conn, p: dict, dest, offsets: dict) -> int:
+    """An HD copy someone asked Reveal for. Reveal times it by when it came through (the camera's next
+    check-in, hours or days later), in its metadata and EXIF alike, so its own time is no use.
+
+    With its regular copy on hand (same camera, same last four digits of the file number: W1014118 and
+    HD-SYFW4118, and the same picture), the HD file takes the regular one's place: same photo, same time,
+    same animals (their boxes are fractions of the frame), sharper. Returns 0.
+    Otherwise it's a photo of its own, timed from the date and time printed on it. Returns 1."""
+    rel = dest.relative_to(settings.data_dir).as_posix()
+    if num := re.search(r"(\d{4})$", p.get("filename") or ""):
+        for r in conn.execute("""SELECT photo_id, path, meta_json FROM photos
+                                 WHERE camera_id=? AND hd_id IS NULL AND photo_id LIKE ? AND photo_id NOT LIKE '%-HD-%'
+                                 ORDER BY taken_utc DESC LIMIT 5""", (p["cameraId"], f"%{num.group(1)}.JPG")).fetchall():
+            if same_picture(settings.data_dir / r["path"], dest):
+                meta = json.loads(r["meta_json"] or "{}") | {"sd_path": r["path"], "hdRevealStamp": p.get("photoTimestamp")}
+                conn.execute("UPDATE photos SET path=?, hd_id=?, meta_json=? WHERE photo_id=?",
+                             (rel, p["photoId"], db.dumps(meta), r["photo_id"]))
+                log.info("HD copy %s shown for %s", p["photoId"], r["photo_id"])
+                return 0
+    from PIL import Image
+    printed = stamp.read(Image.open(dest))
+    upload = datetime.fromtimestamp(p["createdTimestamp"] / 1000, timezone.utc)
+    when = camera_clock({"photoTimestamp": printed})
+    # camera clocks run on local time, within a day of UTC; an HD copy is asked for within weeks
+    if when and upload - timedelta(days=45) <= when <= upload + timedelta(days=1):
+        p["hdRevealStamp"], p["photoTimestamp"], p["hdTime"] = p.get("photoTimestamp"), printed, "printed"
+    else:
+        p["hdTime"] = "unknown"  # left at when the HD copy came through
+        log.warning("couldn't read the time printed on HD photo %s (%s)", p["photoId"], printed)
+    local = camera_clock(p)
+    if local and p["cameraId"] in offsets:
+        taken, p["utcSource"] = local - offsets[p["cameraId"]], "camera_clock"
+    else:
+        taken, p["utcSource"] = upload, "upload"  # fix_times() works the offset out from the camera's other photos
+    p["photoDateUtc"] = taken.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    _insert(conn, p, dest)
+    return 1
+
+
+def same_picture(a, b) -> bool:
+    """Whether two files are the same shot at different sizes. Burst neighbours, a few seconds apart,
+    differ about ten times more than this allows."""
+    import numpy as np
+    from PIL import Image
+
+    def small(path):
+        img = Image.open(path)
+        w, h = img.size
+        g = np.asarray(img.crop((0, int(h * .06), w, int(h * .9))).convert("L").resize((96, 54), Image.BILINEAR), dtype=np.float32)
+        return (g - g.mean()) / (g.std() + 1e-6)
+    try:
+        return float(np.mean((small(a) - small(b)) ** 2)) < .004
+    except OSError:
+        return False
 
 
 def camera_clock(meta: dict) -> datetime | None:

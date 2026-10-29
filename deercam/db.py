@@ -84,6 +84,7 @@ MIGRATIONS = [
     ("detections", "animal", "TEXT"),
     ("detections", "reviewed_at", "TEXT"),  # when a person last decided what this animal is (UTC ISO)
     ("detections", "reviewed_by", "INTEGER"),  # and which user
+    ("photos", "hd_id", "TEXT"),  # Reveal's id for the HD copy shown in place of this photo (sync._place_hd)
 ]
 
 
@@ -116,6 +117,7 @@ def connect() -> sqlite3.Connection:
     for table, column, decl in MIGRATIONS:
         if column not in {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_photos_hd ON photos(hd_id)")
     version = conn.execute("PRAGMA user_version").fetchone()[0]
     for i, migrate in enumerate(DATA_MIGRATIONS[version:], version + 1):
         migrate(conn)

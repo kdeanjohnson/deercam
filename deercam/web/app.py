@@ -670,10 +670,13 @@ def start_import(body: ImportRequest, request: Request):
 @app.get("/api/seasons")
 @needs("viewer")
 def seasons():
+    # undecided photos Review asks about: recent ones this season, all of them in earlier seasons
+    fresh = _fresh()
+    waiting = f"AND (season(p.taken_utc) < {settings.current_season()} OR {fresh.removeprefix('AND ')})" if fresh else ""
     with db.session() as conn:
         rows = {r["season"]: dict(r) for r in conn.execute(
             f"""SELECT season(p.taken_utc) AS season, COUNT(DISTINCT p.photo_id) AS photos,
-                      COUNT(DISTINCT CASE WHEN d.match_status='review' {_fresh()} THEN d.id END) AS review
+                      COUNT(DISTINCT CASE WHEN d.match_status='review' {waiting} THEN d.id END) AS review
                FROM photos p LEFT JOIN detections d USING(photo_id) GROUP BY 1""")}
     current = settings.current_season()
     rows.setdefault(current, {"season": current, "photos": 0, "review": 0})
@@ -698,7 +701,7 @@ def stats(season: str | None = None):
             "animals": q(f"SELECT COUNT(*) {det}"),
             "deer": q(f"SELECT COUNT(*) {det} AND d.species='deer'"),
             "buck_detections": q(f"SELECT COUNT(*) {det} AND d.sex='buck'"),
-            "review": q(f"SELECT COUNT(*) {det} AND d.match_status='review' {_fresh()}"),
+            "review": q(f"SELECT COUNT(*) {det} AND d.match_status='review' {_fresh(s)}"),
             "bucks": q(f"SELECT COUNT(DISTINCT d.buck_id) {det} AND d.match_status IN ('confirmed','auto') "
                        "AND d.buck_id IN (SELECT id FROM bucks WHERE generic=0)"),
             "groups": q(f"SELECT COUNT(DISTINCT d.buck_id) {det} AND d.match_status='auto' "
@@ -1515,11 +1518,12 @@ def detection(det_id: int):
     return _row(r)
 
 
-def _fresh() -> str:
+def _fresh(season: int | None = None) -> str:
     """SQL (on photos p) for what Review still asks about: photos from the last settings.review_days days.
     Older ones nobody decided on drop out of the queue quietly, unnamed but kept; they stay 'review', so
-    re-matching can still name them."""
-    if not settings.review_days:
+    re-matching can still name them. Picking an earlier season shows all of its undecided photos: going
+    back through one is on purpose."""
+    if not settings.review_days or (season is not None and season < settings.current_season()):
         return ""
     cutoff = datetime.now(timezone.utc) - timedelta(days=settings.review_days)
     return f"AND p.taken_utc >= '{cutoff:%Y-%m-%dT%H:%M:%S}'"
@@ -1565,7 +1569,7 @@ def review(sort: Literal["visits", "similar", "size", "newest"] = "similar", sea
     bucks first (the lineup); the others are photo by photo, for the grid."""
     s = _season(season)
     with db.session() as conn:
-        rows = conn.execute(DETECTION_SQL + f"""WHERE d.match_status='review' {_fresh()}
+        rows = conn.execute(DETECTION_SQL + f"""WHERE d.match_status='review' {_fresh(s)}
                             {'' if s is None else f'AND season(p.taken_utc)={s}'}
                             ORDER BY p.taken_utc DESC""").fetchall()
         if sort == "visits":
@@ -1588,7 +1592,7 @@ def review_stats(request: Request, tz: int = -300, season: str | None = None):
     since = day0.isoformat(timespec="seconds")
     me = _reviewer(request)
     with db.session() as conn:
-        waiting = conn.execute(f"""SELECT COUNT(*) FROM detections d JOIN photos p USING(photo_id) WHERE d.match_status='review' {_fresh()}
+        waiting = conn.execute(f"""SELECT COUNT(*) FROM detections d JOIN photos p USING(photo_id) WHERE d.match_status='review' {_fresh(s)}
                                    {'' if s is None else f'AND season(p.taken_utc)={s}'}""").fetchone()[0]
         today, mine = conn.execute("SELECT COUNT(*), COALESCE(SUM(reviewed_by=?), 0) FROM detections WHERE reviewed_at>=?",
                                    (me, since)).fetchone()

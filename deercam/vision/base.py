@@ -141,6 +141,38 @@ NAME_SYSTEM = (
     "Don't reuse a name that's already taken."
 )
 
+class BuckAge(BaseModel):
+    """One buck's age, judged from several photos of him together. The cues come first, so the model
+    looks before it commits to an age."""
+    neck: str = Field(description="Neck and how it meets the shoulders, e.g. 'thin, clear line to the chest', "
+                                  "'swollen, blends into the shoulders'")
+    chest_and_belly: str = Field(description="Chest depth against leg length, belly line and back line")
+    legs_and_body: str = Field(description="Whether his legs look long, average or short for his body; overall bulk")
+    face: str = Field(description="Face and head: slender and smooth, or heavy, blocky, saggy around the eyes")
+    rack: str = Field(description="Spread against the ear tips, mass, tine length; only as a supporting cue")
+    age_class: Literal["1.5", "2.5", "3.5", "4.5", "5.5_plus", "unknown"] = Field(
+        description="Age in years. 'unknown' if the photos don't show enough of his body to judge")
+    confidence: Literal["low", "medium", "high"]
+    reason: str = Field(description="One sentence a hunter would say, naming the two or three cues that decided it")
+
+
+AGE_SYSTEM = (
+    "You age whitetail bucks on the hoof from trail-camera photos, the way experienced deer managers do. "
+    "You get several photos of the same buck from one season, from different days and angles; judge him "
+    "from all of them together. Go by the body first: a 1.5-year-old looks like a doe with antlers, long "
+    "legged with a thin neck and slender face; a 2.5-year-old is leggy with a lean, athletic body and a "
+    "neck that only starts to swell in the rut; a 3.5-year-old has a deeper chest, legs that look about "
+    "right for his body and a muscled neck, but still a tight belly and a fairly level back; a "
+    "4.5-year-old's chest looks deeper than his legs are long, his neck blends into the shoulders in the "
+    "rut and his belly and back line start to sag; 5.5 and older look heavy all over, legs short for the "
+    "body, sagging belly and back, a blocky or saggy face. Antlers support the call but mislead on their "
+    "own: good-fed young bucks can carry big racks and old bucks can carry small ones. Account for "
+    "season (necks swell from about October into December), night infrared, distance, angle and posture. "
+    "Deer in {region} are the size typical there; don't hold them to northern body sizes. When the photos "
+    "don't show enough of his body, say 'unknown' rather than guess."
+)
+
+
 VERIFY_SYSTEM = (
     "You check trail-camera crops that an automatic classifier flagged as an antlered buck. That classifier "
     "is wrong about half the time: it mistakes does for bucks, reading ears, fence wire, feeder legs, "

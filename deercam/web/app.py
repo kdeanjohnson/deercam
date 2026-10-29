@@ -757,7 +757,8 @@ def bucks(season: str | None = None):
                JOIN detections d ON d.buck_id=b.id AND d.match_status IN ('confirmed','auto')
                JOIN photos p ON p.photo_id=d.photo_id
                GROUP BY b.id, season(p.taken_utc)""").fetchall()
-        season_notes = {(r["buck_id"], r["season"]): r["notes"] for r in conn.execute("SELECT * FROM buck_seasons")}
+        bs = {(r["buck_id"], r["season"]): r for r in conn.execute("SELECT * FROM buck_seasons")}
+        season_notes = {k: r["notes"] for k, r in bs.items()}
         out: dict[int, dict] = {}
         for r in rows:
             b = out.setdefault(r["id"], {k: r[k] for k in ("id", "name", "notes", "generic", "status",
@@ -786,6 +787,7 @@ def bucks(season: str | None = None):
             shown = b.get("last_season", s)
             b["thumb"] = _thumb(conn, b["id"], shown)
             b["season_notes"] = season_notes.get((b["id"], shown)) if shown is not None else None
+            b["age"] = _age(bs.get((b["id"], shown)))
             result.append(b)
         # Hit list first, then other named bucks, auto-groups, absent ones; harvested/dead last
         # within each, newest first.
@@ -803,15 +805,43 @@ def buck_detail(buck_id: int):
             raise HTTPException(404, "no such buck")
         rows = conn.execute(DETECTION_SQL + """WHERE d.buck_id=? AND d.match_status IN ('confirmed','auto')
                                                ORDER BY p.taken_utc DESC""", (buck_id,)).fetchall()
-        notes = {r["season"]: r["notes"] for r in conn.execute(
-            "SELECT season, notes FROM buck_seasons WHERE buck_id=?", (buck_id,))}
+        bs = {r["season"]: r for r in conn.execute("SELECT * FROM buck_seasons WHERE buck_id=?", (buck_id,))}
+        notes = {s: r["notes"] for s, r in bs.items()}
         sightings = [_row(r) for r in rows]
         seen = sorted({d["season"] for d in sightings} | set(notes), reverse=True)
-        seasons = [{"season": s, "label": f"{s}-{str(s + 1)[2:]}", "notes": notes.get(s),
+        seasons = [{"season": s, "label": f"{s}-{str(s + 1)[2:]}", "notes": notes.get(s), "age": _age(bs.get(s)),
                     "sightings": sum(d["season"] == s for d in sightings), "thumb": _thumb(conn, buck_id, s)}
                    for s in seen]
         info = {k: b[k] for k in ("id", "name", "notes", "generic", "status", "status_date", "status_note", "tag")}
     return {"buck": info | {"seasons": seasons}, "sightings": sightings}
+
+
+def _age(r) -> dict | None:
+    """A buck's age estimate for a season (age.py), for the page."""
+    if r is None or r["age_class"] is None:
+        return None
+    return {k[4:]: r[k] for k in ("age_class", "age_confidence", "age_reason", "age_photos", "age_at")} | {"cues": json.loads(r["age_cues"] or "{}")}
+
+
+class AgeRequest(BaseModel):
+    season: int
+
+
+@app.post("/api/bucks/{buck_id}/age")
+@needs("member")
+def buck_age(buck_id: int, body: AgeRequest):
+    """Ask the AI again how old he is that season, from his best photos."""
+    from ..age import estimate
+    try:
+        estimate(buck_id, body.season)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except SetupError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"{type(e).__name__}: {e}")
+    with db.session() as conn:
+        return _age(conn.execute("SELECT * FROM buck_seasons WHERE buck_id=? AND season=?", (buck_id, body.season)).fetchone())
 
 
 class Assign(BaseModel):
@@ -1055,7 +1085,8 @@ def rename(buck_id: int, body: Rename):
         if buck is None:
             raise HTTPException(404, "no such buck")
         if body.season is not None:
-            conn.execute("INSERT OR REPLACE INTO buck_seasons(buck_id, season, notes) VALUES(?,?,?)",
+            conn.execute("INSERT INTO buck_seasons(buck_id, season, notes) VALUES(?,?,?) "
+                         "ON CONFLICT(buck_id, season) DO UPDATE SET notes=excluded.notes",
                          (buck_id, body.season, (body.season_notes or "").strip() or None))
         if buck["generic"] and name == buck["name"]:  # notes only; still a placeholder group
             conn.execute("UPDATE bucks SET notes=? WHERE id=?", (notes, buck_id))

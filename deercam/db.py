@@ -84,7 +84,14 @@ MIGRATIONS = [
     ("detections", "animal", "TEXT"),
     ("detections", "reviewed_at", "TEXT"),  # when a person last decided what this animal is (UTC ISO)
     ("detections", "reviewed_by", "INTEGER"),  # and which user
-    ("photos", "hd_id", "TEXT"),  # Reveal's id for the HD copy shown in place of this photo (sync._place_hd)
+    ("photos", "hd_id", "TEXT"),
+    # one age estimate per buck per season (age.py)
+    ("buck_seasons", "age_class", "TEXT"),        # 1.5 | 2.5 | 3.5 | 4.5 | 5.5_plus | unknown
+    ("buck_seasons", "age_confidence", "TEXT"),   # low | medium | high
+    ("buck_seasons", "age_reason", "TEXT"),
+    ("buck_seasons", "age_cues", "TEXT"),         # JSON: neck, chest_and_belly, legs_and_body, face, rack
+    ("buck_seasons", "age_photos", "INTEGER"),    # his photos that season when it was made
+    ("buck_seasons", "age_at", "TEXT"),  # Reveal's id for the HD copy shown in place of this photo (sync._place_hd)
 ]
 
 

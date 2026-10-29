@@ -8,6 +8,7 @@ log = logging.getLogger(__name__)
 def run(step=lambda label: None, full: bool = False, since: datetime | None = None,
         days: int | None = None) -> dict:
     """step(label) is told which stage is running, for progress in the UI."""
+    from .age import estimate_due
     from .analyze import analyze
     from .detect import detect
     from .identify import identify
@@ -21,4 +22,6 @@ def run(step=lambda label: None, full: bool = False, since: datetime | None = No
     out["analyzed"] = analyze()
     step("matching bucks")
     out["matching"] = identify()
+    step("aging bucks")
+    out["aged"] = estimate_due()
     return out

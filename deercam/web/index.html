@@ -260,6 +260,11 @@
   .bcard.absent img { opacity:.55; }
   .bcard .nm { font-weight:700; font-size:16px; margin-top:7px; }
   .bcard .meta { font-size:12px; }
+  .age-box { background:var(--card); border-radius:12px; padding:10px 12px; margin:0 0 10px; display:flex; flex-direction:column; gap:4px; }
+  .age-box .row { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; } .age-box .row b { font-size:16px; }
+  .age-box .row .btn { margin-left:auto; } .age-box details { font-size:13px; color:var(--ink2); }
+  .age-box dl { display:grid; grid-template-columns:auto 1fr; gap:3px 10px; margin:6px 0 0; } .age-box dt { font-weight:650; color:var(--ink); }
+  .sw-l > b small { font-weight:600; color:var(--ink2); margin-left:4px; }
   .bcard.generic .nm { color:var(--ink2); }
   /* the AI's auto-groups: their own section under the named bucks, smaller */
   .bsec { margin-top:28px; padding-top:4px; border-top:1px solid var(--line); }
@@ -1925,6 +1930,19 @@ async function showBucks() {
       <div class="bgrid">${absent.map(buckCard).join('')}</div>` : ''}`;
 }
 
+// The AI's age estimate for a buck's season (age.py): "~3½ yrs".
+const AGE_LABEL = { '1.5': '1½', '2.5': '2½', '3.5': '3½', '4.5': '4½', '5.5_plus': '5½+' };
+const ageText = a => a && AGE_LABEL[a.class] ? `~${AGE_LABEL[a.class]} yrs` : '';
+function ageBox(b, s) {
+  const a = s.age, btn = can('member') ? `<button class="btn small" data-act="age-again" data-season="${s.season}">${a ? 'Ask again' : 'Estimate his age'}</button>` : '';
+  if (!a) return s.sightings >= 1 ? `<div class="age-box"><div class="row"><span class="meta">No age estimate yet${s.sightings < 2 ? ' (it waits for a second photo of him)' : ''}</span>${btn}</div></div>` : '';
+  const cues = Object.entries({ neck: 'Neck', chest_and_belly: 'Chest & belly', legs_and_body: 'Legs & body', face: 'Face', rack: 'Rack' })
+    .filter(([k]) => a.cues?.[k]).map(([k, l]) => `<dt>${l}</dt><dd>${esc(a.cues[k])}</dd>`).join('');
+  return `<div class="age-box" title="The AI's estimate from his best photos this season; redone as he gets more">
+    <div class="row">Age <b>${ageText(a) || 'unclear'}</b><span class="meta">${esc(a.confidence)} confidence · from ${a.photos} photo${a.photos === 1 ? '' : 's'}</span>${btn}</div>
+    ${a.reason ? `<div>${esc(a.reason)}</div>` : ''}${cues ? `<details><summary>What the AI went by</summary><dl>${cues}</dl></details>` : ''}</div>`;
+}
+
 function buckCard(b) {
   const line = b.absent ? `Last seen ${esc(seasonLabel(b.last_season))}`
     : `${b.daylight} daylight · ${b.visits} visit${b.visits === 1 ? '' : 's'}`;
@@ -1934,6 +1952,7 @@ function buckCard(b) {
     <div class="nm">${esc(b.name)}${star(b)}${b.generic ? '' : badges(b)}</div>
     <div class="meta">${line}</div>
     ${ld ? `<div class="meta">${lightTag(ld.light, `${when(ld.local)} · ${ld.camera}`)}</div>` : ''}
+    ${ageText(b.age) ? `<div class="meta">Age ${ageText(b.age)}${b.age.confidence === 'low' ? ' (rough guess)' : ''}</div>` : ''}
     ${b.season_notes ? `<div class="meta">${esc(b.season_notes)}</div>` : ''}
   </button>`;
 }
@@ -1977,6 +1996,7 @@ async function showBuck(id) {
           <input value="${esc(s.notes)}" placeholder="Rack features this season, e.g. right brow tine missing"
                  title="Your notes on his rack this season. Racks change every year, so each season has its own.">
           <button class="btn small" data-act="save-season">Save</button><span class="meta"></span></div></div>
+        ${b.generic ? '' : ageBox(b, s)}
         <div class="pgrid">${sightings.filter(d => d.season === s.season).map(d => `
           <div class="ptile" data-id="${d.id}" title="${esc(`${d.camera} · ${when(d.when)}${d.match_reason && d.match_status === 'auto' ? `\n${d.match_reason}` : ''}`)}">
             ${zoomImg(d.crop, d.photo)}
@@ -4546,7 +4566,7 @@ async function swRender() {
     return `<div class="sw-l${sw.pick === b.id ? ' on' : ''}" data-bid="${b.id}"><div class="sw-lph">${r ? `<img src="${r.crop}" alt="" loading="lazy">` : b.thumb ? `<img src="${b.thumb}" alt="">` : ''}
         ${rs.length > 1 ? `<button class="sw-ln prev" data-flip="${b.id}" data-d="-1" aria-label="Previous photo">‹</button><button class="sw-ln next" data-flip="${b.id}" data-d="1" aria-label="Next photo">›</button><span class="sw-lc">${ri + 1}/${rs.length}</span>` : ''}
         <i class="sw-chk">✓</i>${sw.piles[b.id] ? `<em class="pile">${sw.piles[b.id]}</em>` : ''}</div>
-      <b>${esc(b.name)}</b></div>`; }).join('')
+      <b>${esc(b.name)}${ageText(b.age) ? `<small>${ageText(b.age)}</small>` : ''}</b></div>`; }).join('')
     + (can('member') ? `<div class="sw-l new${sw.naming ? ' on' : ''}" data-sw-new><div class="sw-lph">${sw.naming
       ? `<img src="${d.crop}" alt=""><i class="sw-chk">✓</i><div class="sw-nb"><input id="sw-nb" maxlength="40" placeholder="His name" autocomplete="off" value="${esc(sw.newName || '')}"></div>`
       : '<span>+</span>'}</div><b>New buck</b></div>` : '');
@@ -5247,6 +5267,12 @@ document.addEventListener('click', async e => {
     await showBuck(buckId);
     $('#buck-saved').textContent = 'Saved';
     return;
+  }
+  if (act === 'age-again') {
+    btn.disabled = true; btn.textContent = 'Looking at his photos…';
+    try { await post(`/api/bucks/${buckId}/age`, { season: Number(btn.dataset.season) }); }
+    catch (err) { btn.disabled = false; btn.textContent = 'Try again'; toast(err.detail || 'Couldn’t estimate his age'); return; }
+    return showBuck(buckId);
   }
   if (act === 'not-a-buck') {
     btn.disabled = true;

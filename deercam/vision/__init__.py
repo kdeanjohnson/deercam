@@ -1,7 +1,7 @@
 import os
 
 from ..config import settings
-from .base import AntlerCheck, DeerAnalysis, ImagePart, MatchDecision, NameIdeas, Rack, VisionProvider, WildlifeCheck
+from .base import AntlerCheck, BuckAge, DeerAnalysis, ImagePart, MatchDecision, NameIdeas, Rack, VisionProvider, WildlifeCheck
 
 # label: shown in setup. key: the Settings field holding the API key. model: default for the buck work
 # (antler double-check, matching). fast: default for the first look at every crop and name ideas, where

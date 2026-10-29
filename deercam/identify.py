@@ -404,7 +404,8 @@ def add_notes(conn, buck_id: int, season: int | None, notes: str) -> None:
         conn.execute("UPDATE bucks SET notes=? WHERE id=?", ("; ".join(filter(None, [old, notes])), buck_id))
         return
     old = conn.execute("SELECT notes FROM buck_seasons WHERE buck_id=? AND season=?", (buck_id, season)).fetchone()
-    conn.execute("INSERT OR REPLACE INTO buck_seasons(buck_id, season, notes) VALUES(?,?,?)",
+    conn.execute("INSERT INTO buck_seasons(buck_id, season, notes) VALUES(?,?,?) "
+                         "ON CONFLICT(buck_id, season) DO UPDATE SET notes=excluded.notes",
                  (buck_id, season, "; ".join(filter(None, [old and old["notes"], notes]))))
 
 

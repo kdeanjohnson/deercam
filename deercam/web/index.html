@@ -312,7 +312,8 @@
   .ptile { position:relative; }
   .ptile img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; cursor:zoom-in; background:var(--soft); }
   .ptile .auto { position:absolute; left:6px; top:6px; background:rgba(255,255,255,.94); color:#15171a; border-radius:8px; font-size:11px; font-weight:700; padding:1px 6px; }
-  .ptile .acts { display:flex; gap:4px; margin-top:4px; }
+  .ptile .acts { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+  .ptile .acts button.yes { flex-basis:100%; }
   .ptile .acts button { flex:1; border:0; border-radius:8px; background:var(--soft); font-size:12px; font-weight:600; padding:5px 0; }
   .ptile .acts button.yes { background:var(--ink); color:var(--on-ink); }
   .form { display:flex; flex-direction:column; gap:8px; }
@@ -2002,7 +2003,8 @@ async function showBuck(id) {
             ${zoomImg(d.crop, d.photo)}
             ${d.match_status === 'auto' ? `<span class="auto">Auto${d.match_confidence != null ? ` ${Math.round(d.match_confidence * 100)}%` : ''}</span>` : ''}
             <div class="acts">${d.match_status === 'auto' ? `<button class="yes" data-act="accept" data-buck="${id}">✓ Him</button>` : ''}
-              <button data-act="unassign">Not him</button></div>
+              <button data-act="move" title="Another buck, a new one, or not a buck at all">Move</button>
+              <button data-act="unassign" title="Back to Review to decide later">Not him</button></div>
           </div>`).join('')}</div>`).join('')}
       <h3 class="edit-h">About him</h3>
       <div class="form" id="buck-edit">
@@ -2153,12 +2155,13 @@ async function closeReviewModal(refresh = true) {
     scrollTo(0, y);
   }
   if (refresh && rvModalDirty && view === 'timeline') { tlReload(); refreshCounts(); }
+  if (refresh && rvModalDirty && view === 'buck') { const y = scrollY; await showBuck(Number(arg)); refreshCounts(); scrollTo(0, y); }
 }
 
 // The Gallery's "Who is this?": the one photo in a window, so the Gallery stays where it was.
 async function tagInModal(id) {
-  const [one, list] = await Promise.all([api(`/api/detections/${id}`), api(`/api/bucks?season=${season()}`)]);
-  bucks = list;
+  const one = await api(`/api/detections/${id}`);
+  bucks = await api(`/api/bucks?season=${one.season ?? season()}`);
   openReviewModal(id, [one]);
 }
 
@@ -2317,6 +2320,7 @@ async function renderReview() {
       <div class="rv-links">
         <button class="link" id="rv-young" title="A young buck nobody’s going to name: out of Review for good, still counted as a buck">Young buck, not tracking</button>
         <button class="link" id="rv-reject" title="Not a buck, or antlers not visible enough to ID">Not a buck / can't tell</button>
+        ${solo ? '<button class="link" data-rv-animal="doe">It’s a doe</button><button class="link" data-rv-animal="fawn">It’s a fawn</button>' : ''}
         ${solo ? '' : '<button class="link" id="rv-skip">Skip</button>'}
         <button class="link" id="rv-full">Full photo</button>
       </div>
@@ -2348,7 +2352,8 @@ async function renderReview() {
 }
 
 function cand(b, d, isPast = false) {
-  const sub = b.id === d.buck_id && d.match_confidence != null ? `<small class="sug">AI guess ${Math.round(d.match_confidence * 100)}%</small>`
+  const sub = b.id === d.buck_id && d.match_status === 'confirmed' ? '<small class="sug">Now</small>'
+    : b.id === d.buck_id && d.match_confidence != null ? `<small class="sug">AI guess ${Math.round(d.match_confidence * 100)}%</small>`
     : isPast ? `<small>${esc(seasonLabel(b.last_season))}</small>` : `<small>${b.generic ? 'auto-group' : `${b.visits} visit${b.visits === 1 ? '' : 's'}`}</small>`;
   return `<button class="cand ${isPast ? 'past' : ''}" data-pick="${b.id}" title="${esc(b.season_notes || b.notes || '')}">
     ${b.thumb ? `<img src="${b.thumb}" alt="">` : '<div class="plus"></div>'}<b>${esc(b.name)}${star(b)}</b>${sub}</button>`;
@@ -2389,6 +2394,11 @@ async function reviewClick(e) {
   if (t.id === 'rv-young') {
     await post('/api/detections/untrack', { ids: [d.id] });
     toast('Left unnamed as a young buck');
+    return afterReview();
+  }
+  if (t.dataset.rvAnimal) {
+    await post(`/api/detections/${d.id}/animal`, { animal: t.dataset.rvAnimal });
+    toast(`Relabeled as a ${t.dataset.rvAnimal}`);
     return afterReview();
   }
   if (t.id === 'rv-reject') {
@@ -5333,6 +5343,7 @@ document.addEventListener('click', async e => {
     if (r.searching) watchJob();
     btn.remove(); tile.querySelector('.auto')?.remove();
   }
+  if (act === 'move') return tagInModal(id);
   if (act === 'unassign') { await post(`/api/detections/${id}/unassign`); tile.remove(); toast('Sent back to Review'); }
   refreshCounts();
 });

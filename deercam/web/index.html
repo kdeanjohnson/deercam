@@ -4121,13 +4121,14 @@ function intelFacts(v, ws, cams, where) {
 const weatherHours = (where, pastDays) => fetch(`https://api.open-meteo.com/v1/forecast?latitude=${where.lat.toFixed(2)}&longitude=${where.lon.toFixed(2)}&hourly=temperature_2m,wind_direction_10m,wind_speed_10m,pressure_msl&temperature_unit=fahrenheit&wind_speed_unit=mph&timeformat=unixtime&timezone=GMT&past_days=${pastDays}&forecast_days=7`)
   .then(r => r.ok ? r.json() : null).then(d => d?.hourly ? d.hourly.time.map((t, i) => ({ t: t * 1000, temp: d.hourly.temperature_2m[i], deg: d.hourly.wind_direction_10m[i], mph: d.hourly.wind_speed_10m[i], p: d.hourly.pressure_msl[i] * 0.02953 })) : null).catch(() => null);
 async function showIntel() {
-  const [home, tl, tr] = await Promise.all([api(`/api/home?season=${season()}`), api('/api/timeline?days=120').catch(() => null),
-                                            api(`/api/trends?season=${season()}`).catch(() => null)]);
+  const [home, tl, tr, trs, everyone] = await Promise.all([api(`/api/home?season=${season()}`), api('/api/timeline?days=120').catch(() => null),
+                                            api(`/api/trends?season=${season()}`).catch(() => null), api('/api/trends/seasons').catch(() => null),
+                                            api('/api/bucks?season=all').catch(() => [])]);
   if (view !== 'intel') return;
   const bucks = home.bucks.slice().sort((a, b) => (b.tag === 'target') - (a.tag === 'target') || b.visits - a.visits);
   const cams = Object.fromEntries((tl?.cameras || []).map(c => [c.camera_id, c]));
   const placed = Object.values(cams).filter(c => c.lat != null);
-  intel = { bucks, cams, tl, tr, trRange: intel?.trRange || 30, pats: {}, where: placed.length ? { lat: placed.reduce((a, c) => a + c.lat, 0) / placed.length, lon: placed.reduce((a, c) => a + c.lon, 0) / placed.length } : null,
+  intel = { bucks, cams, tl, tr, trs, everyone, trRange: intel?.trRange || 30, pats: {}, where: placed.length ? { lat: placed.reduce((a, c) => a + c.lat, 0) / placed.length, lon: placed.reduce((a, c) => a + c.lon, 0) / placed.length } : null,
             buck: intel?.buck && bucks.some(b => b.id === intel.buck) ? intel.buck : null };
   if (!bucks.length) { $('#main').innerHTML = `<div class="empty tl-wait">${LEAP_SVG}Name a buck in Review and his scorecard shows up here.</div>`; return; }
   const firstPhoto = Math.min(Date.now(), ...(tl?.photos || []).map(p => p[0])), pastDays = Math.min(92, Math.ceil((Date.now() - firstPhoto) / DAY) + 2);
@@ -4422,6 +4423,68 @@ function trInsightsBox() {
     <small>Buck visits against the property’s hourly weather, counted per hour the cameras were running. “Lined up with” isn’t proof: a front brings cold, a pressure change and a wind shift together.</small></div>`;
 }
 function trKind(v) { return v.tag === 'target' ? 'hit' : v.buck && !v.generic ? 'named' : 'other'; }
+// ---- across seasons: this season against the earlier ones over the same calendar dates (Oct 11 – Nov 5 this
+// year against Oct 11 – Nov 5 last year), per camera-day since the cameras and how long they ran differ by season;
+// when daylight movement peaked in earlier seasons; the camera that draws the most bucks; and who's back.
+function trSeasonsBox() {
+  const X = intel.trs; if (!X) return '';
+  const cur = X.current, S = X.seasons[cur], past = Object.keys(X.seasons).map(Number).filter(s => s < cur).sort((a, b) => b - a);
+  if (!S || !past.length) return '';
+  const cdays = Object.keys(S.days).filter(d => S.days[d].cams).sort(); if (cdays.length < 3) return '';
+  const DAYMS = 864e5, ms = d => Date.parse(d + 'T00:00:00Z'), iso = t => new Date(t).toISOString().slice(0, 10);
+  const lab = s => `${s}-${String(s + 1).slice(2)}`, back = (d, k) => `${Number(d.slice(0, 4)) - k}${d.slice(4)}`;
+  const md = d => new Date(ms(d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const span = (a, b) => a.slice(5, 7) === b.slice(5, 7) ? `${md(a)}–${Number(b.slice(8))}` : `${md(a)} – ${md(b)}`;
+  const sum = (s, from, to) => { const t = { cams: 0, bucks: 0, legal: 0 }; for (const [d, x] of Object.entries(X.seasons[s]?.days || {})) if (d >= from && d <= to) { t.cams += x.cams; t.bucks += x.bucks; t.legal += x.legal; } return t; };
+  const first = cdays[0], last = cdays.at(-1), now = sum(cur, first, last), pct = (a, b) => b ? Math.round(100 * a / b) : 0;
+  const same = past.map(p => ({ p, ...sum(p, back(first, cur - p), back(last, cur - p)) })).filter(c => c.cams >= 10);
+  const row = (icon, html, sub) => `<div class="tr-in"><i>${icon}</i><div>${html}${sub ? `<small>${sub}</small>` : ''}</div></div>`, out = [];
+  // pace: buck visits a camera-day over the same dates
+  if (now.cams >= 6 && same.length) {
+    const rate = now.bucks / now.cams, vs = same.map(c => { const r = c.bucks / c.cams ? rate / (c.bucks / c.cams) : Infinity;
+      return `<b>${r >= 1.9 ? `${r === Infinity ? 'well' : r.toFixed(1) + '×'} ahead of` : r >= 1.15 ? `${Math.round((r - 1) * 100)}% ahead of` : r <= .87 ? `${Math.round((1 - r) * 100)}% behind` : 'about even with'}</b> ${lab(c.p)}`; });
+    out.push(row('↗', `Buck movement is running ${vs.join(' and ')} over the same dates.`,
+      `${span(first, last)}: ${rate.toFixed(1)} buck visits a camera-day this season · ${same.map(c => `${(c.bucks / c.cams).toFixed(1)} in ${lab(c.p)}`).join(' · ')}`));
+  }
+  // daylight: how much of it is in legal light
+  const lit = same.filter(c => c.bucks >= 15);
+  if (now.bucks >= 10 && lit.length) out.push(row('☀', `<b>${pct(now.legal, now.bucks)}%</b> of buck visits have been in legal light, against ${lit.map(c => `${pct(c.legal, c.bucks)}% in ${lab(c.p)}`).join(' and ')} over the same dates.`,
+    `${now.legal} of ${now.bucks} this season · ${lit.map(c => `${c.legal} of ${c.bucks} in ${lab(c.p)}`).join(' · ')}`));
+  // the daylight peak: each earlier season's best 7 days for legal-light buck visits a camera-day
+  const today = iso(Date.now() - new Date().getTimezoneOffset() * 6e4), peaks = [];
+  for (const p of past) {
+    const D = X.seasons[p].days, ds = Object.keys(D).sort(); let best = null;
+    for (const d of ds) { const e = iso(ms(d) + 6 * DAYMS), w = sum(p, d, e); if (w.cams >= 7 && w.legal >= 8 && (!best || w.legal / w.cams > best.r)) best = { p, d, e, r: w.legal / w.cams }; }
+    if (!best) continue;
+    const base = same.find(c => c.p === p), at = back(best.d, p - cur);  // the peak's start, on this season's calendar
+    peaks.push({ ...best, x: base?.cams && base.legal ? best.r / (base.legal / base.cams) : null, away: Math.round((ms(at) - ms(today)) / DAYMS), endAway: Math.round((ms(back(best.e, p - cur)) - ms(today)) / DAYMS) });
+  }
+  if (peaks.length) {
+    const next = peaks.filter(k => k.endAway >= 0).sort((a, b) => a.away - b.away)[0];
+    const when = !next ? 'Those dates are behind us this season.' : next.away <= 0 ? `That’s <b>this week</b> on the calendar.` : `${peaks.length > 1 ? 'The nearest' : 'That'} comes up <b>${next.away === 1 ? 'tomorrow' : `in ${next.away} days`}</b> on the calendar.`;
+    out.push(row('◎', `Daylight buck movement peaked ${peaks.map(k => `<b>${span(k.d, k.e)}</b> in ${lab(k.p)}`).join(' and ')}. ${when}`,
+      peaks.map(k => `${lab(k.p)}: ${k.r.toFixed(1)} legal-light visits a camera-day that week${k.x && k.x >= 1.2 ? `, ${k.x.toFixed(1)}× its pace on these dates` : ''}`).join(' · ')));
+  }
+  // the camera that draws the most bucks, per day it ran
+  const lead = s => Object.entries(X.seasons[s]?.cams || {}).filter(([, c]) => c.days >= 10).map(([n, c]) => ({ n, r: c.bucks / c.days })).sort((a, b) => b.r - a.r)[0];
+  const L = lead(cur), Lp = past.map(p => ({ p, l: lead(p) })).filter(x => x.l);
+  if (L && Lp.length) {
+    const agree = Lp.filter(x => x.l.n === L.n), differ = Lp.filter(x => x.l.n !== L.n);
+    out.push(row('⌖', `<b>${esc(L.n)}</b> draws the most buck visits per day this season${agree.length ? `, as it did in ${agree.map(x => lab(x.p)).join(' and ')}` : ''}${differ.length ? `${agree.length ? '; ' : '. '}${differ.map(x => `in ${lab(x.p)} it was <b>${esc(x.l.n)}</b>`).join(', ')}` : ''}.`,
+      [`this season ${L.r.toFixed(1)} a day`, ...Lp.map(x => `${lab(x.p)} ${x.l.r.toFixed(1)}`)].join(' · ') + ' · cameras with 10+ days of photos'));
+  }
+  // who's back from last season
+  const prev = (intel.everyone || []).filter(b => !b.generic && b.seasons?.includes(cur - 1));
+  if (prev.length) {
+    const here = prev.filter(b => b.seasons.includes(cur)), gone = prev.filter(b => !b.seasons.includes(cur) && b.status === 'alive');
+    out.push(row('↺', `<b>${here.length} of ${prev.length}</b> bucks named in ${lab(cur - 1)} ${here.length === 1 ? 'is' : 'are'} back this season${here.length ? `: ${here.map(b => esc(b.name)).join(', ')}` : ''}.`,
+      gone.length ? `Not seen yet: ${gone.map(b => esc(b.name)).join(', ')}` : ''));
+  }
+  if (!out.length) return '';
+  return `<div class="tr-ins"><b>Across seasons</b>${out.join('')}
+    <small>Seasons compared over the same calendar dates, per day each camera had photos, since the cameras and how long they ran differ by season.</small></div>`;
+}
+
 function trendsBox() {
   const tr = intel.tr;
   if (!tr || !tr.visits.length) return '';
@@ -4497,7 +4560,7 @@ function trendsBox() {
   const key = `<span class="tr-key"><span><i style="background:${TR_C.hit}"></i>Hit list</span><span><i style="background:${TR_C.named}"></i>Named</span><span><i style="background:${TR_C.other}"></i>Other bucks</span></span>`;
   return `<section class="in-card" id="tr">
     <div class="in-top"><div class="in-title"><b>Trends</b><span>${stale ? `as of ${md(lastDay)}, the newest photos · ` : ''}${all.length} buck visits this season</span></div>${range}</div>
-    ${tiles}${trInsightsBox()}
+    ${tiles}${trInsightsBox()}${trSeasonsBox()}
     <div class="tr-h">Buck movement<span>visits a day${n >= 10 ? ' · line: 7-day average' : ''}</span>${key.replace('</span></span>', `</span>${n >= 10 ? '<span><i class="ln"></i>7-day avg</span>' : ''}</span>`)}</div>${chart1}
     <div class="tr-h">When they move<span>every buck visit at its time of day · shading: night, legal light, daylight</span>${key}</div>${chart2}
     ${who ? `<div class="tr-h">Who’s moving<span>named bucks · tall marks in legal light, short at night · visits in the last 7 days, ▲▼ against the week before</span></div><div class="tr-who">${who}</div>` : ''}

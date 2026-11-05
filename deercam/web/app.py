@@ -1350,6 +1350,48 @@ def trends(season: str | None = None):
     return {"visits": visits, "days": {k: v | {"cams": len(v["cams"])} for k, v in sorted(days.items())}}
 
 
+@app.get("/api/trends/seasons")
+@needs("viewer")
+def trend_seasons():
+    """Every season day by day, for comparing seasons over the same dates on the Trends page. Per camera-local
+    day: the cameras with photos, buck visits (all, and in legal light) and doe photos; per camera, the days it
+    had photos and its buck visits. Cameras and how long they ran differ by season, so the page compares per
+    camera-day."""
+    out: dict[int, dict] = {}
+    season_of = lambda d: settings.season_of(datetime.combine(d, datetime.min.time()))
+
+    def day(d):
+        s = out.setdefault(season_of(d), {"days": {}, "cams": {}})
+        return s, s["days"].setdefault(d.isoformat(), {"cams": 0, "bucks": 0, "legal": 0, "does": 0})
+
+    with db.session() as conn:
+        names = {r["camera_id"]: r["name"] for r in conn.execute("SELECT camera_id, name FROM cameras")}
+        rows = conn.execute("""SELECT p.meta_json, p.camera_id, MAX(d.sex='doe') AS doe
+                               FROM photos p LEFT JOIN detections d ON d.photo_id=p.photo_id AND d.species='deer'
+                               GROUP BY p.photo_id""").fetchall()
+    seen = set()  # (camera, day)
+    for r in rows:
+        t = patterns._local(r["meta_json"])
+        if t is None:
+            continue
+        s, d = day(t.date())
+        d["does"] += bool(r["doe"])
+        if (r["camera_id"], t.date()) not in seen:
+            seen.add((r["camera_id"], t.date()))
+            d["cams"] += 1
+            c = s["cams"].setdefault(names.get(r["camera_id"]) or r["camera_id"], {"days": 0, "bucks": 0})
+            c["days"] += 1
+    for v in feed(season="all", limit=1_000_000):
+        if not v["local"]:
+            continue
+        s, d = day(datetime.strptime(v["local"], "%b %d %Y %I:%M %p").date())
+        d["bucks"] += 1
+        d["legal"] += v["light"] != "night"
+        if v["camera"] in s["cams"]:
+            s["cams"][v["camera"]]["bucks"] += 1
+    return {"current": settings.current_season(), "seasons": {k: out[k] for k in sorted(out)}}
+
+
 RARE_SHARE = 0.10  # an animal is unusual here when it's at most this share of all the non-deer visits
 
 

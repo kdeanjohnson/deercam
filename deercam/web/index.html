@@ -1102,6 +1102,8 @@
   .sw-l.on .sw-lph { box-shadow:0 0 0 3px var(--accent), 0 10px 26px rgba(90,165,120,.25); } .sw-l.on > b { color:var(--accent); }
   .sw-ln { position:absolute; top:50%; transform:translateY(-50%); width:28px; height:28px; border:0; border-radius:50%; background:rgba(15,19,18,.65); color:#fff; font-size:18px; line-height:1; cursor:pointer; opacity:0; transition:opacity .15s; }
   .sw-ln.prev { left:6px; } .sw-ln.next { right:6px; } .sw-l:hover .sw-ln { opacity:1; }
+  .sw-cmp { position:absolute; top:6px; left:6px; height:26px; padding:0 9px; border:0; border-radius:13px; background:rgba(15,19,18,.7); color:#fff; font-size:11.5px; font-weight:700; cursor:pointer; opacity:0; transition:opacity .15s; }
+  .sw-l:hover .sw-cmp, .sw-l.on .sw-cmp { opacity:1; }
   .sw-lc { position:absolute; bottom:6px; right:7px; font-size:10px; font-weight:700; color:#fff; background:rgba(15,19,18,.6); border-radius:7px; padding:1px 6px; }
   .sw-chk { position:absolute; top:7px; left:7px; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#0c120f; font-style:normal; font-weight:900; display:grid; place-items:center; transform:scale(0); transition:transform .15s; }
   .sw-l.on .sw-chk { transform:scale(1); }
@@ -1162,7 +1164,7 @@
     .swr { padding:6px 10px 170px; } .sw-strip { gap:4px 14px; margin-bottom:10px; min-height:0; } .sw-strip:not(:has(.sess)) { display:none; } .sw-strip b { font-size:15px; } .sw-grid { display:none; }
     .sw-main { grid-template-columns:1fr; gap:14px; } .sw-left { position:static; display:contents; } .sw-card { order:1; border-radius:16px; } .sw-ai { display:none; }
     .sw-deck { order:0; gap:6px; } .sw-stat { grid-template-columns:1fr; justify-items:center; text-align:center; padding:8px 6px; row-gap:4px; } .sw-stack { grid-row:auto; width:40px; height:46px; } .sw-stack b { font-size:13px; } .sw-stat span { font-size:11px; } .sw-stat small { display:none; }
-    .sw-right { order:2; } .sw-other { margin-top:0; } .sw-lineup { grid-template-columns:1fr 1fr; gap:10px; } .sw-ln { opacity:1; }
+    .sw-right { order:2; } .sw-other { margin-top:0; } .sw-lineup { grid-template-columns:1fr 1fr; gap:10px; } .sw-ln, .sw-cmp { opacity:1; }
     .sw-act { position:fixed; left:10px; right:10px; bottom:calc(86px + env(safe-area-inset-bottom)); z-index:25; order:3; padding:8px; border-radius:36px; background:rgba(15,19,18,.88); backdrop-filter:blur(14px); box-shadow:0 10px 30px rgba(0,0,0,.5); }
     .sw-act { grid-template-columns:1.5fr 1fr 1fr 1fr; gap:5px; } .sw-act button { height:52px; font-size:13.5px; gap:5px; padding:0 4px; } .sw-act :is(.sw-young, .sw-no, .sw-later) span { display:none; }
     .sw-yes .sw-all { font-size:11px; padding:1px 6px; } .sw-card.stack { margin:0 10px 10px 0; } .sw-pn { width:36px; height:36px; } .sw-act .long { display:none; } .sw-act button span { width:26px; height:26px; font-size:14px; } .sw-other { order:4; }
@@ -2436,7 +2438,7 @@ async function reviewClick(e) {
 
 // Side by side: the photo under review and a candidate's photos (his most alike first), and, on request,
 // the buck model's opinion. "That's him" saves the review as him.
-async function openCompare(d, buckId) {
+async function openCompare(d, buckId, onYes) {
   closeCompare();
   const box = document.createElement('div');
   box.className = 'cmp'; box.id = 'cmp';
@@ -2485,7 +2487,7 @@ async function openCompare(d, buckId) {
     const act = t.dataset.cmp;
     if (act === 'x') return closeCompare();
     if (act === 'prev' || act === 'next') { i = Math.max(0, Math.min(ps.length - 1, i + (act === 'next' ? 1 : -1))); return show(); }
-    if (act === 'yes') { closeCompare(); rv.pick = buckId; refreshPick(); return saveReview(); }
+    if (act === 'yes') { closeCompare(); if (onYes) return onYes(); rv.pick = buckId; refreshPick(); return saveReview(); }
     if (act === 'ai') {
       const out = $('#cmp-ai');
       t.disabled = true; t.textContent = 'Looking…';
@@ -4638,7 +4640,7 @@ async function swRender() {
   const lineup = bucks.map((b, i) => { const rs = refs[i], ri = (sw.ri[b.id] || 0) % Math.max(1, rs.length), r = rs[ri];
     return `<div class="sw-l${sw.pick === b.id ? ' on' : ''}" data-bid="${b.id}"><div class="sw-lph">${r ? `<img src="${r.crop}" alt="" loading="lazy">` : b.thumb ? `<img src="${b.thumb}" alt="">` : ''}
         ${rs.length > 1 ? `<button class="sw-ln prev" data-flip="${b.id}" data-d="-1" aria-label="Previous photo">‹</button><button class="sw-ln next" data-flip="${b.id}" data-d="1" aria-label="Next photo">›</button><span class="sw-lc">${ri + 1}/${rs.length}</span>` : ''}
-        <i class="sw-chk">✓</i>${sw.piles[b.id] ? `<em class="pile">${sw.piles[b.id]}</em>` : ''}</div>
+        <i class="sw-chk">✓</i>${sw.piles[b.id] ? `<em class="pile">${sw.piles[b.id]}</em>` : ''}${rs.length ? `<button class="sw-cmp" data-sw-cmp="${b.id}" title="This photo and his, side by side and bigger (C)">⇆ Compare</button>` : ''}</div>
       <b>${esc(b.name)}${ageText(b.age) ? `<small>${ageText(b.age)}</small>` : ''}</b></div>`; }).join('')
     + (can('member') ? `<div class="sw-l new${sw.naming ? ' on' : ''}" data-sw-new><div class="sw-lph">${sw.naming
       ? `<img src="${d.crop}" alt=""><i class="sw-chk">✓</i><div class="sw-nb"><input id="sw-nb" maxlength="40" placeholder="His name" autocomplete="off" value="${esc(sw.newName || '')}"></div>`
@@ -4656,7 +4658,7 @@ async function swRender() {
           ${visit}${d.summary || rack ? `<div class="sw-ai"><em>AI read</em>${esc(d.summary || '')}${rack ? `<small>${esc(rack)}</small>` : ''}</div>` : ''}</div>
         ${swDeck()}
       </div>
-      <div class="sw-right"><div class="sw-h">The lineup<span>tap the buck it is · flip through his photos</span></div><div class="sw-lineup">${lineup}</div>
+      <div class="sw-right"><div class="sw-h">The lineup<span>tap the buck it is · flip through his photos · ⇆ for side by side</span></div><div class="sw-lineup">${lineup}</div>
         <div class="sw-act">
           ${yes}
           <button class="sw-young" data-sw-young title="A young buck nobody’s going to name: out of Review for good, still counted as a buck"><span>↓</span><b>Young<em class="long"> buck</em></b></button>
@@ -4682,6 +4684,10 @@ async function swRender() {
   if (split) split.onclick = () => { sw.items.splice(0, 1, ...g.map(x => ({ ...x, visit: null, group: [x], skipped: d.skipped }))); swRender(); };
   card.querySelector('.sw-flip').onclick = e => { e.stopPropagation(); const full = img.src.endsWith(img.dataset.full); img.src = full ? img.dataset.crop : img.dataset.full; e.target.textContent = full ? 'Full photo' : 'Close-up'; card.classList.toggle('full', !full); };
   $$('[data-flip]').forEach(el => el.onclick = e => { e.stopPropagation(); const id = Number(el.dataset.flip), n = refs[bucks.findIndex(b => b.id === id)].length; sw.ri[id] = ((sw.ri[id] || 0) + Number(el.dataset.d) + n) % n; swRender(); });
+  // side by side: the photo showing now against his; "That's him" decides the whole visit
+  sw.compare = id => { const b = bucks.find(x => x.id === id); if (!b) return;
+    openCompare(g[sw.at] || d, id, () => swDecide(b.name, 'pile', () => post('/api/detections/assign', { ids, buck_id: id }), id)); };
+  $$('[data-sw-cmp]').forEach(el => el.onclick = e => { e.stopPropagation(); sw.compare(Number(el.dataset.swCmp)); });
   $$('.sw-l[data-bid]').forEach(el => el.onclick = () => { const id = Number(el.dataset.bid); sw.pick = sw.pick === id ? null : id; sw.none = false; sw.naming = false; swRender(); });
   const nb = $('#sw-nb');
   $('[data-sw-new]')?.addEventListener('click', e => { if (e.target === nb) return; sw.naming = !sw.naming; sw.pick = null; sw.none = false; swRender(); });
@@ -5426,8 +5432,9 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.closest('#s-login')) signIn();
   if (e.key === 'Enter' && e.target.closest('#s-join')) joinGo();
   // Review lineup: S skips, the arrows step through the visit's photos
-  if (view === 'swipe' && sw?.items.length && !e.target.closest('input, textarea, select') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+  if (view === 'swipe' && sw?.items.length && !$('#cmp') && !e.target.closest('input, textarea, select') && !e.ctrlKey && !e.metaKey && !e.altKey) {
     if (e.key === 's' || e.key === 'S') swSkip('left');
+    if ((e.key === 'c' || e.key === 'C') && sw.pick && sw.compare) sw.compare(sw.pick);
     if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && sw.show && sw.items[0].group.length > 1) { e.preventDefault(); sw.show(sw.at + (e.key === 'ArrowLeft' ? -1 : 1)); }
   }
 });

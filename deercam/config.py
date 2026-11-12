@@ -84,9 +84,12 @@ class Settings:
 
     # Identification
     embed_model: str = field(default_factory=lambda: _env("EMBED_MODEL", "facebook/dinov2-base"))
-    match_candidates: int = field(default_factory=lambda: int(_env("MATCH_CANDIDATES", "3")))
-    refs_per_buck: int = field(default_factory=lambda: int(_env("REFS_PER_BUCK", "2")))
-    auto_accept_confidence: float = field(default_factory=lambda: float(_env("AUTO_ACCEPT_CONFIDENCE", "0.85")))
+    # Finds the head and antlers in a buck crop, so matching compares them enlarged (heads.py)
+    head_model: str = field(default_factory=lambda: _env("HEAD_MODEL", "google/owlv2-base-patch16-ensemble"))
+    # Reference photos of each named buck shown to the vision LLM in one question
+    refs_per_buck: int = field(default_factory=lambda: int(_env("REFS_PER_BUCK", "3")))
+    # A buck picked on two looks is assigned when their average confidence reaches this; otherwise Review
+    auto_accept_confidence: float = field(default_factory=lambda: float(_env("AUTO_ACCEPT_CONFIDENCE", "0.8")))
     # Photos from one camera this close together are one burst, i.e. the same buck when each frame has one buck
     burst_gap_seconds: int = field(default_factory=lambda: int(_env("BURST_GAP_SECONDS", "180")))
     # Put unmatched multi-photo bursts into placeholder-named groups ("Buck #3") instead of the review queue

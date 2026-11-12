@@ -215,7 +215,9 @@ MATCH_SYSTEM = (
     "only when specific features line up; if unsure, answer 'none' with low confidence. If the NEW PHOTO "
     "shows no antlers, or too little of them to compare, answer 'none'. When there are several views of the "
     "NEW PHOTO, they're one buck on one visit: use them together, since a tine hidden in one view often "
-    "shows in another."
+    "shows in another. Most images are zoomed in on the buck's head and antlers, enlarged from a small "
+    "part of a low-resolution photo, so expect blur; a tine that's faint in one photo may still be there. "
+    "Each candidate is a different known buck. Compare the NEW PHOTO with every candidate before deciding."
 )
 
 

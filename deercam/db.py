@@ -85,6 +85,9 @@ MIGRATIONS = [
     ("detections", "reviewed_at", "TEXT"),  # when a person last decided what this animal is (UTC ISO)
     ("detections", "reviewed_by", "INTEGER"),  # and which user
     ("photos", "hd_id", "TEXT"),
+    # where the head and antlers are in a buck crop (heads.py): JSON [x1, y1, x2, y2, score] as fractions
+    # of the crop, [] when none was found, NULL until looked for
+    ("detections", "head_box", "TEXT"),
     # one age estimate per buck per season (age.py)
     ("buck_seasons", "age_class", "TEXT"),        # 1.5 | 2.5 | 3.5 | 4.5 | 5.5_plus | unknown
     ("buck_seasons", "age_confidence", "TEXT"),   # low | medium | high

@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image
 from pydantic import BaseModel
 
-from .. import accounts, connections, db, patterns, pipeline, place, ranches, usage, wildlife
+from .. import accounts, connections, db, heads, patterns, pipeline, place, ranches, usage, wildlife
 from ..analyze import local_time
 from ..config import PUBLIC_URL, settings
 from ..identify import (QUERY_COLS, Galleries, add_notes, after_naming, embed_bucks, identify, merge_bucks, propagate_bursts,
@@ -413,7 +413,7 @@ def _season(value: str | None) -> int | None:
 
 
 DETECTION_SQL = """
-    SELECT d.id, d.photo_id, d.crop_path, d.x1, d.y1, d.x2, d.y2, d.analysis_json, d.embedding, d.buck_id, d.match_status,
+    SELECT d.id, d.photo_id, d.crop_path, d.x1, d.y1, d.x2, d.y2, d.analysis_json, d.embedding, d.head_box, d.buck_id, d.match_status,
            d.match_confidence, d.match_reason, b.name AS buck_name, p.path AS photo_path, p.taken_utc,
            season(p.taken_utc) AS season, p.meta_json, p.weather_json, c.name AS camera
     FROM detections d JOIN photos p USING(photo_id) LEFT JOIN cameras c USING(camera_id)
@@ -1499,8 +1499,13 @@ def compare_ai(det_id: int, buck_id: int):
         refs = _compare_refs(conn, q, buck_id, limit=max(3, settings.refs_per_buck))
     if not refs:
         raise HTTPException(400, f"{b['name']} has no photos to compare with")
-    images = [ImagePart("NEW PHOTO:", settings.data_dir / q["crop_path"])]
-    images += [ImagePart(f"Candidate, reference photo {n}:", settings.data_dir / r["crop_path"]) for n, r in enumerate(refs, 1)]
+    heads.locate([q["id"], *(r["id"] for r in refs)])
+    with db.session() as conn:  # again, now with their head boxes: the AI compares the zoomed racks, as the matcher does
+        marks = ",".join("?" * (len(refs) + 1))
+        zoomed = {r["id"]: heads.zoom_path(r) for r in conn.execute(
+            f"SELECT id, crop_path, head_box FROM detections WHERE id IN ({marks})", [q["id"], *(r["id"] for r in refs)])}
+    images = [ImagePart("NEW PHOTO:", zoomed[q["id"]])]
+    images += [ImagePart(f"Candidate, reference photo {n}:", zoomed[r["id"]]) for n, r in enumerate(refs, 1)]
     # Same rule as the matcher: images only, no names or notes (they bias the model).
     try:
         result = get_provider().structured(MATCH_SYSTEM, images, "Is the buck in the NEW PHOTO the same individual as the "

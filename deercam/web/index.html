@@ -67,14 +67,14 @@
   #job { font-size:12px; color:var(--ink2); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-left:4px; }
   #job.bad { color:var(--bad); cursor:pointer; }
   body.demo #job { color:var(--accent); }
-  body.demo [data-place], body.demo [data-unplace], body.demo #rematch, body.demo #rv-ideas, body.demo #rv-returning,
+  body.demo [data-place], body.demo [data-unplace], body.demo [data-stand], body.demo #rematch, body.demo #rv-ideas, body.demo #rv-returning,
   body.demo #map-search, body.demo #map-go { display:none; }
   body.signed-out .hdr-actions, body.signed-out #tabs, body.signed-out #job { display:none; }
   /* What a role can't do is hidden; the server refuses it anyway */
   body.role-viewer #sync, body.role-viewer [data-go="review"], body.role-viewer [data-go="swipe"], body.role-viewer .tagrow, body.role-viewer .season-notes,
   body.role-viewer .ptile .acts, body.role-viewer .edit-h, body.role-viewer #buck-edit, body.role-viewer #status-edit,
   body.role-viewer [data-act="group-returning"], body.role-viewer .nudge, body.role-viewer .notbuck, body.role-viewer #merge-row { display:none; }
-  body:not(.role-owner) [data-place], body:not(.role-owner) [data-unplace] { display:none; }
+  body:not(.role-owner) [data-place], body:not(.role-owner) [data-unplace], body:not(.role-owner) [data-stand] { display:none; }
   .settings .person > label:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .settings details > summary { cursor:pointer; color:var(--ink2); font-size:13px; }
   .settings details[open] { display:flex; flex-direction:column; gap:10px; }
@@ -990,6 +990,36 @@
   .in-v img, .in-v .noimg { width:44px; height:44px; border-radius:8px; object-fit:cover; background:#000; display:block; }
   .in-v > span { min-width:0; display:flex; flex-direction:column; } .in-v > span:nth-child(3) { flex-direction:row; flex-wrap:wrap; align-items:center; gap:0 6px; }
   .in-v small { display:block; color:var(--ink2); font-size:11px; width:100%; } .in-v .in-who b { font-weight:750; }
+  /* ---- plan a hunt */
+  .plan { display:flex; flex-direction:column; gap:12px; padding:0 16px 24px; width:min(760px, 100vw); margin-left:50%; transform:translateX(-50%); }
+  .plan h1.title { margin:6px 0 0; }
+  .pl-k { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--ink2); margin-bottom:8px; }
+  .pl-k span { text-transform:none; letter-spacing:0; font-weight:600; font-size:11.5px; } .pl-k .link { font-size:11.5px; padding:0; text-decoration:underline; }
+  .pl-days { display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:6px; }
+  .pl-day { display:flex; flex-direction:column; align-items:stretch; gap:4px; text-align:center; } .pl-day b { font-size:13px; } .pl-day small { font-size:10.5px; color:var(--ink2); margin-top:-4px; }
+  .pl-day button, .pl-cams button { border:0; border-radius:10px; padding:8px 0; font-size:12px; font-weight:700; background:var(--card); color:var(--ink2); cursor:pointer; }
+  .pl-day button.on, .pl-cams button.on { background:var(--ink); color:var(--on-ink); } .pl-day button:disabled { opacity:.3; cursor:default; }
+  .pl-cams { display:flex; flex-wrap:wrap; gap:6px; } .pl-cams button { padding:8px 14px; } .pl-cams i { font-style:normal; opacity:.7; }
+  .pl-sub { font-size:17px; font-weight:800; letter-spacing:-.01em; margin:6px 2px -2px; }
+  .pl-card { background:var(--soft); border-radius:var(--radius); padding:14px; border:1.5px solid transparent; } .pl-card.best { border-color:var(--accent); } .pl-card.low { opacity:.82; }
+  .pl-head { display:flex; align-items:center; gap:10px; margin-bottom:8px; } .pl-head > div { min-width:0; flex:1; } .pl-head b { display:block; font-size:18px; font-weight:800; letter-spacing:-.01em; line-height:1.15; }
+  .pl-head span { font-size:12.5px; color:var(--ink2); font-weight:600; }
+  .pl-head .pl-n { flex:none; width:28px; height:28px; border-radius:50%; background:var(--card); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; color:var(--ink2); }
+  .pl-card.best .pl-head .pl-n { background:var(--accent); color:#fff; }
+  .pl-v { font-style:normal; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; text-align:right; max-width:46%; } .pl-v.best { color:var(--accent); } .pl-v.low { color:var(--warn); text-transform:none; letter-spacing:0; font-size:12px; }
+  .pl-line { font-size:13.5px; line-height:1.45; color:var(--ink2); } .pl-line b { color:var(--ink); font-weight:700; }
+  .pl-wind { font-size:13px; line-height:1.4; margin-top:6px; padding:8px 10px; border-radius:10px; background:var(--card); color:var(--ink2); }
+  .pl-wind.good { color:var(--good); } .pl-wind.risky { color:var(--warn); } .pl-wind.bad { color:var(--bad); font-weight:650; } .pl-wind .link { font-size:13px; padding:0; text-decoration:underline; }
+  .pl-card .pl-k { margin:12px 0 4px; }
+  .pl-buck { display:grid; grid-template-columns:30px minmax(0, auto) 1fr 56px; align-items:center; column-gap:10px; padding:5px 0; border-top:1px solid var(--line); cursor:pointer; font-size:14px; }
+  .pl-buck img, .pl-buck > i { width:30px; height:30px; border-radius:50%; object-fit:cover; background:var(--card); display:block; }
+  .pl-buck b { font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .pl-buck b span { color:var(--blaze); margin-left:4px; }
+  .pl-buck small { font-size:12px; color:var(--ink2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pl-buck em.st { font-style:normal; font-weight:800; font-size:13px; text-align:right; } .pl-buck em.strong { color:var(--accent); } .pl-buck em.fair { color:var(--amber); } .pl-buck em.low { color:var(--ink2); }
+  .pl-none, .pl-foot, .pl-src { font-size:12px; color:var(--ink2); } .pl-none { padding:6px 0; } .pl-foot { margin-top:8px; padding-top:8px; border-top:1px solid var(--line); } .pl-src { line-height:1.45; padding:0 2px; }
+  .plan-cta { display:block; width:calc(100% - 32px); margin:14px 16px 0; border:0; border-radius:14px; padding:12px 14px; text-align:left; font-weight:700; font-size:14px; background:var(--tint); color:var(--ink); cursor:pointer; }
+  .intel .plan-cta { width:100%; margin:0; }
+  @media (max-width: 560px) { .plan { padding:0 10px 20px; } .pl-days { gap:4px; } .pl-day button { padding:9px 0; } .pl-v { max-width:40%; } }
   /* ---- the hunting sheet: a compact dialog over the Predictability table */
   .in-tab td.sc, .in-pch .ring, .in-pch .few { cursor:pointer; } .in-tab td.sc:hover .ring { transform:scale(1.08); } .in-tab .ring { transition:transform .15s; }
   .in-tab td.sc.few:hover { color:var(--ink); }
@@ -1819,6 +1849,7 @@ async function showHome() {
   }
   $('#main').innerHTML = `<div class="home">${sinceBox(news)}<div class="home-main">
       ${pick ? spotlight(pick, cams, fresh, tl) : ''}
+      <button class="plan-cta" data-go="plan">Plan a hunt: your best sits this week ›</button>
       <div class="home-h">${targets.length ? 'Hit list' : 'Your bucks'}${targets.length ? '' : ' <span class="meta">tag the bucks you’re after ★ on their page</span>'}</div>
       <div class="hunt">${lead.slice(0, 3).map(b => huntCard(b, cams, tl)).join('')}</div>
     </div><aside class="home-side">
@@ -2561,7 +2592,7 @@ document.addEventListener('input', e => {
 
 // ------------------------------------------------------------------ map
 
-let lmap = null, placing = null, aiming = null, mapBuck = '';
+let lmap = null, placing = null, aiming = null, standing = null, mapBuck = '';
 // The map library loads from the internet only when the Map is opened, so the rest works offline.
 let leaflet = null;
 function loadLeaflet() {
@@ -2579,7 +2610,7 @@ function loadLeaflet() {
 
 async function showMap() {
   if (lmap) { lmap.remove(); lmap = null; }
-  placing = null; aiming = null;
+  placing = null; aiming = null; standing = null;
   bucks = await api(`/api/bucks?season=${season()}`);
   const data = await api(`/api/map?season=${season()}${mapBuck ? `&buck_id=${mapBuck}` : ''}`);
   const cams = data.cameras, placed = cams.filter(c => c.lat != null);
@@ -2593,6 +2624,7 @@ async function showMap() {
         ? `${c.visits} visit${c.visits === 1 ? '' : 's'} · ${c.daylight} in daylight${c.location_source === 'gps' ? ' · GPS from camera' : ''}` : 'Not on the map yet'}</div></div>
       <div style="display:flex; gap:6px"><button class="btn small" data-place="${esc(c.camera_id)}" data-name="${esc(c.name)}">${c.lat != null ? 'Move' : 'Place'}</button>
         ${c.lat != null ? `<button class="btn small" data-aim="${esc(c.camera_id)}" data-name="${esc(c.name)}" title="Which way it faces: tap the feeder">${c.heading != null ? `Facing ${cardinal(c.heading)}` : 'Aim'}</button>` : ''}
+        ${c.lat != null ? `<button class="btn small" data-stand="${esc(c.camera_id)}" data-name="${esc(c.name)}" data-has="${c.stand_lat != null ? 1 : ''}" title="Where you sit to hunt this spot: Plan a hunt checks the wind against it">${c.stand_lat != null ? 'Stand ✓' : 'Stand'}</button>` : ''}
         ${c.lat != null ? `<button class="btn small" data-unplace="${esc(c.camera_id)}" title="Take the pin off the map">✕</button>` : ''}</div></div>`).join('')}
     <h3>Recent daylight sightings</h3>
     <div class="vlist">${data.daylight.length ? data.daylight.map(v => `<div class="v" data-buck="${v.buck_id}" style="cursor:pointer" title="Open ${esc(v.buck)}">
@@ -2626,7 +2658,17 @@ async function showMap() {
         ${c.bucks.map(b => `<tr><td>${esc(b.name)}${b.tag === 'target' ? ' ★' : ''}</td><td class="n">${b.visits}</td><td class="n">${b.daylight}</td></tr>`).join('')}</table>`
         : '<div class="meta">No named bucks here yet</div>'}`);
   }
+  for (const c of placed.filter(c => c.stand_lat != null)) {  // where the hunter sits for this spot
+    L.polyline([[c.stand_lat, c.stand_lon], [c.lat, c.lon]], { color: '#f0742a', weight: 2, dashArray: '4 6', opacity: .8, interactive: false }).addTo(lmap);
+    L.circleMarker([c.stand_lat, c.stand_lon], { radius: 7, color: '#fff', weight: 2, fillColor: '#f0742a', fillOpacity: 1 }).addTo(lmap)
+      .bindTooltip(`Stand · ${esc(c.name)} · ${Math.round(yardsBetween(c.stand_lat, c.stand_lon, c.lat, c.lon) / 5) * 5} yd`, { direction: 'top', className: 'camlabel' });
+  }
   lmap.on('click', async e => {
+    if (standing) {
+      await post(`/api/cameras/${encodeURIComponent(standing)}/stand`, { lat: e.latlng.lat, lon: e.latlng.lng });
+      standing = null;
+      return showMap();
+    }
     if (aiming) {  // the tap is what the camera looks at (the feeder): its heading is the bearing there
       const c = cams.find(x => x.camera_id === aiming);
       if (c) await post(`/api/cameras/${encodeURIComponent(aiming)}/heading`, { heading: bearing(c.lat, c.lon, e.latlng.lat, e.latlng.lng) });
@@ -2655,13 +2697,23 @@ async function mapClick(e) {
   const t = e.target.closest('button');
   if (!t) return;
   if (t.dataset.aim) {
-    aiming = t.dataset.aim; placing = null;
+    aiming = t.dataset.aim; placing = null; standing = null;
     $('#map-msg').textContent = `Tap what ${t.dataset.name} looks at (the feeder).`;
     $('#map')?.classList.add('placing');
     $('#map').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
+  if (t.dataset.stand) {
+    standing = t.dataset.stand; placing = null; aiming = null;
+    $('#map-msg').innerHTML = `Tap the map where you sit to hunt ${esc(t.dataset.name)}.${t.dataset.has ? ` <button class="link" data-unstand="${esc(t.dataset.stand)}" style="padding:0;text-decoration:underline">Remove the stand</button>` : ''}`;
+    $('#map')?.classList.add('placing');
+    $('#map').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  if (t.dataset.unstand) {
+    await post(`/api/cameras/${encodeURIComponent(t.dataset.unstand)}/stand`, {});
+    showMap();
+  }
   if (t.dataset.place) {
-    placing = t.dataset.place; aiming = null;
+    placing = t.dataset.place; aiming = null; standing = null;
     $('#map-msg').textContent = `Tap the map where ${t.dataset.name} is.`;
     $('#map')?.classList.add('placing');
     $('#map').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -4240,6 +4292,7 @@ function renderIntel() {
   const logHead = `<div class="in-v hd"><span></span><span>Buck · when</span><span>Camera</span><span>Light</span><span>Wind</span><span>Temp</span><span>Pressure</span><span>Moon</span></div>`;
   const howTo = `Predictability = pattern × data × recency. Pattern: how much more often than usual he shows up in his favorite time, place and weather, counting time of day and place most and the moon least. Data: more visits, more trust. Recency: full if seen in the last 3 days, halved each week after. Weather is hourly for the property; a visit is one buck at one camera with no gap over ${intel.visitGap} minutes (Settings).`;
   $('#main').innerHTML = `<div class="intel">
+      <button class="plan-cta" data-go="plan">Plan a hunt: your best sits this week ›</button>
       ${trendsBox()}
       <section class="in-card in-pred"><div class="in-top"><div class="in-title"><b>Predictability</b><span>${all.length} visits · ${bucks.length} bucks${cover ? ` · ${esc(cover)}` : ''}</span></div></div>
         <div class="in-tablewrap"><table class="in-tab">${head}<tbody>${rows}</tbody></table></div><div class="in-cards">${cards}</div>
@@ -4306,6 +4359,172 @@ function renderIntel() {
   bindTrends();
   $$('[data-buck-pick]').forEach(el => el.onclick = () => { const id = Number(el.dataset.buckPick); intel.buck = id && intel.buck !== id ? id : null; renderIntel(); });
   $$('[data-sheet]').forEach(el => el.onclick = e => { e.stopPropagation(); openSheet(bucks.find(b => b.id === Number(el.dataset.sheet))); });
+}
+
+// ------------------------------------------------------------------ plan a hunt
+// Pick the sits you can make (a morning or an evening, in the next 7 days) and the spots you'd hunt, and each sit
+// is ranked: each named buck's chance of showing in legal light (static/predict.js, the same model as the
+// Predictability table), the forecast for those hours, whether the wind suits your stand there (when its pin is
+// on the Map; without one, just where your scent goes), and what the camera has seen at that time of day lately.
+let plan = null;
+const PLAN_SIT_HOURS = 3;  // a morning sit runs from first legal light to this long after sunrise; an evening sit the mirror
+const planKey = () => `plan:${decodeURIComponent((document.cookie.match(/(?:^|; )ranch=([^;]*)/) || [])[1] || '')}`;
+const planPicks = () => { try { return { sits: [], cams: [], ...JSON.parse(localStorage.getItem(planKey()) || '{}') }; } catch { return { sits: [], cams: [] }; } };
+// The forecast for the sits: the model's hourly weather has no gusts or rain, so this is its own call.
+const planForecast = where => fetch(`https://api.open-meteo.com/v1/forecast?latitude=${where.lat.toFixed(2)}&longitude=${where.lon.toFixed(2)}&hourly=temperature_2m,wind_direction_10m,wind_speed_10m,wind_gusts_10m,precipitation_probability&temperature_unit=fahrenheit&wind_speed_unit=mph&timeformat=unixtime&timezone=GMT&forecast_days=8`)
+  .then(r => r.ok ? r.json() : null).then(d => d?.hourly ? d.hourly.time.map((t, i) => ({ t: t * 1000, temp: d.hourly.temperature_2m[i], deg: d.hourly.wind_direction_10m[i], mph: d.hourly.wind_speed_10m[i],
+    gust: d.hourly.wind_gusts_10m[i], rain: d.hourly.precipitation_probability[i] })) : null).catch(() => null);
+const yardsBetween = (lat1, lon1, lat2, lon2) => { const r = Math.PI / 180, x = (lon2 - lon1) * r * Math.cos((lat1 + lat2) / 2 * r), y = (lat2 - lat1) * r; return Math.hypot(x, y) * 6371000 * 1.09361; };
+const angleApart = (a, b) => Math.abs(((a - b) % 360 + 540) % 360 - 180);
+
+async function showPlan() {
+  const [home, tl, settingsNow] = await Promise.all([api(`/api/home?season=${season()}`), api('/api/timeline?days=120').catch(() => null), api('/api/settings').catch(() => ({}))]);
+  if (view !== 'plan') return;
+  const bucks = home.bucks.slice().sort((a, b) => (b.tag === 'target') - (a.tag === 'target') || b.visits - a.visits);
+  const cams = Object.fromEntries((tl?.cameras || []).map(c => [c.camera_id, c]));
+  const placed = Object.values(cams).filter(c => c.lat != null);
+  if (!placed.length) {
+    $('#main').innerHTML = `<h1 class="title">Plan a hunt</h1><div class="empty">The planner needs to know where your cameras are, for sunrise, sunset and the forecast.<br><br>
+      <button class="btn primary" data-go="place">Place cameras on the map</button></div>`;
+    return;
+  }
+  const where = { lat: placed.reduce((a, c) => a + c.lat, 0) / placed.length, lon: placed.reduce((a, c) => a + c.lon, 0) / placed.length };
+  const firstPhoto = Math.min(Date.now(), ...(tl?.photos || []).map(p => p[0])), pastDays = Math.min(92, Math.ceil((Date.now() - firstPhoto) / DAY) + 2);
+  const pats = {};
+  const [, hs, fc] = await Promise.all([Promise.all(bucks.map(async b => { pats[b.id] = await api(`/api/bucks/${b.id}/patterns?season=all`).catch(() => null); })),
+                                        weatherHours(where, pastDays), planForecast(where)]);
+  if (view !== 'plan') return;
+  plan = { bucks, cams, tl, where, pats, hs: hs || [], fc: fc || [], legalMin: settingsNow.shooting_minutes ?? 30, visitGap: settingsNow.visit_gap_minutes ?? 30 };
+  renderPlan();
+}
+
+function renderPlan() {
+  const M = DeerModel, { bucks, cams, tl, where, pats, hs, fc, legalMin, visitGap } = plan, now = Date.now(), picks = planPicks();
+  const offAt = t => { let o = -300; for (const [at, mm] of tl?.offsets || []) if (at <= t) o = mm; return o; };
+  const off = offAt(now), local = t => new Date(t + off * 60e3);
+  const hm = t => { const d = local(t), h = d.getUTCHours(); return `${(h % 12) || 12}:${String(d.getUTCMinutes()).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; };
+  const camIds = Object.keys(cams), camName = id => cams[id]?.name || id;
+  const byCam = {}; for (const [t, ci] of tl?.photos || []) if (camIds[ci]) (byCam[camIds[ci]] ??= []).push(t);
+  const ctx = { hs, up: M.uptime(byCam), cams, where, tzMin: off, legalMin };
+  const live = camIds.filter(c => (byCam[c] || []).some(t => t > now - 14 * DAY));  // cameras still sending photos
+  const spots = picks.cams.filter(c => live.includes(c)).length ? picks.cams.filter(c => live.includes(c)) : live;
+
+  // ---- the sits of the next 7 days
+  const t0 = local(now), sits = [];
+  for (let i = 0; i < 7; i++) {
+    const day = Date.UTC(t0.getUTCFullYear(), t0.getUTCMonth(), t0.getUTCDate() + i);  // the local date, as if UTC
+    const sun = M.sunTimes(day - off * 60e3 + 12 * HOUR, where.lat, where.lon); if (!sun) continue;
+    const key = new Date(day).toISOString().slice(0, 10), word = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : new Date(day).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+    const label = new Date(day).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }), date = new Date(day).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    sits.push({ id: `${key}-am`, day, part: 'am', word, label, date, sun, start: sun.rise - legalMin * 60e3, end: sun.rise + PLAN_SIT_HOURS * HOUR },
+              { id: `${key}-pm`, day, part: 'pm', word, label, date, sun, start: sun.set - PLAN_SIT_HOURS * HOUR, end: sun.set + legalMin * 60e3 });
+  }
+  const open = sits.filter(s => s.end > now + 20 * 60e3);  // still worth walking in for
+  const chosen = open.filter(s => picks.sits.includes(s.id));
+  const share = (h, s) => Math.max(0, Math.min(h.t + HOUR, s.end) - Math.max(h.t, s.start)) / HOUR;  // how much of an hour falls in a sit
+
+  // ---- each buck's odds, per sit and spot
+  const exp = hs.length ? M.exposure({ ...ctx, until: now }) : null, lam = {}, known = {};
+  for (const b of bucks) {
+    const vs = (pats[b.id]?.recent || []).map(v => ({ t: Date.parse(v.start), camera_id: v.camera_id }));
+    if (!exp || !vs.length) continue;
+    const preds = M.predict(M.fit(vs, ctx, exp), ctx, now - HOUR, now + 8 * DAY);
+    for (const s of open) for (const p of preds) { const w = share(p, s); if (w) lam[`${b.id}|${s.id}|${p.cam}`] = (lam[`${b.id}|${s.id}|${p.cam}`] || 0) + w * p.lam; }
+    known[b.id] = vs.length;
+  }
+  const WEIGHT = { target: 3, watch: 1.5, pass: .3 };
+
+  // ---- what each camera saw at this time of day in the last week
+  const WEEK = 7 * DAY, seenAt = (c, part) => {
+    const ci = camIds.indexOf(c), inPart = t => { const sun = M.sunTimes(t, where.lat, where.lon); if (!sun) return false;
+      return part === 'am' ? t >= sun.rise - legalMin * 60e3 && t <= sun.rise + PLAN_SIT_HOURS * HOUR : t >= sun.set - PLAN_SIT_HOURS * HOUR && t <= sun.set + legalMin * 60e3; };
+    const xs = (tl?.animals || []).filter(a => a.cam === ci && a.t > now - WEEK && inPart(a.t));
+    const visits = [], last = {};
+    for (const a of xs.filter(a => a.kind === 'buck')) { const k = a.buck || '';
+      if (last[k] == null || a.t - last[k] > visitGap * 60e3) visits.push({ t: a.t, buck: a.buck, tag: a.tag }); last[k] = a.t; }
+    const doeDays = new Set(xs.filter(a => a.kind === 'doe' || a.kind === 'fawn').map(a => local(a.t).toISOString().slice(0, 10))).size;
+    return { visits: visits.reverse(), doeDays };
+  };
+  const seen = {}; for (const c of live) for (const part of ['am', 'pm']) seen[`${c}|${part}`] = seenAt(c, part);
+
+  // ---- the forecast for a sit, and the wind against a stand
+  const hourly = fc.length ? fc : hs, wx = s => {
+    const xs = hourly.filter(h => share(h, s) > 0); if (!xs.length) return null;
+    const mm = k => { const v = xs.map(h => h[k]).filter(x => x != null); return v.length ? [Math.min(...v), Math.max(...v)] : null; };
+    const deg = (Math.atan2(xs.reduce((a, h) => a + Math.sin(h.deg * Math.PI / 180), 0), xs.reduce((a, h) => a + Math.cos(h.deg * Math.PI / 180), 0)) * 180 / Math.PI + 360) % 360;
+    return { xs, deg, mph: mm('mph'), gust: mm('gust')?.[1], rain: mm('rain')?.[1], temp: mm('temp') };
+  };
+  const windFor = (w, c) => {
+    const cam = cams[c]; if (!w) return null;
+    const to = cardinal(w.deg + 180), from = cardinal(w.deg);
+    if (cam?.stand_lat == null || cam.lat == null) return { kind: 'none', text: `Wind from the ${from}: your scent carries ${to}.` };
+    const yd = Math.round(yardsBetween(cam.stand_lat, cam.stand_lon, cam.lat, cam.lon) / 5) * 5, toSpot = bearing(cam.stand_lat, cam.stand_lon, cam.lat, cam.lon);
+    const blowing = w.xs.filter(h => h.mph >= 3);
+    if (!blowing.length) return { kind: 'risky', text: `Nearly calm: scent pools and drifts, so it could reach the feeder ${yd} yd from your stand.` };
+    const worst = Math.min(...blowing.map(h => angleApart(h.deg + 180, toSpot)));
+    return worst <= 30 ? { kind: 'bad', text: `Wrong wind for your stand: from the ${from}, it carries your scent toward the feeder (${yd} yd ${cardinal(toSpot)} of you).` }
+      : worst <= 60 ? { kind: 'risky', text: `Marginal wind for your stand: from the ${from}, your scent passes close to the feeder (${yd} yd ${cardinal(toSpot)} of you).` }
+      : { kind: 'good', text: `Good wind for your stand: from the ${from}, your scent carries ${to}, away from the feeder.` };
+  };
+
+  // ---- score every sit at every spot, keep each sit's best spot, and rank
+  const option = (s, c) => {
+    const w = wx(s), wind = windFor(w, c), sn = seen[`${c}|${s.part}`];
+    const odds = bucks.map(b => { const p = 1 - Math.exp(-(lam[`${b.id}|${s.id}|${c}`] || 0));
+      return { b, p, last: sn.visits.find(v => v.buck === b.name) }; })
+      .filter(o => o.p >= .02 || o.last).sort((x, y) => (WEIGHT[y.b.tag] ?? 1) * y.p - (WEIGHT[x.b.tag] ?? 1) * x.p || (y.last?.t || 0) - (x.last?.t || 0));
+    const flags = [];
+    if (wind?.kind === 'bad') flags.push('wrong wind for your stand');
+    if (w?.rain >= 70) flags.push(`rain likely (${Math.round(w.rain)}%)`);
+    if (w?.gust >= 30) flags.push(`gusts to ${Math.round(w.gust)} mph`);
+    return { s, c, w, wind, sn, odds, flags, score: odds.reduce((a, o) => a + (WEIGHT[o.b.tag] ?? 1) * o.p, 0) + .02 * sn.visits.length };
+  };
+  const better = (x, y) => !!x.flags.length - !!y.flags.length || y.score - x.score || x.s.start - y.s.start;
+  const ranked = (chosen.length ? chosen : open).map(s => { const os = spots.map(c => option(s, c)).sort(better); return os[0] && { ...os[0], next: os[1] }; }).filter(Boolean).sort(better);
+  const shown = chosen.length ? ranked : ranked.slice(0, 6);
+
+  // ---- the page
+  const range = (r, unit = '') => !r ? '' : Math.round(r[0]) === Math.round(r[1]) ? `${Math.round(r[0])}${unit}` : `${Math.round(r[0])}–${Math.round(r[1])}${unit}`;
+  const dayOf = t => local(t).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
+  const card = (o, i) => {
+    const { s, w, wind, sn } = o, am = s.part === 'am', unnamed = sn.visits.filter(v => !v.buck).length;
+    const title = `${s.word === 'Today' && !am ? 'This evening' : `${s.word} ${am ? 'morning' : 'evening'}`}`;
+    const verdict = o.flags.length ? `<em class="pl-v low">Ranked lower: ${esc(o.flags.join(', '))}</em>` : i === 0 ? '<em class="pl-v best">Best pick</em>' : '';
+    const light = am ? `Legal light from <b>${hm(s.start)}</b>, sunrise ${hm(s.sun.rise)}. Be settled by ${hm(s.start - 30 * 60e3)}.` : `Sunset ${hm(s.sun.set)}, legal light ends <b>${hm(s.end)}</b>. Be in by ${hm(s.start)}.`;
+    const cond = !w ? 'No forecast for these hours yet.' : [`${cardinal(w.deg)} wind ${range(w.mph)} mph${w.gust != null && w.gust >= (w.mph?.[1] || 0) + 5 ? `, gusts ${Math.round(w.gust)}` : ''}`, range(w.temp, '°'),
+      w.rain != null ? `rain ${Math.round(w.rain)}%` : ''].filter(Boolean).join(' · ');
+    const windLine = !wind ? '' : `<div class="pl-wind ${wind.kind}">${esc(wind.text)}${wind.kind === 'none' && can('owner') && !DEMO ? ` <button class="link" data-go="place">Add your stand on the map for a verdict ›</button>` : ''}</div>`;
+    const rows = o.odds.slice(0, 5).map(x => `<div class="pl-buck" data-buck="${x.b.id}" title="Open ${esc(x.b.name)}">${x.b.thumb ? `<img src="${x.b.thumb}" alt="">` : '<i></i>'}
+        <b>${esc(x.b.name)}${x.b.tag === 'target' ? '<span>★</span>' : ''}</b>
+        <small>${x.last ? `here ${dayOf(x.last.t)} ${hm(x.last.t)}` : known[x.b.id] < 4 ? `only ${known[x.b.id]} visit${known[x.b.id] === 1 ? '' : 's'} to go on` : ''}</small><em class="st ${x.p >= .08 ? 'strong' : x.p >= .04 ? 'fair' : 'low'}">${x.p < .01 ? '<1' : Math.round(x.p * 100)}%</em></div>`).join('')
+      || '<div class="pl-none">No named buck stands out for this sit.</div>';
+    const recent = `${sn.visits.length ? `${sn.visits.length} buck visit${sn.visits.length === 1 ? '' : 's'}${unnamed ? ` (${unnamed} not named)` : ''}` : 'No bucks'} here on ${am ? 'mornings' : 'evenings'} in the last 7 days${sn.doeDays ? ` · does on ${sn.doeDays} of them` : ''}`;
+    return `<section class="pl-card${o.flags.length ? ' low' : i === 0 ? ' best' : ''}">
+      <div class="pl-head"><span class="pl-n">${i + 1}</span><div><b>${esc(title)}</b><span>${esc(s.date)} · ${esc(camName(o.c))}</span></div>${verdict}</div>
+      <div class="pl-line">${light}</div>
+      <div class="pl-line"><b>${esc(cond)}</b></div>${windLine}
+      <div class="pl-k">Likeliest in legal light<span>chance he shows during the sit</span></div>${rows}
+      <div class="pl-foot">${esc(recent)}${o.next ? ` · next best spot: ${esc(camName(o.next.c))}` : ''}</div></section>`;
+  };
+  const days = [...new Set(sits.map(s => s.day))].map(d => sits.filter(s => s.day === d));
+  $('#main').innerHTML = `<div class="plan">
+    <h1 class="title">Plan a hunt</h1>
+    <section class="in-card pl-pick">
+      <div class="pl-k">When can you hunt?<span>${chosen.length ? `${chosen.length} sit${chosen.length === 1 ? '' : 's'} picked · <button class="link" data-plan-clear>clear</button>` : 'pick sits, or leave blank for the best of the week'}</span></div>
+      <div class="pl-days">${days.map(ds => `<div class="pl-day"><b>${esc(ds[0].label)}</b><small>${esc(ds[0].date)}</small>
+        ${ds.map(s => `<button data-plan-sit="${s.id}" class="${picks.sits.includes(s.id) ? 'on' : ''}" ${open.includes(s) ? '' : 'disabled'}>${s.part === 'am' ? 'AM' : 'PM'}</button>`).join('')}</div>`).join('')}</div>
+      ${live.length > 1 ? `<div class="pl-k" style="margin-top:12px">Where?<span>${picks.cams.length ? '' : 'any spot'}</span></div>
+      <div class="pl-cams">${live.map(c => `<button data-plan-cam="${esc(c)}" class="${picks.cams.includes(c) ? 'on' : ''}">${esc(camName(c))}${cams[c].stand_lat != null ? ' <i title="Stand placed">⌖</i>' : ''}</button>`).join('')}</div>` : ''}
+    </section>
+    <div class="pl-sub">${chosen.length ? 'Your sits, best first' : 'Best sits in the next 7 days'}</div>
+    ${shown.map(card).join('') || '<div class="empty">Nothing to plan: no camera has sent photos in the last two weeks.</div>'}
+    <div class="pl-src">Odds come from each named buck's visits and the conditions he favors (Trends → Predictability); they're a lean, not a promise. Forecast: Open-Meteo.${exp ? '' : ' Hourly weather didn’t load, so buck odds are missing.'}</div>
+  </div>`;
+  const save = p => { localStorage.setItem(planKey(), JSON.stringify(p)); renderPlan(); };
+  const flip = (xs, x) => xs.includes(x) ? xs.filter(y => y !== x) : [...xs, x];
+  $$('[data-plan-sit]').forEach(el => el.onclick = () => save({ ...picks, sits: flip(picks.sits.filter(id => open.some(s => s.id === id)), el.dataset.planSit) }));
+  $$('[data-plan-cam]').forEach(el => el.onclick = () => save({ ...picks, cams: flip(picks.cams, el.dataset.planCam) }));
+  $('[data-plan-clear]')?.addEventListener('click', () => save({ ...picks, sits: [] }));
 }
 
 // ------------------------------------------------------------------ trends
@@ -5272,20 +5491,20 @@ document.addEventListener('change', async e => {
   }
 });
 
-// ------------------------------------------------------------------ navigation (hash routes: #home, #feed, #map/<ms>, #photos, #engine, #bucks, #buck/2, #review/372, #place, #settings)
+// ------------------------------------------------------------------ navigation (hash routes: #home, #feed, #map/<ms>, #photos, #engine, #intel, #plan, #bucks, #buck/2, #review/372, #place, #settings)
 
 async function render() {
   const [v, a] = (location.hash.slice(1) || 'home').split('/');
   if (v === 'join' && a) return showJoin(a);
   if (!DEMO && !me?.user) return location.reload();  // e.g. back from a link page while signed out
-  view = ['home', 'feed', 'map', 'timeline', 'photos', 'intel', 'bucks', 'buck', 'review', 'swipe', 'place', 'engine', 'settings'].includes(v) ? v : 'home';
+  view = ['home', 'feed', 'map', 'timeline', 'photos', 'intel', 'plan', 'bucks', 'buck', 'review', 'swipe', 'place', 'engine', 'settings'].includes(v) ? v : 'home';
   TL.wantMode = view === 'photos' ? 'cams' : 'map';
   if (view === 'photos' || view === 'map') view = 'timeline';  // the map and the photo list share the timeline's data
   if ((view === 'review' || view === 'swipe') && !DEMO && !can('member')) view = 'home';
   arg = a ?? null;
-  const tab = view === 'timeline' ? (TL.wantMode === 'cams' ? 'photos' : 'map') : { feed: 'home', buck: 'bucks', review: 'swipe' }[view] || view;
+  const tab = view === 'timeline' ? (TL.wantMode === 'cams' ? 'photos' : 'map') : { feed: 'home', buck: 'bucks', review: 'swipe', plan: 'intel' }[view] || view;
   $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.go === tab));
-  $('#season').style.visibility = ['settings', 'timeline', 'engine', 'intel'].includes(view) ? 'hidden' : '';
+  $('#season').style.visibility = ['settings', 'timeline', 'engine', 'intel', 'plan'].includes(view) ? 'hidden' : '';
   if (lmap && view !== 'place') { lmap.remove(); lmap = null; }
   if (view !== 'timeline') tlDestroy();
   document.body.classList.toggle('tl-on', view === 'timeline');
@@ -5293,7 +5512,7 @@ async function render() {
   const wait = setTimeout(() => { if (!$('.loader.page')) document.body.insertAdjacentHTML('beforeend', LOADER.replace('loader', 'loader page')); }, 150);
   try {
     if (view === 'buck') await showBuck(Number(arg));
-    else await ({ home: showHome, feed: showFeed, timeline: TL.data && $('#tl') ? tlAgain : showTimeline, engine: showEngine, intel: showIntel, bucks: showBucks, review: showReview, swipe: showSwipe, place: showMap, settings: () => showSettings() }[view])();
+    else await ({ home: showHome, feed: showFeed, timeline: TL.data && $('#tl') ? tlAgain : showTimeline, engine: showEngine, intel: showIntel, plan: showPlan, bucks: showBucks, review: showReview, swipe: showSwipe, place: showMap, settings: () => showSettings() }[view])();
   } finally { clearTimeout(wait); $('.loader.page')?.remove(); }
   refreshCounts();
 }

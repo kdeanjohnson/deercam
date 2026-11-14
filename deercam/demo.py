@@ -51,7 +51,7 @@ def export(out: Path, include_map: bool = True) -> int:
         r.raise_for_status()
         data = _relative_media(r.json())
         if path.startswith("/api/map") and not include_map:
-            data["cameras"] = [c | {"lat": None, "lon": None} for c in data["cameras"]]
+            data["cameras"] = [c | {"lat": None, "lon": None, "stand_lat": None, "stand_lon": None} for c in data["cameras"]]
         (out / file_for(path)).write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
         written += 1
         return r.json()

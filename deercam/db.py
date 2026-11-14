@@ -79,6 +79,9 @@ MIGRATIONS = [
     ("bucks", "tag", "TEXT"),
     ("cameras", "lat", "REAL"),
     ("cameras", "heading", "REAL"),  # which way the camera faces, degrees clockwise from north; null = unknown
+    # where the hunter sits to watch this camera's spot (the trip planner checks the wind against it); null = not set
+    ("cameras", "stand_lat", "REAL"),
+    ("cameras", "stand_lon", "REAL"),
     ("cameras", "lon", "REAL"),
     ("cameras", "location_source", "TEXT"),
     ("detections", "animal", "TEXT"),
@@ -143,6 +146,7 @@ def pins_file():
 def save_pins(conn) -> None:
     """Copy hand-placed camera pins to their own small file, so they survive a rebuilt database."""
     pins = {r["camera_id"]: {"name": r["name"], "lat": r["lat"], "lon": r["lon"]}
+                            | ({"stand": [r["stand_lat"], r["stand_lon"]]} if r["stand_lat"] is not None else {})
             for r in conn.execute("SELECT * FROM cameras WHERE location_source='manual'")}
     pins_file().write_text(json.dumps(pins, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -156,6 +160,9 @@ def restore_pins(conn) -> None:
         conn.execute("""UPDATE cameras SET lat=?, lon=?, location_source='manual'
                         WHERE camera_id=? AND (lat IS NULL OR location_source='gps')""",
                      (pin["lat"], pin["lon"], camera_id))
+        if pin.get("stand"):
+            conn.execute("UPDATE cameras SET stand_lat=?, stand_lon=? WHERE camera_id=? AND stand_lat IS NULL",
+                         (*pin["stand"], camera_id))
 
 
 def backup(keep: int = 14) -> None:

@@ -1523,7 +1523,7 @@ def sightings_map(season: str | None = None, buck_id: int | None = None):
     """Cameras with their location and who's been seen there (named bucks only)."""
     with db.session() as conn:
         cams = {r["camera_id"]: dict(r) | {"visits": 0, "daylight": 0, "bucks": {}}
-                for r in conn.execute("SELECT camera_id, name, lat, lon, heading, location_source FROM cameras ORDER BY name")}
+                for r in conn.execute("SELECT camera_id, name, lat, lon, heading, location_source, stand_lat, stand_lon FROM cameras ORDER BY name")}
         names = {r["id"]: (r["name"], r["tag"]) for r in conn.execute("SELECT id, name, tag FROM bucks WHERE generic=0")}
         vs = [v for v in patterns.load_visits(conn, buck_id=buck_id, season=_season(season)) if v["buck_id"] in names]
     for v in vs:
@@ -1593,6 +1593,20 @@ def set_heading(camera_id: str, body: Heading):
     h = None if body.heading is None else body.heading % 360
     with db.session() as conn:
         n = conn.execute("UPDATE cameras SET heading=? WHERE camera_id=?", (h, camera_id)).rowcount
+        if not n:
+            raise HTTPException(404, "no such camera")
+        db.save_pins(conn)
+    return {"ok": True}
+
+
+@app.post("/api/cameras/{camera_id}/stand")
+@needs("owner")
+def set_stand(camera_id: str, body: Location):
+    """Where the hunter sits to watch this camera's spot, for the trip planner's wind check. Both None: no stand."""
+    if (body.lat is None) != (body.lon is None):
+        raise HTTPException(400, "lat and lon go together")
+    with db.session() as conn:
+        n = conn.execute("UPDATE cameras SET stand_lat=?, stand_lon=? WHERE camera_id=?", (body.lat, body.lon, camera_id)).rowcount
         if not n:
             raise HTTPException(404, "no such camera")
         db.save_pins(conn)
@@ -1768,7 +1782,7 @@ def timeline(days: int = 30):
     UTC offset over time (so times read in the cameras' own time zone, DST included)."""
     with db.session() as conn:
         latest = conn.execute("SELECT MAX(taken_utc) FROM photos").fetchone()[0]
-        cams = [dict(r) for r in conn.execute("SELECT camera_id, name, lat, lon, heading, location_source FROM cameras ORDER BY name")]
+        cams = [dict(r) for r in conn.execute("SELECT camera_id, name, lat, lon, heading, location_source, stand_lat, stand_lon FROM cameras ORDER BY name")]
         if not latest:
             return {"cameras": cams, "photos": [], "weather": [], "animals": [], "offsets": [], "start": None, "end": None}
         end = _epoch_ms(latest)

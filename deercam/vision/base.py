@@ -173,6 +173,43 @@ AGE_SYSTEM = (
 )
 
 
+class BuckScore(BaseModel):
+    """One buck's rack, field-judged from several photos of him together. The measurements come first,
+    so the model looks before it commits to a number."""
+    points: str = Field(description="Scorable points on each side counting the beam tip, and any abnormal "
+                                    "points, e.g. '5 left, 4 right, a kicker off the right G2'")
+    spread: str = Field(description="Inside spread in inches and what it was judged against, e.g. "
+                                    "'about 16, an inch past each ear tip'")
+    beams: str = Field(description="Main beam length in inches, each side if they differ")
+    tines: str = Field(description="Brow tines, G2, G3 and G4 lengths in inches, each side if they differ")
+    mass: str = Field(description="Beam thickness against his eye or ear base: thin, average or heavy")
+    score_low: int = Field(description="Low end of his gross Boone and Crockett score, in inches; 0 if unknown")
+    score_high: int = Field(description="High end of his gross Boone and Crockett score, in inches; 0 if unknown")
+    confidence: Literal["low", "medium", "high", "unknown"] = Field(
+        description="'unknown' if the photos don't show his rack well enough to judge")
+    reason: str = Field(description="One sentence a hunter would say, naming what makes or limits his score")
+
+
+SCORE_SYSTEM = (
+    "You field-judge whitetail racks from trail-camera photos, the way experienced hunters and deer "
+    "managers do, and give a gross Boone and Crockett score as a range. You get several photos of the "
+    "same buck from one season, zoomed in on his head, from different days and angles; judge him from "
+    "all of them together, taking each measurement from the photo that shows it best: spread from a "
+    "front or rear view, tine and beam length from a side view. Size the rack against his own head: an "
+    "alert whitetail's ears are about 6 inches long and 14 to 16 inches tip to tip, his eye is about "
+    "an inch across with roughly 4 inches around it, and it is 7 to 8 inches from the front of his eye "
+    "to the end of his nose. Deer in {region} are the size typical there; use the smaller figures where "
+    "deer run small. The gross score is the inside spread, plus both main beams, plus every tine, plus "
+    "four circumferences a side (together usually 13 to 18 inches a side), plus abnormal points. For "
+    "scale: a typical yearling 6 or 8 point scores 60 to 90, a decent 8 point 110 to 125, a good "
+    "mature 8 or 10 point 130 to 150, and 160 and up is exceptional. Don't flatter him: antlers look "
+    "bigger in night infrared, close to the camera and through a wide lens, and tines pointing at the "
+    "camera look short. Give a range as wide as the photos leave you unsure, usually 10 to 20 inches; "
+    "a range narrower than 10 needs clear views of both sides. When the photos don't show his rack well "
+    "enough, say 'unknown' rather than guess."
+)
+
+
 VERIFY_SYSTEM = (
     "You check trail-camera crops that an automatic classifier flagged as an antlered buck. That classifier "
     "is wrong about half the time: it mistakes does for bucks, reading ears, fence wire, feeder legs, "

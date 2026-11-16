@@ -97,7 +97,15 @@ MIGRATIONS = [
     ("buck_seasons", "age_reason", "TEXT"),
     ("buck_seasons", "age_cues", "TEXT"),         # JSON: neck, chest_and_belly, legs_and_body, face, rack
     ("buck_seasons", "age_photos", "INTEGER"),    # his photos that season when it was made
-    ("buck_seasons", "age_at", "TEXT"),  # Reveal's id for the HD copy shown in place of this photo (sync._place_hd)
+    ("buck_seasons", "age_at", "TEXT"),
+    # one rough Boone and Crockett range per buck per season (score.py)
+    ("buck_seasons", "score_low", "INTEGER"),      # gross inches; NULL with score_photos set = couldn't tell
+    ("buck_seasons", "score_high", "INTEGER"),
+    ("buck_seasons", "score_confidence", "TEXT"),  # low | medium | high | unknown
+    ("buck_seasons", "score_reason", "TEXT"),
+    ("buck_seasons", "score_cues", "TEXT"),        # JSON: points, spread, beams, tines, mass
+    ("buck_seasons", "score_photos", "INTEGER"),   # his photos that season when it was made
+    ("buck_seasons", "score_at", "TEXT"),  # Reveal's id for the HD copy shown in place of this photo (sync._place_hd)
 ]
 
 

@@ -788,6 +788,7 @@ def bucks(season: str | None = None):
             b["thumb"] = _thumb(conn, b["id"], shown)
             b["season_notes"] = season_notes.get((b["id"], shown)) if shown is not None else None
             b["age"] = _age(bs.get((b["id"], shown)))
+            b["score"] = _score(bs.get((b["id"], shown)))
             result.append(b)
         # Hit list first, then other named bucks, auto-groups, absent ones; harvested/dead last
         # within each, newest first.
@@ -809,7 +810,7 @@ def buck_detail(buck_id: int):
         notes = {s: r["notes"] for s, r in bs.items()}
         sightings = [_row(r) for r in rows]
         seen = sorted({d["season"] for d in sightings} | set(notes), reverse=True)
-        seasons = [{"season": s, "label": f"{s}-{str(s + 1)[2:]}", "notes": notes.get(s), "age": _age(bs.get(s)),
+        seasons = [{"season": s, "label": f"{s}-{str(s + 1)[2:]}", "notes": notes.get(s), "age": _age(bs.get(s)), "score": _score(bs.get(s)),
                     "sightings": sum(d["season"] == s for d in sightings), "thumb": _thumb(conn, buck_id, s)}
                    for s in seen]
         info = {k: b[k] for k in ("id", "name", "notes", "generic", "status", "status_date", "status_note", "tag")}
@@ -842,6 +843,31 @@ def buck_age(buck_id: int, body: AgeRequest):
         raise HTTPException(502, f"{type(e).__name__}: {e}")
     with db.session() as conn:
         return _age(conn.execute("SELECT * FROM buck_seasons WHERE buck_id=? AND season=?", (buck_id, body.season)).fetchone())
+
+
+def _score(r) -> dict | None:
+    """A buck's rough Boone and Crockett range for a season (score.py), for the page."""
+    if r is None or r["score_photos"] is None:
+        return None
+    return {k[6:]: r[k] for k in ("score_low", "score_high", "score_confidence", "score_reason", "score_photos", "score_at")} \
+        | {"cues": json.loads(r["score_cues"] or "{}")}
+
+
+@app.post("/api/bucks/{buck_id}/score")
+@needs("member")
+def buck_score(buck_id: int, body: AgeRequest):
+    """Ask the AI again what his rack scores that season, from his best photos."""
+    from ..score import estimate
+    try:
+        estimate(buck_id, body.season)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except SetupError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"{type(e).__name__}: {e}")
+    with db.session() as conn:
+        return _score(conn.execute("SELECT * FROM buck_seasons WHERE buck_id=? AND season=?", (buck_id, body.season)).fetchone())
 
 
 class Assign(BaseModel):

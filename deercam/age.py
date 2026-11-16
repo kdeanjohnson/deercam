@@ -74,23 +74,24 @@ def estimate(buck_id: int, season: int) -> dict:
     return {"age_class": a.age_class, "age_confidence": a.confidence, "age_reason": a.reason, "age_cues": cues, "age_photos": len(rows)}
 
 
-def due(conn) -> list[tuple[int, int]]:
+def due(conn, col: str = "age_photos") -> list[tuple[int, int]]:
     """(buck, season) pairs to estimate: named bucks with 2+ photos that season and no estimate yet, or
-    with enough new photos since the last one (3 more, or half as many again)."""
+    with enough new photos since the last one (3 more, or half as many again). col: the buck_seasons
+    column holding how many photos he had at the last estimate (score.py keeps its own)."""
     rows = conn.execute(
-        """SELECT d.buck_id, season(p.taken_utc) AS season, COUNT(*) AS n, bs.age_photos
+        f"""SELECT d.buck_id, season(p.taken_utc) AS season, COUNT(*) AS n, bs.{col} AS had
            FROM detections d JOIN photos p USING(photo_id) JOIN bucks b ON b.id=d.buck_id
            LEFT JOIN buck_seasons bs ON bs.buck_id=d.buck_id AND bs.season=season(p.taken_utc)
            WHERE b.generic=0 AND d.match_status IN ('confirmed','auto') AND d.crop_path IS NOT NULL
            GROUP BY d.buck_id, season(p.taken_utc)""").fetchall()
     return [(r["buck_id"], r["season"]) for r in rows
-            if r["n"] >= 2 and (r["age_photos"] is None or r["n"] >= r["age_photos"] + max(3, r["age_photos"] // 2))]
+            if r["n"] >= 2 and (r["had"] is None or r["n"] >= r["had"] + max(3, r["had"] // 2))]
 
 
-def estimate_due() -> int:
+def estimate_due(estimate=estimate, col: str = "age_photos", what: str = "age") -> int:
     """Estimate every buck that's due; part of each import. Returns how many were done."""
     with db.session() as conn:
-        todo = due(conn)
+        todo = due(conn, col)
     done, out_of_budget = 0, None
     for buck_id, season in todo:
         try:
@@ -100,7 +101,7 @@ def estimate_due() -> int:
             out_of_budget = e
             break
         except Exception as e:
-            log.warning("couldn't age buck %s (%s season): %s", buck_id, season, e)
+            log.warning("couldn't %s buck %s (%s season): %s", what, buck_id, season, e)
     if out_of_budget:
         raise out_of_budget
     return done

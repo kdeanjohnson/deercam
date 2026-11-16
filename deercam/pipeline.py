@@ -12,6 +12,7 @@ def run(step=lambda label: None, full: bool = False, since: datetime | None = No
     from .analyze import analyze
     from .detect import detect
     from .identify import identify
+    from .score import estimate_due as score_due
     from .sync import sync
 
     step("downloading new photos")
@@ -24,4 +25,6 @@ def run(step=lambda label: None, full: bool = False, since: datetime | None = No
     out["matching"] = identify()
     step("aging bucks")
     out["aged"] = estimate_due()
+    step("scoring racks")
+    out["scored"] = score_due()
     return out
